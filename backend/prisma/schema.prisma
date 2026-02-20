@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// --- 1. GESTIÓN DE ACCESO Y PERSONAL ---
+
+model Usuario {
+  id               String   @id @default(uuid())
+  nombre           String
+  email            String   @unique
+  password         String
+  rol              Rol      @default(TECNICO)
+  activo           Boolean  @default(true)
+  creadoEn         DateTime @default(now())
+
+  // Relación con averías que el técnico debe reparar
+  averiasAsignadas Averia[]
+}
+
+enum Rol {
+  ADMIN     // Puede gestionar infraestructura y usuarios
+  TECNICO   // Solo puede ver mapa, factibilidad y atender averías
+}
+
+// --- 2. INFRAESTRUCTURA DE RED (JERARQUÍA TÉCNICA) ---
+
+model Troncal {
+  id          String   @id @default(uuid())
+  nombre      String   @unique // Ej: "Troncal Chosica Centro"
+  prefijo     String   @unique // Ej: "CHO"
+  capacidad   Int      @default(96) // 48, 96, 144 hilos
+  descripcion String?
+  creadoEn    DateTime @default(now())
+
+  mufas       Mufa[]
+}
+
+model Mufa {
+  id            String   @id @default(uuid())
+  // Código automático generado por controlador: CHO-BAZ-HVE
+  codigo        String   @unique 
+  
+  // Datos de Sangría Simplificados por Colores
+  bufferColor   String   // Ej: "Azul"
+  bufferPrefijo String   // Ej: "BAZ"
+  hiloColor     String   // Ej: "Verde"
+  
+  // Ubicación
+  latitud       Float
+  longitud      Float
+  direccion     String?
+  capacidadHilos Int @default(16)
+  
+  // Relaciones
+  troncalId     String
+  troncal       Troncal  @relation(fields: [troncalId], references: [id])
+  cajas         Caja[]
+  creadoEn      DateTime @default(now())
+}
+
+model Caja {
+  id             String    @id @default(uuid())
+  // Código automático: CHO-BAZ-HVE-C01
+  codigo         String    @unique
+  puertoMufa     Int       // Puerto físico en la mufa
+  puertoOlt      String?   // Ruta lógica OLT Ej: "1/7/1"
+  latitud        Float
+  longitud       Float
+  colorFibraCaja String?   // Color del hilo que alimenta la caja
+  puertosTotales Int       @default(16)
+  
+  // Relaciones
+  mufaId         String
+  mufa           Mufa      @relation(fields: [mufaId], references: [id], onDelete: Cascade)
+  clientes       Cliente[]
+  creadoEn       DateTime  @default(now())
+}
+
+// --- 3. CAPA COMERCIAL Y ATENCIÓN ---
+
+model Cliente {
+  id              String   @id @default(uuid())
+  nombre          String
+  dni             String   @unique
+  telefono        String
+  direccion       String?
+  
+  // Sincronización OLT
+  onuExternalId   String?  @unique // Ej: "gpon-onu_1/7/1:11"
+  snMac           String?  @unique // Serial Number ZTE
+  
+  latitud         Float?
+  longitud        Float?
+  estadoServicio  String   @default("ACTIVO")
+  
+  cajaId          String
+  caja            Caja     @relation(fields: [cajaId], references: [id])
+  averias         Averia[]
+  pagos           Pago[]
+  creadoEn        DateTime @default(now())
+}
+
+model Averia {
+  id              String   @id @default(uuid())
+  tipo            TipoAveria @default(SIN_INTERNET)
+  descripcion     String   @db.Text
+  estado          EstadoAveria @default(PENDIENTE)
+  prioridad       String   @default("MEDIA")
+  
+  clienteId       String
+  cliente         Cliente    @relation(fields: [clienteId], references: [id])
+  
+  tecnicoId       String?
+  tecnico         Usuario?   @relation(fields: [tecnicoId], references: [id])
+  
+  creadoEn        DateTime   @default(now())
+}
+
+model Pago {
+  id              String   @id @default(uuid())
+  monto           Float
+  metodo          Metodo     @default(YAPE)
+  estado          EstadoPago @default(PENDIENTE)
+  referencia      String?    @unique // Número de operación Yape
+  fechaPago       DateTime   @default(now())
+
+  clienteId       String
+  cliente         Cliente    @relation(fields: [clienteId], references: [id])
+}
+
+// --- 4. ENUMS (CATÁLOGOS) ---
+
+enum Metodo {
+  YAPE
+  PLIN
+  TRANSFERENCIA
+  EFECTIVO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+enum EstadoAveria {
+  PENDIENTE
+  EN_REPARACION
+  SOLUCIONADO
+}
+
+enum TipoAveria {
+  SIN_INTERNET
+  LENTITUD
+  CABLE_ROTO
+  CAJA_NAP_DANADA
+}

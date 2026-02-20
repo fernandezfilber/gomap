@@ -1,0 +1,5 @@
+# Ignorar completamente node_modules (ya deberías tenerlo, pero asegúrate)
+node_modules/
+
+# O si ya lo tienes, solo ignora los warnings de line endings en node_modules
+# (pero mejor no commitear node_modules nunca)

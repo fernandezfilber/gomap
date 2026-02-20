@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Tus estilos personalizados para Forward Vision */
+body {
+  @apply bg-[#0d1117] text-white antialiased;
+}
