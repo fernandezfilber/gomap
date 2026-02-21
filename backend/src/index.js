@@ -20,14 +20,12 @@ redisClient.on("error", (err) => console.log("❌ Error en Redis:", err));
 
 // 3. Middlewares Globales
 // 3. Middlewares Globales
+// 3. Middlewares Globales
 app.use(cors({
-  origin: [
-    'https://forward-vision-frontend.onrender.com', // Tu URL de frontend en Render
-    'http://localhost:5173'                         // Para seguir trabajando localmente
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+    origin: true, // Esto permite que cualquier origen se conecte, ideal para depurar este error
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 
 app.use(express.json()); // Permite recibir el Body en formato JSON // Permite que tu frontend en el puerto 5173 acceda sin bloqueos
