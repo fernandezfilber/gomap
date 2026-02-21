@@ -15,16 +15,16 @@ const API = axios.create({
 // Se ejecuta ANTES de enviar la petición al servidor
 API.interceptors.request.use(
     (config) => {
-        // Obtenemos el token almacenado (asegúrate de guardarlo como 'token' al hacer login)
-        const token = localStorage.getItem('token'); 
+        const token = localStorage.getItem('token'); // 👈 VERIFICA ESTE NOMBRE
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            // console.log("🔑 Token enviado:", token); // Descomenta para depurar
+        } else {
+            console.warn("⚠️ No se encontró token en localStorage");
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
 // --- INTERCEPTOR DE RESPUESTA (Depuración) ---
