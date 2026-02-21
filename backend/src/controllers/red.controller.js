@@ -50,14 +50,21 @@ exports.verificarFactibilidad = async (req, res) => {
     // 3. Búsqueda Espacial (Radio 300m)
     // 3. Búsqueda Espacial (Radio 300m)
     // Usamos "Caja" entre comillas dobles para respetar la mayúscula de Prisma
+    // 3. Búsqueda Espacial (Radio 300m) - Versión con Cast de tipos
     const cajas = await prisma.$queryRaw`
   SELECT * FROM (
     SELECT id, codigo, latitud, longitud, "puertoOlt",
-    ROUND((6371 * acos(cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + sin(radians(${lat})) * sin(radians(latitud)))) * 1000, 2) AS distancia_metros
+    ROUND(
+      (6371 * acos(
+        cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + 
+        sin(radians(${lat})) * sin(radians(latitud))
+      ) * 1000)::numeric, 2
+    ) AS distancia_metros
     FROM "Caja"
   ) AS distancias
   WHERE distancia_metros <= 300 
   ORDER BY distancia_metros ASC`;
+    F;
 
     return res.json({
       tipo: cajas.length > 0 ? "CONEXION_DIRECTA" : "REQUIERE_EXPANSION",
