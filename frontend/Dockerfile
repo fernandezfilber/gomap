@@ -2,15 +2,15 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-# --- ESTO ES LO QUE FALTA ---
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-COPY package*.json ./
+# --- AJUSTE DE RUTAS PARA CONTEXTO RAÍZ ---
+COPY frontend/package*.json ./
 RUN npm install
-COPY . .
+COPY frontend/ . 
 
-# Ahora sí, Vite usará la URL de Render al construir los archivos
+# Ahora Vite encontrará el package.json y podrá construir
 RUN npm run build
 
 # Etapa 2: Servidor de producción (Nginx)
