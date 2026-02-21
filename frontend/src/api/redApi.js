@@ -68,7 +68,7 @@ export const loginUsuario = async (credentials) => {
   try {
     // <<< CAMBIA ESTA RUTA según tu backend >>>
     // Prueba primero con '/login' o '/auth/login'
-    const response = await API.post('/login', credentials);
+    const response = await API.post('/auth/login', credentials);
 
     console.log("🔥 Respuesta del servidor (login):", response.data);
 
