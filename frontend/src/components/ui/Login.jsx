@@ -15,34 +15,34 @@ const Login = ({ onLoginSuccess }) => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setLoading(true);
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
 
-        try {
-            // 1. Llamada al servicio de autenticación
-            const data = await loginUsuario(credentials);
-            
-            // 2. ✅ PASO CRÍTICO: Guardar el token y el usuario en el navegador
-            // Esto permite que el interceptor de API.js encuentre la "llave"
-            if (data && data.token) {
-                localStorage.setItem('token', data.token); //
-                localStorage.setItem('user', JSON.stringify(data.user)); //
-                
-                // 3. Notificar a App.js para actualizar el estado global y entrar al sistema
-                onLoginSuccess(data.user); 
-            } else {
-                setError("Error: No se recibió un token válido del servidor.");
-            }
-        } catch (err) {
-            // Maneja errores de respuesta del servidor o fallos de red
-            console.error("🚨 Error en Login:", err);
-            setError(err.response?.data?.message || "Error al conectar con el servidor"); 
-        } finally {
-            setLoading(false);
+    try {
+        const data = await loginUsuario(credentials);
+        
+        // ←←← AGREGÁ ESTO ←←←
+        console.log("📥 Respuesta completa del login:", data);
+        console.log("¿Existe data.token?", !!data?.token);
+        console.log("Claves que trae:", data ? Object.keys(data) : null);
+
+        if (data && data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            onLoginSuccess(data.user);
+            console.log("✅ Token guardado correctamente");
+        } else {
+            console.warn("⚠️ No se recibió token. Estructura recibida:", data);
+            setError("Error: No se recibió un token válido del servidor.");
         }
-    };
-
+    } catch (err) {
+        console.error("🚨 Error completo:", err);
+        setError(err.response?.data?.message || "Error al conectar con el servidor"); 
+    } finally {
+        setLoading(false);
+    }
+};
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0d1117] p-4">
             <div className="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-3xl p-8 shadow-2xl">
