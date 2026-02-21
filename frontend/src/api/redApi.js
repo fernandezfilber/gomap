@@ -2,7 +2,10 @@ import axios from 'axios';
 
 // --- CONFIGURACIÓN INICIAL ---
 const API = axios.create({ 
-    baseURL: 'http://localhost:5000/api',
+    // Si existe la variable de entorno, úsala; si no, usa localhost para desarrollo
+    baseURL: import.meta.env.VITE_API_URL 
+        ? `${import.meta.env.VITE_API_URL}/api` 
+        : 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json'
     }
