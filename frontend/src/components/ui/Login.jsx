@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-// Importación corregida: Sin la 's' final y apuntando a Services
-import { loginUsuario } from "../../Services/authService"; 
+import { loginUsuario } from "../../api/redApi"; 
 
 const Login = ({ onLoginSuccess }) => {
     const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -15,38 +14,37 @@ const Login = ({ onLoginSuccess }) => {
     };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+        e.preventDefault();
+        setError(null);
+        setLoading(true);
 
-    try {
-        const data = await loginUsuario(credentials);
-        
-        // ←←← AGREGÁ ESTO ←←←
-        console.log("📥 Respuesta completa del login:", data);
-        console.log("¿Existe data.token?", !!data?.token);
-        console.log("Claves que trae:", data ? Object.keys(data) : null);
+        try {
+            const data = await loginUsuario(credentials);
+            
+            console.log("📥 Respuesta recibida en Login:", data);
+            console.log("¿Tiene token?", !!data?.token);
 
-        if (data && data.token) {
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            onLoginSuccess(data.user);
-            console.log("✅ Token guardado correctamente");
-        } else {
-            console.warn("⚠️ No se recibió token. Estructura recibida:", data);
-            setError("Error: No se recibió un token válido del servidor.");
+            if (data && data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user || data));
+                
+                console.log("✅ Token guardado correctamente!");
+                onLoginSuccess(data.user || data);
+            } else {
+                console.warn("⚠️ Estructura sin token:", data);
+                setError("Error: No se recibió un token válido del servidor.");
+            }
+        } catch (err) {
+            console.error("🚨 Error completo en Login:", err);
+            setError(err.response?.data?.message || "Credenciales incorrectas o servidor no responde");
+        } finally {
+            setLoading(false);
         }
-    } catch (err) {
-        console.error("🚨 Error completo:", err);
-        setError(err.response?.data?.message || "Error al conectar con el servidor"); 
-    } finally {
-        setLoading(false);
-    }
-};
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#0d1117] p-4">
             <div className="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-3xl p-8 shadow-2xl">
-                
                 <div className="text-center mb-8">
                     <h1 className="text-2xl font-black text-white italic uppercase tracking-tighter">
                         Forward Vision 🚀
