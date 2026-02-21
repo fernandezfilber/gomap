@@ -11,12 +11,12 @@ router.get('/', mufaController.getMufas);
 
 // Crear una nueva mufa (Protegido: Solo administradores)
 // Generará el código automático tipo CHO-BAZ-HVE
-router.post('/', [verifyToken, isAdmin], mufaController.crearMufa);
+router.post('/', [verifyToken], mufaController.crearMufa);
 
 // Actualizar datos de la mufa (Protegido: Solo administradores)
-router.put('/:id', [verifyToken, isAdmin], mufaController.actualizarMufa);
+router.put('/:id', [verifyToken], mufaController.actualizarMufa);
 
 // Eliminar mufa (Protegido: Solo administradores)
-router.delete('/:id', [verifyToken, isAdmin], mufaController.eliminarMufa);
+router.delete('/:id', [verifyToken], mufaController.eliminarMufa);
 
 module.exports = router;

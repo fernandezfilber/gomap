@@ -13,12 +13,12 @@ router.get('/', cajaController.getCajas);
 router.get('/mufas/:mufaId/ocupados', verifyToken, cajaController.getHilosOcupados);
 
 // Crear caja (Protegido: Solo Admin)
-router.post('/', [verifyToken, isAdmin], cajaController.createCaja);
+router.post('/', [verifyToken], cajaController.createCaja);
 
 // Actualizar caja (Protegido: Solo Admin)
-router.put('/:id', [verifyToken, isAdmin], cajaController.actualizarCaja);
+router.put('/:id', [verifyToken], cajaController.actualizarCaja);
 
 // Eliminar caja (Protegido: Solo Admin)
-router.delete('/:id', [verifyToken, isAdmin], cajaController.deleteCaja);
+router.delete('/:id', [verifyToken], cajaController.deleteCaja);
 
 module.exports = router;
