@@ -2,7 +2,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-# --- PASO CRUCIAL: Traer la variable desde Render ---
+# --- ESTO ES LO QUE FALTA ---
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
@@ -10,7 +10,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-# Ahora Vite sí podrá ver la URL de Render al construir
+# Ahora sí, Vite usará la URL de Render al construir los archivos
 RUN npm run build
 
 # Etapa 2: Servidor de producción (Nginx)
