@@ -1,20 +1,16 @@
-# Usamos una imagen ligera de Node
-FROM node:22-alpine
-
-# Carpeta de trabajo dentro del contenedor
+# Etapa 1: Construcción (Build)
+FROM node:22-alpine AS build
 WORKDIR /app
-
-# Copiamos los archivos de dependencias
 COPY package*.json ./
-
-# Instalamos las librerías
 RUN npm install
-
-# Copiamos el resto del código
 COPY . .
+# Generamos los archivos listos para producción
+RUN npm run build
 
-# Exponemos el puerto de Vite
-EXPOSE 5173
-
-# Comando para iniciar en modo desarrollo
-CMD ["npm", "run", "dev"]
+# Etapa 2: Servidor de producción (Nginx)
+FROM nginx:stable-alpine
+# Copiamos los archivos construidos a la carpeta que sirve Nginx
+COPY --from=build /app/dist /usr/share/nginx/html
+# Exponemos el puerto estándar de la web
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
