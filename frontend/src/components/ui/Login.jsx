@@ -19,16 +19,23 @@ const Login = ({ onLoginSuccess }) => {
         setError(null);
         setLoading(true);
 
-        try {
-            const data = await loginUsuario(credentials);
-            // Al llamar a onLoginSuccess, App.js actualiza el estado y libera el mapa
-            onLoginSuccess(data.user); 
-        } catch (err) {
-            // Maneja errores como "Usuario no encontrado" o "Contraseña incorrecta"
-            setError(err); 
-        } finally {
-            setLoading(false);
-        }
+       try {
+    const data = await loginUsuario(credentials);
+    
+    // 🚩 PASO CRÍTICO: Guardar el token y el usuario en el navegador
+    if (data && data.token) {
+        localStorage.setItem('token', data.token); // Esta es la llave para la API
+        localStorage.setItem('user', JSON.stringify(data.user)); // Datos del técnico
+        
+        // Ahora sí, avisamos a App.js para que cambie la vista
+        onLoginSuccess(data.user); 
+    }
+} catch (err) {
+    // Si err es un objeto, intenta sacar el mensaje, si no usa un texto genérico
+    setError(err.response?.data?.message || "Error al conectar con el servidor"); 
+} finally {
+    setLoading(false);
+}
     };
 
     return (
