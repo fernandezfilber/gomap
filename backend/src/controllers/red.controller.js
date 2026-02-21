@@ -1,133 +1,119 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-// --- 1. UTILIDADES DE EXTRACCIÓN ---
-const parsearCoords = (texto) => {
-  if (!texto || typeof texto !== "string") return null;
-  // Regex para capturar lat,lng de URLs largas o cortas
-  const match =
-    texto.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/) ||
-    texto.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) {
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-    if (Math.abs(lat) <= 90) return { lat, lng };
-  }
-  return null;
+
+
+// --- 1. UTILIDADES DE EXTRACCIÓN MEJORADAS ---
+const extraerCoordenadas = (input) => {
+    if (!input || typeof input !== "string") return null;
+
+    // Regex potenciado para detectar:
+    // 1. Patrón @lat,lng (URLs de Maps)
+    // 2. Patrón lat,lng (Texto directo)
+    // 3. Patrón !3dLat!4dLng (URLs internas de Google Maps)
+    const regex = /@?(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)|!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
+    const match = input.match(regex);
+
+    if (match) {
+        // Extrae de los grupos correspondientes según el patrón detectado
+        const lat = parseFloat(match[1] || match[3]);
+        const lng = parseFloat(match[2] || match[4]);
+        
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+            return { lat, lng };
+        }
+    }
+    return null;
 };
 
 // --- 2. CONTROLADORES ---
+
+// VERIFICAR FACTIBILIDAD (POST)
 exports.verificarFactibilidad = async (req, res) => {
-  try {
-    let { googleMapsUrl } = req.body;
-    if (!googleMapsUrl) return res.status(400).json({ error: "Entrada vacía" });
+    try {
+        let { googleMapsUrl } = req.body;
+        if (!googleMapsUrl) return res.status(400).json({ error: "Entrada vacía" });
 
-    console.log("📍 Procesando entrada:", googleMapsUrl);
+        console.log("📍 Procesando entrada de factibilidad:", googleMapsUrl);
 
-    // 1. Limpieza y extracción robusta
-    // Buscamos el patrón @lat,lng o lat,lng directo
-    const regex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
-    const match = googleMapsUrl.match(regex);
+        const coords = extraerCoordenadas(googleMapsUrl);
 
-    if (!match) {
-      return res
-        .status(400)
-        .json({ error: "Formato no reconocido. Usa: latitud, longitud" });
+        if (!coords) {
+            return res.status(400).json({ 
+                error: "No se pudieron extraer coordenadas. Use el formato: latitud, longitud o un link de Maps." 
+            });
+        }
+
+        const { lat, lng } = coords;
+
+        // Búsqueda Espacial (Radio 300m)
+        // Corrección de tipos con ::numeric y uso de comillas dobles para la tabla "Caja"
+        const cajas = await prisma.$queryRaw`
+            SELECT * FROM (
+                SELECT id, codigo, latitud, longitud, "puertoOlt",
+                ROUND(
+                    (6371 * acos(
+                        LEAST(1.0, GREATEST(-1.0, 
+                            cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + 
+                            sin(radians(${lat})) * sin(radians(latitud))
+                        ))
+                    ) * 1000)::numeric, 2
+                ) AS distancia_metros
+                FROM "Caja"
+            ) AS distancias
+            WHERE distancia_metros <= 300 
+            ORDER BY distancia_metros ASC`;
+
+        return res.json({
+            tipo: cajas.length > 0 ? "CONEXION_DIRECTA" : "REQUIERE_EXPANSION",
+            cajas,
+            clienteCoords: { lat, lng },
+        });
+        
+    } catch (error) {
+        console.error("🔥 Error en Factibilidad:", error.message);
+        return res.status(500).json({ 
+            error: "Error interno del servidor", 
+            detalle: error.message 
+        });
     }
-
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-
-    // 2. Validación de rangos geográficos
-    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      return res
-        .status(400)
-        .json({ error: "Coordenadas geográficas inválidas" });
-    }
-
-    // 3. Búsqueda Espacial (Radio 300m)
-    // 3. Búsqueda Espacial (Radio 300m)
-    // Usamos "Caja" entre comillas dobles para respetar la mayúscula de Prisma
-    // 3. Búsqueda Espacial (Radio 300m) - Versión con Cast de tipos
-    const cajas = await prisma.$queryRaw`
-  SELECT * FROM (
-    SELECT id, codigo, latitud, longitud, "puertoOlt",
-    ROUND(
-      (6371 * acos(
-        cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + 
-        sin(radians(${lat})) * sin(radians(latitud))
-      ) * 1000)::numeric, 2
-    ) AS distancia_metros
-    FROM "Caja"
-  ) AS distancias
-  WHERE distancia_metros <= 300 
-  ORDER BY distancia_metros ASC`;
-    F;
-
-    return res.json({
-      tipo: cajas.length > 0 ? "CONEXION_DIRECTA" : "REQUIERE_EXPANSION",
-      cajas,
-      clienteCoords: { lat, lng },
-    });
-  } catch (error) {
-    console.error("🔥 Error 500 Detectado:", error.message);
-    return res
-      .status(500)
-      .json({ error: "Error interno del servidor", detalle: error.message });
-  }
-};
-exports.obtenerMapaRed = async (req, res) => {
-  try {
-    const red = await prisma.troncal.findMany({
-      include: { mufas: { include: { cajas: true } } },
-    });
-    res.json(red);
-  } catch (error) {
-    res.status(500).json({ error: "Fallo al cargar red" });
-  }
 };
 
-// OBTENER MAPA RED (Solución al Socket Hang Up)
-// OBTENER MAPA RED (Jerarquía Troncal -> Mufa -> Caja)
+// OBTENER MAPA RED (GET - Jerarquía Eficiente)
 exports.obtenerMapaRed = async (req, res) => {
-  try {
-    console.log("📍 Generando mapa completo de infraestructura...");
+    try {
+        console.log("📍 Generando mapa completo de infraestructura...");
 
-    const redTotal = await prisma.troncal.findMany({
-      select: {
-        id: true,
-        nombre: true,
-        mufas: {
-          select: {
-            id: true,
-            codigo: true,
-            latitud: true,
-            longitud: true,
-            bufferColor: true,
-            hiloColor: true,
-            // Agregamos la relación con cajas
-            cajas: {
-              select: {
+        const redTotal = await prisma.troncal.findMany({
+            select: {
                 id: true,
-                codigo: true,
-                latitud: true,
-                longitud: true,
-                puertoOlt: true,
-                puertosTotales: true,
-              },
+                nombre: true,
+                mufas: {
+                    select: {
+                        id: true,
+                        codigo: true,
+                        latitud: true,
+                        longitud: true,
+                        bufferColor: true,
+                        hiloColor: true,
+                        cajas: {
+                            select: {
+                                id: true,
+                                codigo: true,
+                                latitud: true,
+                                longitud: true,
+                                puertoOlt: true,
+                                puertosTotales: true,
+                            },
+                        },
+                    },
+                },
             },
-          },
-        },
-      },
-    });
+        });
 
-    return res.json(redTotal || []);
-  } catch (error) {
-    console.error("🔥 Error en mapa:", error);
-    return res
-      .status(500)
-      .json({ error: "No se pudo cargar la jerarquía de red" });
-  }
+        return res.json(redTotal || []);
+    } catch (error) {
+        console.error("🔥 Error en carga de mapa:", error);
+        return res.status(500).json({ error: "No se pudo cargar la jerarquía de red" });
+    }
 };
