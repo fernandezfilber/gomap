@@ -15,12 +15,14 @@ const API = axios.create({
 // Se ejecuta ANTES de enviar la petición al servidor
 API.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('token'); // 👈 VERIFICA ESTE NOMBRE
+        // Obtenemos el valor exacto que vimos en la imagen
+        const token = localStorage.getItem('token'); 
+        
         if (token) {
+            // Importante: El espacio después de 'Bearer ' es obligatorio
             config.headers.Authorization = `Bearer ${token}`;
-            // console.log("🔑 Token enviado:", token); // Descomenta para depurar
         } else {
-            console.warn("⚠️ No se encontró token en localStorage");
+            console.warn("⚠️ No se encontró la clave 'token' en el almacenamiento local");
         }
         return config;
     },
