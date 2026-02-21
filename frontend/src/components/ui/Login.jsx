@@ -19,23 +19,28 @@ const Login = ({ onLoginSuccess }) => {
         setError(null);
         setLoading(true);
 
-       try {
-    const data = await loginUsuario(credentials);
-    
-    // 🚩 PASO CRÍTICO: Guardar el token y el usuario en el navegador
-    if (data && data.token) {
-        localStorage.setItem('token', data.token); // Esta es la llave para la API
-        localStorage.setItem('user', JSON.stringify(data.user)); // Datos del técnico
-        
-        // Ahora sí, avisamos a App.js para que cambie la vista
-        onLoginSuccess(data.user); 
-    }
-} catch (err) {
-    // Si err es un objeto, intenta sacar el mensaje, si no usa un texto genérico
-    setError(err.response?.data?.message || "Error al conectar con el servidor"); 
-} finally {
-    setLoading(false);
-}
+        try {
+            // 1. Llamada al servicio de autenticación
+            const data = await loginUsuario(credentials);
+            
+            // 2. ✅ PASO CRÍTICO: Guardar el token y el usuario en el navegador
+            // Esto permite que el interceptor de API.js encuentre la "llave"
+            if (data && data.token) {
+                localStorage.setItem('token', data.token); //
+                localStorage.setItem('user', JSON.stringify(data.user)); //
+                
+                // 3. Notificar a App.js para actualizar el estado global y entrar al sistema
+                onLoginSuccess(data.user); 
+            } else {
+                setError("Error: No se recibió un token válido del servidor.");
+            }
+        } catch (err) {
+            // Maneja errores de respuesta del servidor o fallos de red
+            console.error("🚨 Error en Login:", err);
+            setError(err.response?.data?.message || "Error al conectar con el servidor"); 
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
