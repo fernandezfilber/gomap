@@ -1,16 +1,20 @@
 # Etapa 1: Construcción (Build)
 FROM node:22-alpine AS build
 WORKDIR /app
+
+# --- PASO CRUCIAL: Traer la variable desde Render ---
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package*.json ./
 RUN npm install
 COPY . .
-# Generamos los archivos listos para producción
+
+# Ahora Vite sí podrá ver la URL de Render al construir
 RUN npm run build
 
 # Etapa 2: Servidor de producción (Nginx)
 FROM nginx:stable-alpine
-# Copiamos los archivos construidos a la carpeta que sirve Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
-# Exponemos el puerto estándar de la web
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
