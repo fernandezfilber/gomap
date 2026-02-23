@@ -4,25 +4,42 @@ const prisma = new PrismaClient();
 
 
 // --- 1. UTILIDADES DE EXTRACCIÓN MEJORADAS ---
-const extraerCoordenadas = (input) => {
+const extraerCoordenadas = async (input) => {
     if (!input || typeof input !== "string") return null;
 
-    // Regex potenciado para detectar:
-    // 1. Patrón @lat,lng (URLs de Maps)
-    // 2. Patrón lat,lng (Texto directo)
-    // 3. Patrón !3dLat!4dLng (URLs internas de Google Maps)
-    const regex = /@?(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)|!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
-    const match = input.match(regex);
+    let textoParaAnalizar = input.trim();
+
+    // === 1. Resolver enlaces cortos de Google Maps ===
+    if (/maps\.app\.goo\.gl|goo\.gl\//i.test(textoParaAnalizar)) {
+        try {
+            const respuesta = await fetch(textoParaAnalizar, {
+                method: 'GET',
+                redirect: 'follow'
+            });
+            textoParaAnalizar = respuesta.url;   // ← ¡Ahora tenemos la URL completa con las coordenadas!
+            console.log('✅ Enlace expandido:', textoParaAnalizar);
+        } catch (error) {
+            console.warn('⚠️ No se pudo expandir el enlace corto (posible bloqueo CORS). Abre el link en el navegador, copia la URL completa de la barra de direcciones y pégala aquí.', error);
+            return null; // o puedes quitar este return si quieres intentar con el regex de todos modos
+        }
+    }
+
+    // === 2. Regex mejorado (soporta enteros, decimales, negativos, etc.) ===
+    const regex = /@?(-?(?:\d+\.?\d*|\.\d+))\s*,\s*(-?(?:\d+\.?\d*|\.\d+))|!3d(-?(?:\d+\.?\d*|\.\d+))!4d(-?(?:\d+\.?\d+))/;
+
+    const match = textoParaAnalizar.match(regex);
 
     if (match) {
-        // Extrae de los grupos correspondientes según el patrón detectado
         const lat = parseFloat(match[1] || match[3]);
         const lng = parseFloat(match[2] || match[4]);
-        
-        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+
+        if (!isNaN(lat) && !isNaN(lng) &&
+            Math.abs(lat) <= 90 &&
+            Math.abs(lng) <= 180) {
             return { lat, lng };
         }
     }
+
     return null;
 };
 
