@@ -3,77 +3,63 @@ const prisma = new PrismaClient();
 
 
 
-const extraerCoordenadas = async (input) => {
-    if (!input) return null;
+// ===== FUNCIÓN EXTRAER COORDENADAS (para tu backend) =====
+// ===== 1. FUNCIÓN EXTRAER COORDENADAS (mejorada con más logs) =====
+const extraerCoordenadas = (input) => {
+    console.log('🔍 [DEBUG] Recibido en extraerCoordenadas:', JSON.stringify(input));
 
     let texto = '';
 
-    // Caso 1: Viene como JSON de Postman / request body
     if (typeof input === 'object' && input !== null) {
-        texto = input.googleMapsUrl || 
-                input.url || 
-                input.coordenadas || 
-                JSON.stringify(input); // fallback por si cambia el nombre del campo
-    }
-    // Caso 2: Viene como string directo
-    else if (typeof input === 'string') {
+        texto = input.googleMapsUrl || input.url || input.coordenadas || '';
+    } else if (typeof input === 'string') {
         texto = input;
-    } else {
-        return null;
     }
 
     texto = texto.trim();
+    console.log('📝 [DEBUG] Texto limpio:', texto);
 
-    // Resolver enlaces cortos (por si en el futuro vuelven)
-    if (/maps\.app\.goo\.gl|goo\.gl/i.test(texto)) {
-        try {
-            const res = await fetch(texto, { redirect: 'follow' });
-            texto = res.url;
-        } catch (e) {
-            console.warn('⚠️ No se pudo expandir enlace corto:', e.message);
-        }
-    }
+    if (!texto) return null;
 
-    // Regex simple pero potente para coordenadas directas
-    const regex = /(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/;
-    const match = texto.match(regex);
+    const partes = texto.split(',').map(p => p.trim());
+    
+    if (partes.length === 2) {
+        const lat = parseFloat(partes[0]);
+        const lng = parseFloat(partes[1]);
 
-    if (match) {
-        const lat = parseFloat(match[1]);
-        const lng = parseFloat(match[2]);
+        console.log('✅ [DEBUG] Coordenadas parseadas:', { lat, lng });
 
-        if (!isNaN(lat) && !isNaN(lng) &&
-            Math.abs(lat) <= 90 &&
-            Math.abs(lng) <= 180) {
+        if (!isNaN(lat) && !isNaN(lng) && 
+            Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
             return { lat, lng };
         }
     }
 
+    console.log('❌ [DEBUG] No se pudieron extraer coordenadas');
     return null;
 };
 
-// --- 2. CONTROLADORES ---
-
-// VERIFICAR FACTIBILIDAD (POST)
+// --- 2. CONTROLADOR CORREGIDO ---
 exports.verificarFactibilidad = async (req, res) => {
     try {
-        let { googleMapsUrl } = req.body;
-        if (!googleMapsUrl) return res.status(400).json({ error: "Entrada vacía" });
+        console.log("📨 Body completo recibido:", JSON.stringify(req.body));
 
-        console.log("📍 Procesando entrada de factibilidad:", googleMapsUrl);
-
-        const coords = extraerCoordenadas(googleMapsUrl);
+        // ✅ Ahora pasamos TODO el body (más robusto)
+        const coords = extraerCoordenadas(req.body);
 
         if (!coords) {
-            return res.status(400).json({ 
-                error: "No se pudieron extraer coordenadas. Use el formato: latitud, longitud o un link de Maps." 
+            return res.json({
+                tipo: "ERROR",
+                mensaje: "No se pudieron extraer coordenadas",
+                cajas: [],
+                clienteCoords: []   // ← importante devolver array vacío
             });
         }
 
         const { lat, lng } = coords;
+        console.log(`🎯 Coordenadas válidas → lat:${lat} lng:${lng}`);
 
-        // Búsqueda Espacial (Radio 300m)
-        // Corrección de tipos con ::numeric y uso de comillas dobles para la tabla "Caja"
+        // Búsqueda de cajas (tu query ya estaba bien)
         const cajas = await prisma.$queryRaw`
             SELECT * FROM (
                 SELECT id, codigo, latitud, longitud, "puertoOlt",
@@ -90,17 +76,22 @@ exports.verificarFactibilidad = async (req, res) => {
             WHERE distancia_metros <= 300 
             ORDER BY distancia_metros ASC`;
 
+        console.log(`📦 Cajas encontradas: ${cajas.length}`);
+
         return res.json({
             tipo: cajas.length > 0 ? "CONEXION_DIRECTA" : "REQUIERE_EXPANSION",
             cajas,
-            clienteCoords: { lat, lng },
+            clienteCoords: [ { lat, lng } ]   // ← AQUÍ ESTABA EL ERROR (ahora es ARRAY)
         });
         
     } catch (error) {
-        console.error("🔥 Error en Factibilidad:", error.message);
+        console.error("🔥 Error en Factibilidad:", error);
         return res.status(500).json({ 
-            error: "Error interno del servidor", 
-            detalle: error.message 
+            tipo: "ERROR",
+            mensaje: "Error interno del servidor",
+            detalle: error.message,
+            clienteCoords: [],
+            cajas: []
         });
     }
 };
