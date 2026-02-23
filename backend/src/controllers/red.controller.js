@@ -3,94 +3,51 @@ const prisma = new PrismaClient();
 
 
 
-// ===== FUNCIÓN EXTRAER COORDENADAS (para tu backend) =====
-// ===== 1. FUNCIÓN EXTRAER COORDENADAS (mejorada con más logs) =====
-// ===== 1. FUNCIÓN EXTRAER COORDENADAS (ASÍNCRONA + SHORT LINKS) =====
-const extraerCoordenadas = async (input) => {
-    console.log('🔍 [DEBUG] Recibido en extraerCoordenadas:', JSON.stringify(input));
+// --- 1. UTILIDADES DE EXTRACCIÓN MEJORADAS ---
+const extraerCoordenadas = (input) => {
+    if (!input || typeof input !== "string") return null;
 
-    let texto = '';
-
-    if (typeof input === 'object' && input !== null) {
-        texto = input.googleMapsUrl || input.url || input.coordenadas || '';
-    } else if (typeof input === 'string') {
-        texto = input;
-    }
-
-    texto = texto.trim();
-    console.log('📝 [DEBUG] Texto original:', texto);
-
-    if (!texto) return null;
-
-    // === EXPANDIR ENLACE CORTO ===
-    if (texto.includes('maps.app.goo.gl') || texto.includes('goo.gl/')) {
-        try {
-            console.log('🔄 Expandiendo short link...');
-            const respuesta = await fetch(texto, {
-                method: 'GET',
-                redirect: 'follow',
-                headers: { 'User-Agent': 'Mozilla/5.0' }
-            });
-            texto = respuesta.url;
-            console.log('✅ URL expandida correctamente:', texto);
-        } catch (err) {
-            console.error('❌ Error al expandir enlace:', err.message);
-            // fallback: intentar con el texto original
-        }
-    }
-
-    // === EXTRAER COORDENADAS (regex potente para URLs de Maps) ===
-    // Busca @lat,lng o !3dlat!4dlng
-    const regex = /@(-?\d+\.?\d+),(-?\d+\.?\d+)|!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)/;
-    const match = texto.match(regex);
+    // Regex potenciado para detectar:
+    // 1. Patrón @lat,lng (URLs de Maps)
+    // 2. Patrón lat,lng (Texto directo)
+    // 3. Patrón !3dLat!4dLng (URLs internas de Google Maps)
+    const regex = /@?(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)|!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
+    const match = input.match(regex);
 
     if (match) {
+        // Extrae de los grupos correspondientes según el patrón detectado
         const lat = parseFloat(match[1] || match[3]);
         const lng = parseFloat(match[2] || match[4]);
-
-        console.log('✅ [DEBUG] Coordenadas extraídas:', { lat, lng });
-
-        if (!isNaN(lat) && !isNaN(lng) &&
-            Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
             return { lat, lng };
         }
     }
-
-    // Fallback: si son coordenadas directas sin URL
-    const partes = texto.split(',').map(p => p.trim());
-    if (partes.length === 2) {
-        const lat = parseFloat(partes[0]);
-        const lng = parseFloat(partes[1]);
-        if (!isNaN(lat) && !isNaN(lng) &&
-            Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-            console.log('✅ [DEBUG] Coordenadas por split:', { lat, lng });
-            return { lat, lng };
-        }
-    }
-
-    console.log('❌ [DEBUG] No se encontraron coordenadas');
     return null;
 };
 
-// ===== 2. CONTROLADOR ACTUALIZADO =====
+// --- 2. CONTROLADORES ---
+
+// VERIFICAR FACTIBILIDAD (POST)
 exports.verificarFactibilidad = async (req, res) => {
     try {
-        console.log("📨 Body completo recibido:", JSON.stringify(req.body));
+        let { googleMapsUrl } = req.body;
+        if (!googleMapsUrl) return res.status(400).json({ error: "Entrada vacía" });
 
-        const coords = await extraerCoordenadas(req.body);   // ← AQUÍ EL AWAIT
+        console.log("📍 Procesando entrada de factibilidad:", googleMapsUrl);
+
+        const coords = extraerCoordenadas(googleMapsUrl);
 
         if (!coords) {
-            return res.json({
-                tipo: "ERROR",
-                mensaje: "No se pudieron extraer coordenadas",
-                cajas: [],
-                clienteCoords: []
+            return res.status(400).json({ 
+                error: "No se pudieron extraer coordenadas. Use el formato: latitud, longitud o un link de Maps." 
             });
         }
 
         const { lat, lng } = coords;
-        console.log(`🎯 Coordenadas válidas → lat:${lat} lng:${lng}`);
 
+        // Búsqueda Espacial (Radio 300m)
+        // Corrección de tipos con ::numeric y uso de comillas dobles para la tabla "Caja"
         const cajas = await prisma.$queryRaw`
             SELECT * FROM (
                 SELECT id, codigo, latitud, longitud, "puertoOlt",
@@ -107,25 +64,21 @@ exports.verificarFactibilidad = async (req, res) => {
             WHERE distancia_metros <= 300 
             ORDER BY distancia_metros ASC`;
 
-        console.log(`📦 Cajas encontradas: ${cajas.length}`);
-
         return res.json({
             tipo: cajas.length > 0 ? "CONEXION_DIRECTA" : "REQUIERE_EXPANSION",
             cajas,
-            clienteCoords: [{ lat, lng }]   // ← SIEMPRE ARRAY (arregla el error del mapa)
+            clienteCoords: { lat, lng },
         });
-
+        
     } catch (error) {
-        console.error("🔥 Error en verificarFactibilidad:", error);
-        return res.status(500).json({
-            tipo: "ERROR",
-            mensaje: "Error interno del servidor",
-            detalle: error.message,
-            clienteCoords: [],
-            cajas: []
+        console.error("🔥 Error en Factibilidad:", error.message);
+        return res.status(500).json({ 
+            error: "Error interno del servidor", 
+            detalle: error.message 
         });
     }
 };
+
 // OBTENER MAPA RED (GET - Jerarquía Eficiente)
 exports.obtenerMapaRed = async (req, res) => {
     try {
