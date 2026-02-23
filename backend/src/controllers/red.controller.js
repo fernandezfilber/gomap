@@ -3,35 +3,44 @@ const prisma = new PrismaClient();
 
 
 
-// --- 1. UTILIDADES DE EXTRACCIÓN MEJORADAS ---
 const extraerCoordenadas = async (input) => {
-    if (!input || typeof input !== "string") return null;
+    if (!input) return null;
 
-    let textoParaAnalizar = input.trim();
+    let texto = '';
 
-    // === 1. Resolver enlaces cortos de Google Maps ===
-    if (/maps\.app\.goo\.gl|goo\.gl\//i.test(textoParaAnalizar)) {
+    // Caso 1: Viene como JSON de Postman / request body
+    if (typeof input === 'object' && input !== null) {
+        texto = input.googleMapsUrl || 
+                input.url || 
+                input.coordenadas || 
+                JSON.stringify(input); // fallback por si cambia el nombre del campo
+    }
+    // Caso 2: Viene como string directo
+    else if (typeof input === 'string') {
+        texto = input;
+    } else {
+        return null;
+    }
+
+    texto = texto.trim();
+
+    // Resolver enlaces cortos (por si en el futuro vuelven)
+    if (/maps\.app\.goo\.gl|goo\.gl/i.test(texto)) {
         try {
-            const respuesta = await fetch(textoParaAnalizar, {
-                method: 'GET',
-                redirect: 'follow'
-            });
-            textoParaAnalizar = respuesta.url;   // ← ¡Ahora tenemos la URL completa con las coordenadas!
-            console.log('✅ Enlace expandido:', textoParaAnalizar);
-        } catch (error) {
-            console.warn('⚠️ No se pudo expandir el enlace corto (posible bloqueo CORS). Abre el link en el navegador, copia la URL completa de la barra de direcciones y pégala aquí.', error);
-            return null; // o puedes quitar este return si quieres intentar con el regex de todos modos
+            const res = await fetch(texto, { redirect: 'follow' });
+            texto = res.url;
+        } catch (e) {
+            console.warn('⚠️ No se pudo expandir enlace corto:', e.message);
         }
     }
 
-    // === 2. Regex mejorado (soporta enteros, decimales, negativos, etc.) ===
-    const regex = /@?(-?(?:\d+\.?\d*|\.\d+))\s*,\s*(-?(?:\d+\.?\d*|\.\d+))|!3d(-?(?:\d+\.?\d*|\.\d+))!4d(-?(?:\d+\.?\d+))/;
-
-    const match = textoParaAnalizar.match(regex);
+    // Regex simple pero potente para coordenadas directas
+    const regex = /(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/;
+    const match = texto.match(regex);
 
     if (match) {
-        const lat = parseFloat(match[1] || match[3]);
-        const lng = parseFloat(match[2] || match[4]);
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
 
         if (!isNaN(lat) && !isNaN(lng) &&
             Math.abs(lat) <= 90 &&
