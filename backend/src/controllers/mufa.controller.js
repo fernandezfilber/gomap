@@ -1,25 +1,24 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. OBTENER MUFAS CON DISPONIBILIDAD DE HILOS
+// 1. OBTENER MUFAS (Con ruta y detalles)
 exports.getMufas = async (req, res) => {
   try {
-    // Incluimos la troncal y el conteo de cajas asociadas para saber la disponibilidad
     const mufas = await prisma.mufa.findMany({ 
       include: { 
         troncal: true,
         _count: {
-          select: { cajas: true } // Cuenta automáticamente cuántas cajas NAP tiene la mufa
+          select: { cajas: true } 
         }
       } 
     });
 
-    // Formateamos la respuesta para facilitar el trabajo al frontend de Filber
     const mufasProcesadas = mufas.map(m => ({
       ...m,
       hilosOcupados: m._count.cajas,
-      hilosLibres: 16 - m._count.cajas, // Basado en el límite de 16 que definiste
-      estaLlena: m._count.cajas >= 16
+      hilosLibres: m.capacidadHilos - m._count.cajas, 
+      estaLlena: m._count.cajas >= m.capacidadHilos,
+      // La ruta ya viene incluida en el objeto m por Prisma
     }));
 
     res.json(mufasProcesadas);
@@ -28,27 +27,36 @@ exports.getMufas = async (req, res) => {
   }
 };
 
-// 2. CREAR MUFA CON CÓDIGO AUTOMÁTICO
+// 2. CREAR MUFA (Soporta Dibujo de Ruta y Detalles)
 exports.crearMufa = async (req, res) => {
   try {
-    const { troncalId, bufferColor, hiloColor, latitud, longitud, direccion } = req.body;
+    const { 
+        troncalId, 
+        bufferColor, 
+        hiloColor, 
+        latitud, 
+        longitud, 
+        direccion,
+        ruta,        // Nuevo: Array de coordenadas del dibujo
+        detalles,    // Nuevo: Texto descriptivo
+        estadoFisico // Nuevo: Estado técnico
+    } = req.body;
 
-    // 1. Validar existencia de la troncal
+    // Validar existencia de la troncal
     const troncal = await prisma.troncal.findUnique({ where: { id: troncalId } });
     if (!troncal) return res.status(404).json({ error: "Troncal no encontrada" });
 
-    // 2. Validar que la combinación Sangría/Hilo no esté repetida en la troncal
+    // Validar que la combinación Sangría/Hilo no esté repetida
     const existe = await prisma.mufa.findFirst({
       where: { troncalId, bufferColor, hiloColor }
     });
-    if (existe) return res.status(400).json({ error: "Este hilo de la troncal ya está asignado a otra mufa" });
+    if (existe) return res.status(400).json({ error: "Este hilo ya está asignado" });
 
-    // 3. Generar prefijos y código (Ej: CHO-BAZ-HVE)
+    // Generar códigos
     const prefijoB = "B" + bufferColor.substring(0, 2).toUpperCase();
     const prefijoH = "H" + hiloColor.substring(0, 2).toUpperCase();
     const codigoAuto = `${troncal.prefijo}-${prefijoB}-${prefijoH}`;
 
-    // 4. Crear registro con tipos de datos correctos para Prisma
     const nuevaMufa = await prisma.mufa.create({
       data: {
         codigo: codigoAuto,
@@ -58,7 +66,11 @@ exports.crearMufa = async (req, res) => {
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
         direccion: direccion || "",
-        troncalId
+        troncalId,
+        // NUEVOS CAMPOS
+        ruta: ruta || null,         // Guarda el JSON del dibujo
+        detalles: detalles || "",   // Guarda notas adicionales
+        estadoFisico: estadoFisico || "BUENO"
       }
     });
 
@@ -69,7 +81,7 @@ exports.crearMufa = async (req, res) => {
   }
 };
 
-// 3. ACTUALIZAR MUFA
+// 3. ACTUALIZAR MUFA (Para corregir rutas o detalles después)
 exports.actualizarMufa = async (req, res) => {
   try {
     const mufa = await prisma.mufa.update({
@@ -77,7 +89,8 @@ exports.actualizarMufa = async (req, res) => {
       data: {
         ...req.body,
         latitud: req.body.latitud ? parseFloat(req.body.latitud) : undefined,
-        longitud: req.body.longitud ? parseFloat(req.body.longitud) : undefined
+        longitud: req.body.longitud ? parseFloat(req.body.longitud) : undefined,
+        // Prisma maneja la actualización del JSON de 'ruta' automáticamente si viene en el body
       }
     });
     res.json(mufa);
@@ -86,16 +99,12 @@ exports.actualizarMufa = async (req, res) => {
   }
 };
 
-// 4. ELIMINAR MUFA (Con manejo de dependencias)
+// 4. ELIMINAR MUFA
 exports.eliminarMufa = async (req, res) => {
   try {
-    // Nota: El 'onDelete: Cascade' en tu modelo Prisma se encargará de las cajas si está configurado
     await prisma.mufa.delete({ where: { id: req.params.id } });
     res.json({ message: "Mufa eliminada correctamente" });
   } catch (error) {
-    res.status(500).json({ 
-      error: "No se puede eliminar la mufa", 
-      detalle: "Asegúrate de que no tenga cajas NAP activas o que el Cascade esté activo." 
-    });
+    res.status(500).json({ error: "No se puede eliminar la mufa" });
   }
 };

@@ -1,11 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. OBTENER TODAS LAS CAJAS
+// 1. OBTENER TODAS LAS CAJAS (Incluyendo rutas para el dibujo)
 exports.getCajas = async (req, res) => {
   try {
     const cajas = await prisma.caja.findMany({
-      include: { mufa: true } // Incluye datos de la mufa para el mapa
+      include: { mufa: true } 
     });
     res.json(cajas);
   } catch (error) {
@@ -13,24 +13,25 @@ exports.getCajas = async (req, res) => {
   }
 };
 
-// 2. CREAR CAJA NAP (Lógica de Splitter 1x16)
+// 2. CREAR CAJA NAP (Soporta dibujo de ruta por calles)
 exports.createCaja = async (req, res) => {
   try {
     const { 
       mufaId, 
-      puertoMufa,     // Representa la salida del splitter (1-16)
-      colorFibraCaja, // Color del hilo de esa salida
+      puertoMufa, 
+      colorFibraCaja, 
       puertoOlt, 
       latitud, 
       longitud, 
-      puertosTotales 
+      puertosTotales,
+      ruta,          // NUEVO: Array de coordenadas del trazado
+      detalles,      // NUEVO: Texto sobre ubicación física
+      observaciones  // NUEVO: Notas técnicas adicionales
     } = req.body;
 
-    // Validar existencia de la mufa
     const mufa = await prisma.mufa.findUnique({ where: { id: mufaId } });
     if (!mufa) return res.status(404).json({ error: "Mufa de origen no encontrada" });
 
-    // VALIDACIÓN: ¿La salida del splitter ya está ocupada?
     const salidaOcupada = await prisma.caja.findFirst({
       where: { mufaId, puertoMufa: parseInt(puertoMufa) }
     });
@@ -41,20 +42,23 @@ exports.createCaja = async (req, res) => {
       });
     }
 
-    // Generar código automático técnico (Ej: CHO-BAZ-HVE-C01)
     const nPuerto = puertoMufa.toString().padStart(2, '0');
     const codigoAuto = `${mufa.codigo}-C${nPuerto}`;
 
     const nuevaCaja = await prisma.caja.create({
       data: {
         codigo: codigoAuto,
-        puertoMufa: parseInt(puertoMufa), // Guardamos el número de salida
+        puertoMufa: parseInt(puertoMufa),
         colorFibraCaja,
         puertoOlt,
-        puertosTotales: parseInt(puertosTotales) || 16, // Capacidad para 8 o 16 clientes
+        puertosTotales: parseInt(puertosTotales) || 16,
         latitud: parseFloat(latitud),
         longitud: parseFloat(longitud),
-        mufaId
+        mufaId,
+        // NUEVOS CAMPOS GUARDADOS:
+        ruta: ruta || null,
+        detalles: detalles || "",
+        observaciones: observaciones || ""
       }
     });
 
@@ -65,22 +69,7 @@ exports.createCaja = async (req, res) => {
   }
 };
 
-// 3. OBTENER SALIDAS OCUPADAS (Para el filtro del frontend)
-exports.getHilosOcupados = async (req, res) => {
-  try {
-    const { mufaId } = req.params;
-    const cajas = await prisma.caja.findMany({
-      where: { mufaId },
-      select: { puertoMufa: true }
-    });
-    // Retorna array de salidas usadas: [1, 2, 5]
-    res.json(cajas.map(c => c.puertoMufa));
-  } catch (error) {
-    res.status(500).json({ error: "Error al consultar disponibilidad del splitter" });
-  }
-};
-
-// 4. ACTUALIZAR CAJA
+// 3. ACTUALIZAR CAJA (Permite editar el trazado de fibra)
 exports.actualizarCaja = async (req, res) => {
   try {
     const actualizada = await prisma.caja.update({
@@ -90,7 +79,8 @@ exports.actualizarCaja = async (req, res) => {
         puertoMufa: req.body.puertoMufa ? parseInt(req.body.puertoMufa) : undefined,
         latitud: req.body.latitud ? parseFloat(req.body.latitud) : undefined,
         longitud: req.body.longitud ? parseFloat(req.body.longitud) : undefined,
-        puertosTotales: req.body.puertosTotales ? parseInt(req.body.puertosTotales) : undefined
+        puertosTotales: req.body.puertosTotales ? parseInt(req.body.puertosTotales) : undefined,
+        // Prisma actualizará 'ruta' y 'detalles' si vienen en el body
       }
     });
     res.json(actualizada);
@@ -99,12 +89,26 @@ exports.actualizarCaja = async (req, res) => {
   }
 };
 
-// 5. ELIMINAR CAJA (Libera la salida del splitter)
+// 4. ELIMINAR CAJA
 exports.deleteCaja = async (req, res) => {
   try {
     await prisma.caja.delete({ where: { id: req.params.id } });
     res.json({ message: "Caja eliminada y salida del splitter liberada" });
   } catch (error) {
     res.status(500).json({ error: "Error al eliminar la caja" });
+  }
+};
+
+// 5. OBTENER SALIDAS OCUPADAS
+exports.getHilosOcupados = async (req, res) => {
+  try {
+    const { mufaId } = req.params;
+    const cajas = await prisma.caja.findMany({
+      where: { mufaId },
+      select: { puertoMufa: true }
+    });
+    res.json(cajas.map(c => c.puertoMufa));
+  } catch (error) {
+    res.status(500).json({ error: "Error al consultar disponibilidad del splitter" });
   }
 };

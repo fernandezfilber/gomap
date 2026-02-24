@@ -80,30 +80,36 @@ exports.verificarFactibilidad = async (req, res) => {
 };
 
 // OBTENER MAPA RED (GET - Jerarquía Eficiente)
+// OBTENER MAPA RED (GET - Jerarquía con Rutas de Calles)
 exports.obtenerMapaRed = async (req, res) => {
     try {
-        console.log("📍 Generando mapa completo de infraestructura...");
+        console.log("📍 Generando mapa con trazado de calles para Forward Vision...");
 
         const redTotal = await prisma.troncal.findMany({
             select: {
                 id: true,
                 nombre: true,
+                ruta: true, // NUEVO: Trazado de la fibra principal (avenidas)
                 mufas: {
                     select: {
                         id: true,
                         codigo: true,
                         latitud: true,
                         longitud: true,
+                        ruta: true, // NUEVO: Trazado de la fibra desde la troncal a la mufa
                         bufferColor: true,
                         hiloColor: true,
+                        detalles: true, // Info adicional que agregamos al esquema
                         cajas: {
                             select: {
                                 id: true,
                                 codigo: true,
                                 latitud: true,
                                 longitud: true,
+                                ruta: true, // NUEVO: Trazado de la fibra desde la mufa a la caja NAP
                                 puertoOlt: true,
                                 puertosTotales: true,
+                                detalles: true
                             },
                         },
                     },
@@ -111,9 +117,10 @@ exports.obtenerMapaRed = async (req, res) => {
             },
         });
 
+        // Retornamos la estructura completa para que el frontend dibuje las Polylines
         return res.json(redTotal || []);
     } catch (error) {
-        console.error("🔥 Error en carga de mapa:", error);
-        return res.status(500).json({ error: "No se pudo cargar la jerarquía de red" });
+        console.error("🔥 Error al cargar jerarquía lineal:", error);
+        return res.status(500).json({ error: "No se pudo cargar el mapa con rutas" });
     }
 };
