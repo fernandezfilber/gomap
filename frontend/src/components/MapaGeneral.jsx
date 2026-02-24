@@ -1,118 +1,142 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, LayersControl } from 'react-leaflet';
+import { GoogleMap, Polyline, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { obtenerMapaRed } from '../api/redApi';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-// --- ICONOS TÉCNICOS PERSONALIZADOS ---
-const crearIconoTecnico = (color, tipo) => {
-  const iconHtml = tipo === 'mufa' 
-    ? `<svg viewBox="0 0 24 24" width="32" height="32" fill="${color}" stroke="white" stroke-width="1"><path d="M12,2A2,2 0 0,1 14,4V6H15A2,2 0 0,1 17,8V18A2,2 0 0,1 15,20H9A2,2 0 0,1 7,18V8A2,2 0 0,1 9,6H10V4A2,2 0 0,1 12,2M12,4A1,1 0 0,0 11,5V6H13V5A1,1 0 0,0 12,4Z"/></svg>`
-    : `<svg viewBox="0 0 24 24" width="28" height="28" fill="${color}" stroke="white" stroke-width="1"><rect x="4" y="6" width="16" height="12" rx="2" /><path d="M8,10h2v2h-2z M14,10h2v2h-2z M8,14h2v2h-2z M14,14h2v2h-2z" fill="white"/></svg>`;
-
-  return L.divIcon({
-    className: 'bg-transparent',
-    html: `<div style="filter: drop-shadow(0 0 5px ${color})">${iconHtml}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
-};
-
-const iconos = {
-  mufa: crearIconoTecnico('#00d4ff', 'mufa'), // Cian eléctrico
-  caja: crearIconoTecnico('#39ff14', 'caja')  // Verde neón
-};
 
 const MapaGeneral = () => {
   const [infra, setInfra] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [seleccionado, setSeleccionado] = useState(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  });
 
   const cargar = useCallback(async () => {
     try {
       const res = await obtenerMapaRed();
       setInfra(Array.isArray(res.data) ? res.data : []);
-    } catch (err) { console.error(err); } 
-    finally { setCargando(false); }
+    } catch (err) { 
+      console.error("Error al cargar mapa de red:", err); 
+    } finally { 
+      setCargando(false); 
+    }
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  if (cargando) return (
-    <div className="flex flex-col items-center justify-center h-[75vh] bg-slate-900 rounded-2xl">
-      <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-4 text-cyan-400 font-bold animate-pulse">CARGANDO RED TÉCNICA...</p>
+  if (!isLoaded || cargando) return (
+    <div className="flex flex-col items-center justify-center h-[75vh] bg-[#0d1117] rounded-2xl border border-gray-800">
+      <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <p className="mt-4 text-blue-400 font-black animate-pulse uppercase tracking-widest">Sincronizando Raíz de Red...</p>
     </div>
   );
 
   return (
-    <div className="relative w-full h-[80vh] rounded-2xl overflow-hidden border-4 border-slate-700 shadow-2xl">
+    <div className="relative w-full h-[85vh] rounded-3xl overflow-hidden border-4 border-[#161b22] shadow-2xl">
       
-      {/* LEYENDA TÉCNICA FLOTANTE */}
-      <div className="absolute top-5 left-5 z-[1000] bg-slate-800/90 p-4 rounded-lg border border-slate-600 shadow-lg text-white">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-4 h-6 bg-cyan-500 rounded-sm"></div>
-          <span className="text-sm font-bold">MUFA DE SANGRÍA</span>
-        </div>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-6 h-4 bg-green-500 rounded-sm"></div>
-          <span className="text-sm font-bold">CAJA NAP (FTTH)</span>
-        </div>
-        <div className="border-t border-slate-600 my-2"></div>
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-0.5 bg-white border-t border-dashed"></div>
-          <span className="text-[10px] text-slate-300">ENLACE DE FIBRA</span>
+      {/* LEYENDA TÉCNICA FLOTANTE PRO */}
+      <div className="absolute top-5 left-5 z-10 bg-[#0d1117]/90 p-4 rounded-2xl border border-gray-700 backdrop-blur-md shadow-2xl text-white pointer-events-none">
+        <h4 className="text-[10px] font-black text-blue-400 mb-3 uppercase tracking-tighter">Leyenda de Infraestructura</h4>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-1 bg-[#ff00ff] rounded-full shadow-[0_0_5px_#ff00ff]"></div>
+            <span className="text-[10px] font-bold uppercase">Troncal Principal</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-1 bg-[#00EAFF] rounded-full shadow-[0_0_5px_#00EAFF]"></div>
+            <span className="text-[10px] font-bold uppercase">Distribución Mufa</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-1 bg-[#39ff14] rounded-full shadow-[0_0_5px_#39ff14]"></div>
+            <span className="text-[10px] font-bold uppercase">Acceso Caja NAP</span>
+          </div>
         </div>
       </div>
 
-      <MapContainer center={[-11.935, -76.705]} zoom={15} style={{ height: '100%', width: '100%' }}>
-        <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Google Satélite">
-            <TileLayer url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" subdomains={['mt0','mt1','mt2','mt3']} />
-          </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Mapa de Calles">
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          </LayersControl.BaseLayer>
-        </LayersControl>
-
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={{ lat: -11.935, lng: -76.705 }}
+        zoom={15}
+        options={{
+          mapTypeId: 'satellite',
+          tilt: 45,
+          styles: [{ featureType: "all", elementType: "labels", stylers: [{ visibility: "on" }] }]
+        }}
+      >
         {infra.map(troncal => (
-          troncal.mufas?.map(mufa => (
-            <React.Fragment key={mufa.id}>
-              
-              {/* MUFA */}
-              <Marker position={[mufa.latitud, mufa.longitud]} icon={iconos.mufa}>
-                <Popup>
-                  <div className="text-slate-800">
-                    <b className="text-cyan-600">MUFA: {mufa.codigo}</b><br/>
-                    <b>Buffer:</b> {mufa.bufferColor} <br/>
-                    <b>Hilo:</b> {mufa.hiloColor}
-                  </div>
-                </Popup>
-              </Marker>
+          <React.Fragment key={troncal.id}>
+            
+            {/* 1. DIBUJAR RUTA TRONCAL (RAÍZ MADRE) */}
+            {troncal.ruta && (
+              <Polyline 
+                path={troncal.ruta}
+                options={{ strokeColor: '#ff00ff', strokeWeight: 6, strokeOpacity: 0.9 }}
+              />
+            )}
 
-              {mufa.cajas?.map(caja => (
-                <React.Fragment key={caja.id}>
-                  {/* ENLACE (Blanco vibrante sobre satélite) */}
+            {troncal.mufas?.map(mufa => (
+              <React.Fragment key={mufa.id}>
+                
+                {/* 2. DIBUJAR RUTA HACIA MUFA (RAMA) */}
+                {mufa.ruta && (
                   <Polyline 
-                    positions={[[mufa.latitud, mufa.longitud], [caja.latitud, caja.longitud]]} 
-                    pathOptions={{ color: 'white', weight: 2, dashArray: '10, 10', opacity: 0.8 }} 
+                    path={mufa.ruta}
+                    options={{ strokeColor: '#00EAFF', strokeWeight: 4, strokeOpacity: 0.8 }}
                   />
-                  
-                  {/* CAJA NAP */}
-                  <Marker position={[caja.latitud, caja.longitud]} icon={iconos.caja}>
-                    <Popup>
-                      <div className="text-slate-800">
-                        <b className="text-green-600">CAJA: {caja.codigo}</b><br/>
-                        <b>Puertos:</b> {caja.puertosTotales} <br/>
-                        <b>OLT:</b> {caja.puertoOlt || 'N/A'}
-                      </div>
-                    </Popup>
-                  </Marker>
-                </React.Fragment>
-              ))}
-            </React.Fragment>
-          ))
+                )}
+
+                {/* MARCADOR MUFA */}
+                <Marker 
+                  position={{ lat: mufa.latitud, lng: mufa.longitud }}
+                  icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                  onClick={() => setSeleccionado({ tipo: 'MUFA', data: mufa })}
+                />
+
+                {mufa.cajas?.map(caja => (
+                  <React.Fragment key={caja.id}>
+                    
+                    {/* 3. DIBUJAR RUTA HACIA CAJA (HOJAS) */}
+                    {caja.ruta && (
+                      <Polyline 
+                        path={caja.ruta}
+                        options={{ strokeColor: '#39ff14', strokeWeight: 2, strokeOpacity: 0.7 }}
+                      />
+                    )}
+
+                    {/* MARCADOR CAJA NAP */}
+                    <Marker 
+                      position={{ lat: caja.latitud, lng: caja.longitud }}
+                      icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                      onClick={() => setSeleccionado({ tipo: 'CAJA', data: caja })}
+                    />
+                  </React.Fragment>
+                ))}
+              </React.Fragment>
+            ))}
+          </React.Fragment>
         ))}
-      </MapContainer>
+
+        {/* VENTANA DE INFORMACIÓN DINÁMICA */}
+        {seleccionado && (
+          <InfoWindow
+            position={{ lat: seleccionado.data.latitud, lng: seleccionado.data.longitud }}
+            onCloseClick={() => setSeleccionado(null)}
+          >
+            <div className="text-black p-2 min-w-[150px]">
+              <h4 className="font-black text-blue-600 border-b border-gray-200 mb-1">
+                {seleccionado.tipo}: {seleccionado.data.codigo}
+              </h4>
+              <p className="text-[10px] text-gray-600 uppercase font-bold">
+                {seleccionado.tipo === 'MUFA' ? `Buffer: ${seleccionado.data.bufferColor}` : `Puertos: ${seleccionado.data.puertosTotales}`}
+              </p>
+              <p className="text-[10px] mt-1 italic text-gray-500">
+                {seleccionado.data.detalles || "Sin notas técnicas."}
+              </p>
+            </div>
+          </InfoWindow>
+        )}
+      </GoogleMap>
     </div>
   );
 };

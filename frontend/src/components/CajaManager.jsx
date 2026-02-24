@@ -1,80 +1,58 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { getCajas, getMufas, crearCaja, eliminarCaja } from '../api/redApi';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { getCajas, getMufas, crearCaja, eliminarCaja, actualizarCaja } from '../api/redApi';
+import { GoogleMap, Polyline, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 const CajaManager = () => {
   const [cajas, setCajas] = useState([]);
   const [mufas, setMufas] = useState([]);
-  const [cargando, setCargando] = useState(false); // Corregido: antes faltaba el valor 'cargando'
+  const [cargando, setCargando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [editando, setEditando] = useState(null);
+
+  // ESTADOS DE INFRAESTRUCTURA
   const [mufaSel, setMufaSel] = useState(null);
   const [coords, setCoords] = useState({ lat: -11.935, lng: -76.705 });
+  
+  // ESTADOS DEL MAPA LINEAL
   const [modalMapa, setModalMapa] = useState(false);
+  const [rutaFibra, setRutaFibra] = useState([]);
 
-  // --- CARGA DE DATOS ---
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  });
+
   const cargarInventario = useCallback(async () => {
     setCargando(true);
     try {
       const [resC, resM] = await Promise.all([getCajas(), getMufas()]);
-      
-      // IMPORTANTE: Verifica que los datos lleguen como array
-      // resM.data debería contener la lista que viste en Postman
       setCajas(resC.data || []);
-      setMufas(resM.data || []); 
-      
-      console.log("Mufas cargadas con éxito:", resM.data);
+      setMufas(resM.data || []);
     } catch (e) {
-      console.error("🚨 Error cargando inventario:", e.response?.data || e.message);
-      // Si el error es 401, redirigir al login o limpiar token
-      if (e.response?.status === 401) {
-        alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
-      }
+      console.error("🚨 Error:", e.message);
     } finally {
       setCargando(false);
     }
   }, []);
 
-  useEffect(() => {
-    cargarInventario();
-  }, [cargarInventario]);
+  useEffect(() => { cargarInventario(); }, [cargarInventario]);
 
-  // LÓGICA DE SPLITTER: 16 Salidas físicas por mufa
+  // LÓGICA DE SPLITTER (16 Puertos)
   const salidasSplitterLibres = useMemo(() => {
     if (!mufaSel) return [];
-    
-    // Filtramos las cajas que ya pertenecen a la mufa seleccionada
     const ocupados = cajas
-      .filter(c => c.mufaId === mufaSel.id)
+      .filter(c => c.mufaId === mufaSel.id && c.id !== editando?.id)
       .map(c => c.puertoMufa);
 
-    return Array.from({ length: 16 }, (_, i) => i + 1)
-      .filter(n => !ocupados.includes(n));
-  }, [cajas, mufaSel]);
+    return Array.from({ length: 16 }, (_, i) => i + 1).filter(n => !ocupados.includes(n));
+  }, [cajas, mufaSel, editando]);
 
-  // --- MAPA Y GPS ---
-  const capturarGps = () => {
-    if (!navigator.geolocation) return alert("Tu navegador no soporta GPS");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      (err) => err(),alert("Error al obtener ubicación GPS"),
-      { enableHighAccuracy: true }
-    );
+  const onMapClick = (e) => {
+    const nuevoPunto = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+    if (rutaFibra.length === 0) setCoords(nuevoPunto);
+    setRutaFibra([...rutaFibra, nuevoPunto]);
   };
 
-  const RecenterMap = ({ pos }) => {
-    const map = useMap();
-    useEffect(() => { if (pos) map.flyTo([pos.lat, pos.lng], 18); }, [pos, map]);
-    return null;
-  };
-
-  const ClickMapa = () => {
-    useMapEvents({ click(e) { setCoords({ lat: e.latlng.lat, lng: e.latlng.lng }); } });
-    return <Marker position={[coords.lat, coords.lng]} />;
-  };
-
-  // --- ENVÍO ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setEnviando(true);
@@ -86,64 +64,110 @@ const CajaManager = () => {
       latitud: parseFloat(coords.lat),
       longitud: parseFloat(coords.lng),
       puertoMufa: parseInt(rawData.puertoMufa),
-      puertosTotales: parseInt(rawData.capacidadNap)
+      puertosTotales: parseInt(rawData.capacidadNap),
+      ruta: rutaFibra,
+      detalles: rawData.detalles
     };
 
     try {
-      await crearCaja(dataFinal);
-      alert("✅ Caja NAP registrada con éxito");
+      if (editando) {
+        await actualizarCaja(editando.id, dataFinal);
+        alert("✅ Caja NAP y Ruta actualizadas");
+      } else {
+        await crearCaja(dataFinal);
+        alert("✅ Caja NAP registrada con éxito");
+      }
+      cancelarEdicion();
       cargarInventario();
       e.target.reset();
-      setMufaSel(null);
     } catch (err) {
-      alert("❌ " + (err.response?.data?.error || "Error al registrar"));
+      alert("❌ " + (err.response?.data?.error || "Error al procesar"));
     } finally {
       setEnviando(false);
     }
   };
 
+  const prepararEdicion = (c) => {
+    setEditando(c);
+    const mufaPadre = mufas.find(m => m.id === c.mufaId);
+    setMufaSel(mufaPadre);
+    setCoords({ lat: c.latitud, lng: c.longitud });
+    setRutaFibra(c.ruta || []);
+    setModalMapa(true);
+  };
+
+  const cancelarEdicion = () => {
+    setEditando(null);
+    setMufaSel(null);
+    setRutaFibra([]);
+    setModalMapa(false);
+  };
+
   return (
-    <div className="grid lg:grid-cols-3 gap-6 text-white p-4 font-sans relative">
+    <div className="relative grid lg:grid-cols-3 gap-6 text-white p-4 font-sans">
       
-      {/* MODAL MAPA GRANDE */}
-      {modalMapa && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
-          <div className="w-full max-w-5xl bg-[#161b22] rounded-3xl overflow-hidden border border-gray-800">
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#0d1117]">
-              <h3 className="text-green-400 font-black italic">UBICACIÓN TÉCNICA NAP</h3>
-              <button onClick={() => setModalMapa(false)} className="bg-green-600 px-6 py-2 rounded-xl font-bold hover:bg-green-500 transition-colors">CONFIRMAR</button>
+      {/* SPINNER GLOBAL */}
+      {cargando && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex flex-col items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-green-500 mb-4 shadow-[0_0_20px_rgba(34,197,94,0.3)]"></div>
+          <p className="text-green-400 font-black italic animate-pulse">SINCRONIZANDO TERMINALES...</p>
+        </div>
+      )}
+
+      {/* MODAL MAPA GOOGLE EXPANDIDO */}
+      {modalMapa && isLoaded && (
+        <div className="fixed inset-0 z-[110] bg-black/95 flex flex-col p-4">
+          <div className="bg-[#161b22] p-4 rounded-t-3xl border-t border-x border-gray-700 flex justify-between items-center">
+            <div>
+              <h3 className="text-green-400 font-black italic uppercase">Trazado de Fibra: MUFA ➡️ CAJA</h3>
+              <p className="text-[10px] text-gray-400">Clic 1: Ubicación NAP | Clics siguientes: Ruta por postes</p>
             </div>
-            <div className="h-[70vh] w-full">
-              <MapContainer center={[coords.lat, coords.lng]} zoom={16} style={{height:'100%'}}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <ClickMapa /><RecenterMap pos={coords} />
-              </MapContainer>
+            <div className="flex gap-2">
+              <button onClick={() => setRutaFibra([])} className="bg-red-900/30 text-red-500 px-6 py-2 rounded-xl text-xs font-bold border border-red-500/20">REINICIAR</button>
+              <button onClick={() => setModalMapa(false)} className="bg-green-600 hover:bg-green-500 px-10 py-2 rounded-xl font-bold transition-all">CONFIRMAR</button>
             </div>
+          </div>
+          <div className="flex-1 border-x border-b border-gray-700 rounded-b-3xl overflow-hidden shadow-2xl">
+            <GoogleMap
+              mapContainerStyle={{ width: '100%', height: '100%' }}
+              center={coords}
+              zoom={18}
+              onClick={onMapClick}
+              options={{ mapTypeId: 'satellite', streetViewControl: true }}
+            >
+              <Marker position={coords} label={{ text: "NAP", color: "white", fontWeight: "bold" }} />
+              <Polyline
+                path={rutaFibra}
+                options={{ strokeColor: '#22c55e', strokeOpacity: 0.9, strokeWeight: 4, editable: true }}
+              />
+            </GoogleMap>
           </div>
         </div>
       )}
 
       {/* FORMULARIO */}
-      <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-800 shadow-2xl relative">
-        <h2 className="text-xl font-black mb-6 text-green-400 italic">📡 NUEVA TERMINAL NAP</h2>
-        
-        {cargando && <p className="text-[10px] text-yellow-500 animate-pulse mb-2">Cargando infraestructura de red...</p>}
+      <div className="bg-[#161b22] p-6 rounded-2xl border border-gray-800 shadow-2xl relative h-fit">
+        {enviando && <div className="absolute inset-0 bg-green-600/10 backdrop-blur-md z-20 flex flex-col items-center justify-center rounded-2xl">
+          <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+          <p className="text-[10px] font-black italic text-green-400 uppercase">Enviando Datos...</p>
+        </div>}
+
+        <h2 className="text-xl font-black mb-6 text-green-400 italic uppercase flex items-center gap-2">
+           <span>{editando ? "📝" : "📡"}</span> {editando ? "Editar Terminal" : "Nueva Terminal NAP"}
+        </h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="text-[10px] text-gray-500 font-bold uppercase">Mufa (Splitter 1x16)</label>
+            <label className="text-[10px] text-gray-500 font-bold uppercase">Mufa de Origen (Splitter)</label>
             <select 
               name="mufaId" 
+              value={mufaSel?.id || ""}
               required 
               className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl outline-none focus:border-green-500 text-sm"
               onChange={e => setMufaSel(mufas.find(m => m.id === e.target.value))}
             >
-              <option value="">-- {mufas.length > 0 ? 'Seleccionar Mufa' : 'No hay mufas cargadas'} --</option>
-              {mufas.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.codigo} ({m.hilosLibres || 16} libres)
-                </option>
-              ))}
+              <option value="">-- Seleccionar Mufa --</option>
+              {mufas.map(m => <option key={m.id} value={m.id}>{m.codigo}</option>)}
             </select>
           </div>
 
@@ -151,14 +175,13 @@ const CajaManager = () => {
             <div className="space-y-1">
               <label className="text-[10px] text-gray-500 font-bold uppercase">Salida Splitter</label>
               <select name="puertoMufa" required className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl text-xs text-green-400 font-bold">
-                <option value="">-- Hilo --</option>
-                {salidasSplitterLibres.map(n => <option key={n} value={n}>Salida {n}</option>)}
-                {mufaSel && salidasSplitterLibres.length === 0 && <option disabled>Splitter Lleno</option>}
+                <option value="">-- Puerto --</option>
+                {salidasSplitterLibres.map(n => <option key={n} value={n}>Puerto {n}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] text-gray-500 font-bold uppercase">Capacidad NAP</label>
-              <select name="capacidadNap" className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl text-xs">
+              <select name="capacidadNap" defaultValue={editando?.puertosTotales || 16} className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl text-xs">
                 <option value="8">8 Puertos</option>
                 <option value="16">16 Puertos</option>
               </select>
@@ -166,53 +189,48 @@ const CajaManager = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] text-gray-500 font-bold uppercase">Ruta OLT (Lógica)</label>
-            <input name="puertoOlt" placeholder="Ej: 1/7/1:10" required className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl font-mono text-green-400 text-sm placeholder:opacity-30" />
+            <label className="text-[10px] text-gray-500 font-bold uppercase">Ruta OLT / Lógica</label>
+            <input name="puertoOlt" defaultValue={editando?.puertoOlt} placeholder="Ej: 1/7/1:10" required className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl font-mono text-green-400 text-sm" />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <button type="button" onClick={capturarGps} className="w-full bg-green-600/10 text-green-400 py-3 rounded-xl text-[10px] font-bold border border-green-500/30">📍 GPS ACTUAL</button>
-            <button type="button" onClick={() => setModalMapa(true)} className="w-full bg-blue-600/10 text-blue-400 py-3 rounded-xl text-[10px] font-bold border border-blue-500/30">🗺️ MAPA GRANDE</button>
+          <div className="space-y-1">
+            <label className="text-[10px] text-gray-500 font-bold uppercase">Notas de Instalación</label>
+            <textarea name="detalles" defaultValue={editando?.detalles} className="w-full bg-[#0d1117] border border-gray-700 p-3 rounded-xl text-xs h-20" placeholder="Ej: Escalera 3 cuerpos, poste frente a mercado..." />
           </div>
 
-          <button 
-            disabled={enviando || !mufaSel} 
-            className="w-full py-4 bg-green-600 hover:bg-green-500 rounded-2xl font-black uppercase tracking-widest disabled:bg-gray-800 transition-all shadow-lg shadow-green-900/20"
-          >
-            {enviando ? 'SINCRONIZANDO...' : 'REGISTRAR CAJA'}
+          <button type="button" onClick={() => setModalMapa(true)} className="w-full bg-green-600/10 text-green-400 py-4 rounded-xl text-[10px] font-black border border-green-500/20 flex flex-col items-center gap-1">
+            <span>🗺️</span>
+            {rutaFibra.length > 0 ? `DIBUJO: ${rutaFibra.length} PUNTOS` : "DIBUJAR UBICACIÓN Y RUTA"}
           </button>
+
+          <button disabled={enviando || !mufaSel} className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all ${editando ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'}`}>
+            {enviando ? 'Sincronizando...' : editando ? 'Actualizar Caja' : 'Registrar Caja'}
+          </button>
+
+          {editando && <button type="button" onClick={cancelarEdicion} className="w-full text-[10px] text-gray-500 uppercase font-bold underline">Cancelar</button>}
         </form>
       </div>
 
       {/* INVENTARIO */}
-      <div className="lg:col-span-2 bg-[#161b22] p-6 rounded-2xl border border-gray-800">
-        <div className="flex justify-between items-center mb-6">
-           <h2 className="text-xl font-black italic">Inventario de Cajas ({cajas.length})</h2>
-           {cargando && <span className="text-[10px] text-green-500 animate-pulse font-mono">ACTUALIZANDO RED...</span>}
-        </div>
-        <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
-          <table className="w-full text-left text-sm border-separate border-spacing-y-2">
-            <thead className="text-gray-500 uppercase text-[10px]">
-              <tr><th>Código / OLT</th><th className="text-center">Salida Splitter</th><th className="text-right">Acciones</th></tr>
-            </thead>
-            <tbody>
-              {cajas.map(c => (
-                <tr key={c.id} className="bg-[#0d1117] group hover:bg-gray-800/40 transition-colors">
-                  <td className="p-4 rounded-l-xl border-y border-l border-gray-800">
-                    <p className="text-green-400 font-bold font-mono text-lg tracking-tighter">{c.codigo}</p>
-                    <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Ruta: {c.puertoOlt || 'S/N'}</span>
-                  </td>
-                  <td className="p-4 text-center border-y border-gray-800">
-                    <span className="bg-gray-800 px-4 py-1 rounded-full text-[10px] font-bold border border-gray-700">P-{c.puertoMufa}</span>
-                  </td>
-                  <td className="p-4 text-right rounded-r-xl border-y border-r border-gray-800">
-                    <button onClick={() => { if(window.confirm('¿Eliminar esta caja?')) eliminarCaja(c.id).then(cargarInventario); }} className="text-red-900 group-hover:text-red-500 font-black text-[10px] uppercase transition-colors">Eliminar</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {mufas.length === 0 && !cargando && <p className="text-center py-10 text-gray-600 italic">No hay infraestructura disponible.</p>}
+      <div className="lg:col-span-2 bg-[#161b22] p-6 rounded-2xl border border-gray-800 shadow-xl overflow-hidden">
+        <h2 className="text-xl font-black mb-6 italic uppercase tracking-tighter">Terminales en Red ({cajas.length})</h2>
+        <div className="max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+          {cajas.map(c => (
+            <div key={c.id} className="p-4 bg-[#0d1117] border border-gray-800 rounded-xl mb-3 flex flex-col md:flex-row justify-between items-center group hover:border-green-500/40 transition-all">
+              <div>
+                <p className="font-mono text-green-400 font-black text-xl tracking-tighter">{c.codigo}</p>
+                <div className="flex gap-2 mt-1">
+                    <span className="text-[9px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-bold uppercase">Splitter P-{c.puertoMufa}</span>
+                    <span className="text-[9px] bg-green-900/20 text-green-300 px-2 py-0.5 rounded font-bold uppercase">{c.ruta?.length > 0 ? '✅ Trazado' : '❌ Sin Ruta'}</span>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2 line-clamp-1 italic">{c.detalles || "Sin notas técnicas"}</p>
+              </div>
+              <div className="flex gap-3 mt-4 md:mt-0">
+                <button onClick={() => prepararEdicion(c)} className="text-yellow-600 hover:text-yellow-400 text-[10px] font-black uppercase transition-all">Editar</button>
+                <button onClick={() => { if(window.confirm('¿Eliminar?')) eliminarCaja(c.id).then(cargarInventario); }} className="text-red-900 group-hover:text-red-500 text-[10px] font-black uppercase transition-all">Borrar</button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
