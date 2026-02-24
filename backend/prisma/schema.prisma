@@ -29,58 +29,66 @@ enum Rol {
 
 // --- 2. INFRAESTRUCTURA DE RED (JERARQUÍA TÉCNICA) ---
 
+// ... (mantenemos generator y datasource igual)
+
 model Troncal {
   id          String   @id @default(uuid())
-  nombre      String   @unique // Ej: "Troncal Chosica Centro"
-  prefijo     String   @unique // Ej: "CHO"
-  capacidad   Int      @default(96) // 48, 96, 144 hilos
+  nombre      String   @unique
+  prefijo     String   @unique
+  capacidad   Int      @default(96)
   descripcion String?
+  
+  // NUEVO: Para dibujar la ruta principal por las calles
+  ruta        Json?    // Guardará: [{lat: -11.1, lng: -76.1}, ...]
+  
   creadoEn    DateTime @default(now())
-
   mufas       Mufa[]
 }
 
 model Mufa {
-  id            String   @id @default(uuid())
-  // Código automático generado por controlador: CHO-BAZ-HVE
-  codigo        String   @unique 
-  
-  // Datos de Sangría Simplificados por Colores
-  bufferColor   String   // Ej: "Azul"
-  bufferPrefijo String   // Ej: "BAZ"
-  hiloColor     String   // Ej: "Verde"
-  
-  // Ubicación
-  latitud       Float
-  longitud      Float
-  direccion     String?
-  capacidadHilos Int @default(16)
-  
-  // Relaciones
-  troncalId     String
-  troncal       Troncal  @relation(fields: [troncalId], references: [id])
-  cajas         Caja[]
-  creadoEn      DateTime @default(now())
+  id             String   @id @default(uuid())
+  codigo         String   @unique 
+  bufferColor    String   
+  bufferPrefijo  String   
+  hiloColor      String   
+  latitud        Float
+  longitud       Float
+  direccion      String?
+  capacidadHilos Int      @default(16)
+
+  // NUEVOS CAMPOS: Ruta y Detalles
+  ruta           Json?    // Camino desde la Troncal hasta la Mufa
+  detalles       String?  @db.Text // Ej: "Ubicada en poste de concreto, lado izquierdo"
+  estadoFisico   String?  @default("BUENO") // Para reporte de daños
+
+  troncalId      String
+  troncal        Troncal  @relation(fields: [troncalId], references: [id])
+  cajas          Caja[]
+  creadoEn       DateTime @default(now())
 }
 
 model Caja {
   id             String    @id @default(uuid())
-  // Código automático: CHO-BAZ-HVE-C01
   codigo         String    @unique
-  puertoMufa     Int       // Puerto físico en la mufa
-  puertoOlt      String?   // Ruta lógica OLT Ej: "1/7/1"
+  puertoMufa     Int       
+  puertoOlt      String?   
   latitud        Float
   longitud       Float
-  colorFibraCaja String?   // Color del hilo que alimenta la caja
+  colorFibraCaja String?   
   puertosTotales Int       @default(16)
-  
-  // Relaciones
+
+  // NUEVOS CAMPOS: Ruta y Detalles
+  ruta           Json?     // Camino desde la Mufa hasta la Caja (siguiendo calles)
+  detalles       String?   @db.Text // Ej: "Requiere escalera de 3 cuerpos, zona con perros"
+  observaciones  String?   // Cualquier nota técnica adicional
+
   mufaId         String
   mufa           Mufa      @relation(fields: [mufaId], references: [id], onDelete: Cascade)
   clientes       Cliente[]
   creadoEn       DateTime  @default(now())
 }
 
+// ... (El resto de tus modelos Cliente, Averia, Pago y Enums se mantienen igual)
 // --- 3. CAPA COMERCIAL Y ATENCIÓN ---
 
 model Cliente {
