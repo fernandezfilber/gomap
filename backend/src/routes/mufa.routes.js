@@ -17,12 +17,12 @@ router.get('/:id', mufaController.getMufaById || mufaController.getMufas);
 router.get('/hilos-ocupados/:mufaId', cajaController.getHilosOcupados);
 
 // 4. Crear mufa (Protegido)
-router.post('/', [verifyToken], mufaController.crearMufa);
+router.post('/',  mufaController.crearMufa);
 
 // 5. Actualizar mufa (Protegido)
-router.put('/:id', [verifyToken], mufaController.actualizarMufa);
+router.put('/:id',  mufaController.actualizarMufa);
 
 // 6. Eliminar mufa (Protegido)
-router.delete('/:id', [verifyToken], mufaController.eliminarMufa);
+router.delete('/:id', mufaController.eliminarMufa);
 
 module.exports = router;
