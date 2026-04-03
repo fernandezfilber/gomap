@@ -12,7 +12,7 @@ exports.createTroncal = async (req, res) => {
         prefijo: prefijo.toUpperCase(), 
         capacidad: parseInt(capacidad), 
         descripcion,
-        // NUEVO: Guarda el array de puntos dibujados en el mapa
+        // Ruta: Array de coordenadas [{lat, lng}, ...] para dibujar el backbone
         ruta: ruta || null 
       }
     });
@@ -24,11 +24,16 @@ exports.createTroncal = async (req, res) => {
   }
 };
 
-// 2. OBTENER TRONCALES (Incluyendo sus rutas)
+// 2. OBTENER TRONCALES (Incluyendo mufas y sus postes)
 exports.getTroncales = async (req, res) => {
   try {
     const troncales = await prisma.troncal.findMany({ 
       include: { 
+        mufas: {
+          include: {
+            poste: true // Para saber en qué poste físico está cada mufa de la troncal
+          }
+        },
         _count: { select: { mufas: true } } 
       } 
     });
@@ -38,7 +43,7 @@ exports.getTroncales = async (req, res) => {
   }
 };
 
-// 3. EDITAR TRONCAL (Permite corregir el trazado)
+// 3. EDITAR TRONCAL (Permite corregir el trazado o datos generales)
 exports.updateTroncal = async (req, res) => {
   try {
     const { id } = req.params;
@@ -51,7 +56,6 @@ exports.updateTroncal = async (req, res) => {
         prefijo: prefijo?.toUpperCase(),
         capacidad: capacidad ? parseInt(capacidad) : undefined,
         descripcion,
-        // Permite actualizar el dibujo de la ruta principal
         ruta: ruta !== undefined ? ruta : undefined 
       }
     });
@@ -66,13 +70,13 @@ exports.updateTroncal = async (req, res) => {
 exports.deleteTroncal = async (req, res) => {
   try {
     const { id } = req.params;
-    // Prisma gestionará la eliminación en cascada si está en el schema
+    // IMPORTANTE: El schema debe tener onDelete: Cascade en Mufa para que esto funcione
     await prisma.troncal.delete({ where: { id } });
-    res.json({ mensaje: "Troncal y toda su infraestructura eliminada." });
+    res.json({ mensaje: "Troncal y toda su infraestructura (mufas/cajas) eliminada." });
   } catch (error) {
     res.status(500).json({ 
       error: "Error al eliminar la troncal", 
-      detalle: "Verifica que no existan mufas activas si no tienes activado el Cascade Delete." 
+      detalle: "Asegúrate de que el esquema de Prisma soporte borrado en cascada." 
     });
   }
 };

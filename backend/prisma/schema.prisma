@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -23,13 +23,11 @@ model Usuario {
 }
 
 enum Rol {
-  ADMIN     // Puede gestionar infraestructura y usuarios
-  TECNICO   // Solo puede ver mapa, factibilidad y atender averías
+  ADMIN   // Puede gestionar infraestructura y usuarios
+  TECNICO // Solo puede ver mapa, factibilidad y atender averías
 }
 
 // --- 2. INFRAESTRUCTURA DE RED (JERARQUÍA TÉCNICA) ---
-
-// ... (mantenemos generator y datasource igual)
 
 model Troncal {
   id          String   @id @default(uuid())
@@ -38,8 +36,8 @@ model Troncal {
   capacidad   Int      @default(96)
   descripcion String?
   
-  // NUEVO: Para dibujar la ruta principal por las calles
-  ruta        Json?    // Guardará: [{lat: -11.1, lng: -76.1}, ...]
+  // Ruta principal por las calles (Polyline)
+  ruta        Json?    // [{lat: -11.1, lng: -76.1}, ...]
   
   creadoEn    DateTime @default(now())
   mufas       Mufa[]
@@ -56,15 +54,22 @@ model Mufa {
   direccion      String?
   capacidadHilos Int      @default(16)
 
-  // NUEVOS CAMPOS: Ruta y Detalles
   ruta           Json?    // Camino desde la Troncal hasta la Mufa
-  detalles       String?  @db.Text // Ej: "Ubicada en poste de concreto, lado izquierdo"
-  estadoFisico   String?  @default("BUENO") // Para reporte de daños
+  detalles       String?  @db.Text
+  estadoFisico   String?  @default("BUENO")
 
   troncalId      String
   troncal        Troncal  @relation(fields: [troncalId], references: [id])
+  
   cajas          Caja[]
   creadoEn       DateTime @default(now())
+  
+  // Relación con Poste
+  posteId        String?   
+  poste          Poste?   @relation(fields: [posteId], references: [id])
+
+  // 🛰️ RELACIÓN INVERSA PARA TRAMOCABLE (Lo que faltaba)
+  tramosSalida   TramoCable[] @relation("CableDesdeMufa")
 }
 
 model Caja {
@@ -77,19 +82,25 @@ model Caja {
   colorFibraCaja String?   
   puertosTotales Int       @default(16)
 
-  // NUEVOS CAMPOS: Ruta y Detalles
-  ruta           Json?     // Camino desde la Mufa hasta la Caja (siguiendo calles)
-  detalles       String?   @db.Text // Ej: "Requiere escalera de 3 cuerpos, zona con perros"
-  observaciones  String?   // Cualquier nota técnica adicional
+  ruta           Json?     // Camino desde la Mufa hasta la Caja
+  detalles       String?   @db.Text
+  observaciones  String?   
 
   mufaId         String
   mufa           Mufa      @relation(fields: [mufaId], references: [id], onDelete: Cascade)
+  
   clientes       Cliente[]
   creadoEn       DateTime  @default(now())
+  
+  // Relación con Poste
+  posteId        String?   
+  poste          Poste?    @relation(fields: [posteId], references: [id])
+
+  // 🛰️ RELACIÓN INVERSA PARA TRAMOCABLE (Lo que faltaba)
+  tramosEntrada  TramoCable[] @relation("CableHaciaCaja")
 }
 
-// ... (El resto de tus modelos Cliente, Averia, Pago y Enums se mantienen igual)
-// --- 3. CAPA COMERCIAL Y ATENCIÓN ---
+// --- 3. CLIENTES Y OPERACIONES ---
 
 model Cliente {
   id              String   @id @default(uuid())
@@ -98,9 +109,8 @@ model Cliente {
   telefono        String
   direccion       String?
   
-  // Sincronización OLT
-  onuExternalId   String?  @unique // Ej: "gpon-onu_1/7/1:11"
-  snMac           String?  @unique // Serial Number ZTE
+  onuExternalId   String?  @unique 
+  snMac           String?  @unique
   
   latitud         Float?
   longitud        Float?
@@ -108,6 +118,7 @@ model Cliente {
   
   cajaId          String
   caja            Caja     @relation(fields: [cajaId], references: [id])
+  
   averias         Averia[]
   pagos           Pago[]
   creadoEn        DateTime @default(now())
@@ -121,12 +132,12 @@ model Averia {
   prioridad       String   @default("MEDIA")
   
   clienteId       String
-  cliente         Cliente    @relation(fields: [clienteId], references: [id])
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
   
   tecnicoId       String?
-  tecnico         Usuario?   @relation(fields: [tecnicoId], references: [id])
+  tecnico         Usuario? @relation(fields: [tecnicoId], references: [id])
   
-  creadoEn        DateTime   @default(now())
+  creadoEn        DateTime @default(now())
 }
 
 model Pago {
@@ -134,14 +145,50 @@ model Pago {
   monto           Float
   metodo          Metodo     @default(YAPE)
   estado          EstadoPago @default(PENDIENTE)
-  referencia      String?    @unique // Número de operación Yape
+  referencia      String?    @unique // Número de operación
   fechaPago       DateTime   @default(now())
 
   clienteId       String
   cliente         Cliente    @relation(fields: [clienteId], references: [id])
 }
 
-// --- 4. ENUMS (CATÁLOGOS) ---
+// --- 4. INFRAESTRUCTURA FÍSICA ---
+
+model Poste {
+  id          String   @id @default(uuid())
+  codigo      String   @unique
+  latitud     Float
+  longitud    Float
+  tipo        String   @default("CONCRETO")
+  altura      String?  
+  propietario String? 
+
+  mufas       Mufa[]
+  cajas       Caja[]
+  
+  creadoEn    DateTime @default(now())
+}
+
+model TramoCable {
+  id            String  @id @default(uuid())
+  nombre        String? 
+  tipoCable     String  // ADSS, Drop, etc.
+  metraje       Float?  
+  
+  // Geometría de la línea
+  path          Json    // [{lat:..., lng:...}]
+
+  creadoEn      DateTime @default(now())
+
+  // Relaciones con Mufa y Caja
+  mufaOrigenId  String?
+  mufaOrigen    Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
+  
+  cajaDestinoId String?
+  cajaDestino   Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
+}
+
+// --- 5. ENUMS ---
 
 enum Metodo {
   YAPE

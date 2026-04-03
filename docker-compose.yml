@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # REDIS: Para caché y sesiones
+  # REDIS: Optimiza la carga del mapa de Chosica evitando consultas repetitivas
   redis:
     image: redis:alpine
     container_name: fv_redis
@@ -9,7 +9,7 @@ services:
     networks:
       - fv_network
 
-  # BACKEND: Procesa la lógica de red
+  # BACKEND: API que habla con Hostinger y procesa los datos GIS
   backend:
     build: ./backend
     container_name: fv_backend
@@ -17,22 +17,24 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       - PORT=5000
-      - REDIS_HOST=fv_redis  # Esto le dice al backend dónde está Redis
+      - REDIS_HOST=fv_redis
+   
     depends_on:
       - redis
     networks:
       - fv_network
 
-  # FRONTEND: Interfaz de usuario
+  # FRONTEND: Servidor para la aplicación de React/Vite
   frontend:
     build: ./frontend
     container_name: fv_frontend
     restart: always
     ports:
       - "80:80"
+  
     depends_on:
       - backend
     networks:
