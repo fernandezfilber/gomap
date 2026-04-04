@@ -125,13 +125,19 @@ model TramoCable {
 }
 
 model Cliente {
-  id      String   @id @default(uuid())
-  nombre  String
-  dni     String   @unique
-  cajaId  String
-  averias Averia[]
-  caja    Caja     @relation(fields: [cajaId], references: [id])
-  pagos   Pago[]
+  id              String   @id @default(uuid())
+  nombre          String
+  dni             String   @unique
+  telefono        String?  // Agregado
+  direccion       String?  // Agregado
+  snMac           String?  // Agregado
+  latitud         Float?   // Agregado
+  longitud        Float?   // Agregado
+  estadoServicio  String   @default("ACTIVO") // Agregado
+  cajaId          String
+  caja            Caja     @relation(fields: [cajaId], references: [id])
+  averias         Averia[]
+  pagos           Pago[]
 
   @@index([cajaId], map: "Cliente_cajaId_fkey")
 }
