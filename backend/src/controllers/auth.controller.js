@@ -41,3 +41,45 @@ exports.login = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+exports.register = async (req, res) => {
+    const { nombre, email, password, rol } = req.body;
+
+    try {
+        // 1. Verificar si el email ya existe en Chosica
+        const existeUsuario = await prisma.usuario.findUnique({ where: { email } });
+        if (existeUsuario) {
+            return res.status(400).json({ message: "El correo ya está registrado" });
+        }
+
+        // 2. Encriptar la contraseña (Clave para que coincida con el login)
+        // Usamos 10 rondas de sal, que es el estándar seguro
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // 3. Crear el usuario en la base de datos de Hostinger
+        const nuevoUsuario = await prisma.usuario.create({
+            data: {
+                nombre,
+                email,
+                password: hashedPassword,
+                rol: rol || 'USER', // Por defecto USER si no se envía
+                activo: true
+            }
+        });
+
+        // 4. Responder con éxito (sin enviar la contraseña de vuelta)
+        res.status(201).json({
+            message: "Usuario creado exitosamente",
+            user: {
+                id: nuevoUsuario.id,
+                nombre: nuevoUsuario.nombre,
+                email: nuevoUsuario.email,
+                rol: nuevoUsuario.rol
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Error en Registro:", error);
+        res.status(500).json({ message: "Error al crear el usuario en el servidor" });
+    }
+};
