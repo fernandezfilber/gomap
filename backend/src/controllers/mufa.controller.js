@@ -4,36 +4,18 @@ const prisma = new PrismaClient();
 // 1. Obtener todas las mufas (Capa general)
 exports.getMufas = async (req, res) => {
     try {
-        const mufas = await prisma.mufa.findMany({ 
+        const mufas = await prisma.mufa.findMany({
             include: { 
-                troncal: true,
-                poste: true,
+                troncal: { select: { nombre: true, prefijo: true } },
                 _count: { select: { cajas: true } }
-            } 
+            }
         });
-
-        const mufasProcesadas = mufas.map(m => {
-            // Validamos que capacidadHilos exista para evitar el error 500
-            const capacidad = m.capacidadHilos || 16; 
-            const ocupados = m._count?.cajas || 0;
-
-            return {
-                ...m,
-                hilosOcupados: ocupados,
-                hilosLibres: capacidad - ocupados, 
-                estaLlena: ocupados >= capacidad,
-            };
-        });
-
-        res.json(mufasProcesadas);
+        res.json(mufas);
     } catch (error) {
-        console.error("🔥 Error real en Mufas:", error);
-        res.status(500).json({ 
-            error: "Error al obtener mufas", 
-            detalle: error.message // Esto nos dirá el error exacto en la web
-        });
+        res.status(500).json({ error: "Error al obtener mufas" });
     }
 };
+
 // 2. Obtener UNA mufa específica (Detalle)
 exports.getMufaById = async (req, res) => {
     const { id } = req.params;
