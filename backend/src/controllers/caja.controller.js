@@ -20,67 +20,42 @@ exports.getCajas = async (req, res) => {
 // 2. CREAR CAJA NAP (Validando salida de Splitter y anclaje a Poste)
 exports.createCaja = async (req, res) => {
     try {
-        const { 
-            mufaId, posteId, puertoMufa, colorFibraCaja, 
-            puertoOlt, latitud, longitud, puertosTotales,
-            ruta, detalles, observaciones  
-        } = req.body;
+        const { mufaId, posteId, codigo, colorHiloCaja, puertosLibres } = req.body;
 
-        // Validaciones de esquema v6
+        // 1. Validaciones básicas según tu esquema
         if (!mufaId || !posteId) {
-            return res.status(400).json({ error: "mufaId y posteId son obligatorios para la instalación." });
+            return res.status(400).json({ error: "mufaId y posteId son obligatorios." });
         }
 
-        // 1. Verificar Mufa y su capacidad de splitter
-        const mufa = await prisma.mufa.findUnique({ where: { id: mufaId } });
-        if (!mufa) return res.status(404).json({ error: "Mufa de origen no encontrada." });
-
-        // 2. Sincronizar coordenadas con el Poste seleccionado
+        // 2. Verificar que el Poste existe para traer las coordenadas
         const poste = await prisma.poste.findUnique({ where: { id: posteId } });
         if (!poste) return res.status(404).json({ error: "El poste seleccionado no existe." });
 
-        const latFinal = poste.latitud;
-        const lngFinal = poste.longitud;
+        // 3. Verificar que la Mufa existe para el código jerárquico (opcional)
+        const mufa = await prisma.mufa.findUnique({ where: { id: mufaId } });
+        if (!mufa) return res.status(404).json({ error: "Mufa no encontrada." });
 
-        // 3. Validar ocupación del puerto en el Splitter (1:8 o 1:16)
-        const pMufa = parseInt(puertoMufa);
-        const salidaOcupada = await prisma.caja.findFirst({
-            where: { mufaId, puertoMufa: pMufa }
-        });
-        
-        if (salidaOcupada) {
-            return res.status(400).json({ 
-                error: `El puerto ${pMufa} de la mufa ${mufa.codigo} ya está alimentando a otra NAP.` 
-            });
-        }
-
-        // 4. Generar Código Jerárquico: COD-MUFA-NAP-XX
-        const nPuerto = pMufa.toString().padStart(2, '0');
-        const codigoAuto = `${mufa.codigo}-NAP${nPuerto}`;
-
-        // 5. Crear Caja con conteo de puertos libres
+        // 4. Crear la Caja con los campos que SÍ están en tu modelo
         const nuevaCaja = await prisma.caja.create({
             data: {
-                codigo: codigoAuto,
-                puertoMufa: pMufa,
-                colorFibraCaja: colorFibraCaja || "Blanco",
-                puertoOlt: puertoOlt || "PON-1",
-                puertosTotales: parseInt(puertosTotales) || 16,
-                puertosLibres: parseInt(puertosTotales) || 16, // Inicia vacía
-                latitud: latFinal,
-                longitud: lngFinal,
-                mufaId,
-                posteId,
-                ruta: ruta || null,
-                detalles: detalles || "",
-                observaciones: observaciones || ""
+                // Si no envías código, generamos uno basado en la mufa
+                codigo: codigo || `${mufa.codigo}-NAP-${Date.now().toString().slice(-4)}`,
+                latitud: poste.latitud,
+                longitud: poste.longitud,
+                colorHiloCaja: colorHiloCaja || "Azul",
+                puertosLibres: parseInt(puertosLibres) || 16,
+                mufaId: mufaId,
+                posteId: posteId
             }
         });
 
         res.status(201).json(nuevaCaja);
     } catch (error) {
         console.error("❌ ERROR CREAR CAJA:", error.message);
-        res.status(500).json({ error: "Error en el servidor al registrar la caja NAP" });
+        res.status(500).json({ 
+            error: "Error al registrar la caja", 
+            detalle: "Asegúrate de no enviar campos como 'puertoMufa' que no están en el schema.prisma" 
+        });
     }
 };
 
