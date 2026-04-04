@@ -1,12 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "start.js",
   "scripts": {
     "build": "npx prisma generate",
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
-    
+    "start": "node start.js",
+    "vercel-build": "npx prisma generate"
   },
   "keywords": [],
   "author": "",
