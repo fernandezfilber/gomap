@@ -3,37 +3,28 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
 
-// 1. Cargar variables de entorno (.env)
+// 1. Cargar variables de entorno
 dotenv.config();
 
-// Log de control para ver que Hostinger o Docker están leyendo la DB
 console.log("-----------------------------------------");
 console.log("🚀 Nodo Chosica - Forward Vision API");
 console.log("🔍 URL DB:", process.env.DATABASE_URL ? "Detectada ✅" : "Faltante ❌");
 console.log("-----------------------------------------");
 
 const app = express();
-
-/**
- * 2. Instancia de Prisma (Versión 6)
- * En la v6, Prisma lee automáticamente la URL del archivo schema.prisma
- * No necesita objetos complejos en el constructor.
- */
 const prisma = new PrismaClient();
-
 const PORT = process.env.PORT || 5000;
 
-// 3. Middlewares Globales
+// 2. Middlewares
 app.use(cors({
-    origin: '*', // Permite conexiones de cualquier dominio (toq.life, localhost, etc.)
+    origin: '*', 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-
 app.use(express.json()); 
 
-// 4. Registro de Rutas (Arquitectura GIS)
+// 3. Registro de Rutas
 app.use('/api/auth', require('./routes/auth.routes')); 
 app.use('/api/red', require('./routes/red.routes')); 
 app.use("/api/troncales", require("./routes/troncal.routes"));
@@ -43,7 +34,7 @@ app.use("/api/clientes", require("./routes/cliente.routes"));
 app.use("/api/postes", require("./routes/postes.routes"));
 app.use("/api/tramos", require("./routes/tramoCables.routes"));
 
-// 5. Middleware de Manejo de Errores Global
+// 4. Manejo de Errores
 app.use((err, req, res, next) => {
     console.error("🔥 Error detectado:", err.stack);
     res.status(500).json({
@@ -52,45 +43,39 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 6. Dashboard de Bienvenida (Verificación Visual)
+// 5. Dashboard Visual
 app.get("/", (req, res) => {
     res.status(200).send(`
-        <div style="background-color: #0d1117; color: #58a6ff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center;">
+        <div style="background-color: #0d1117; color: #58a6ff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; text-align: center;">
             <h1 style="font-size: 3rem; margin-bottom: 10px;">🚀 Forward Vision API</h1>
             <p style="color: #8b949e; font-size: 1.2rem;">Sistema GIS Activo - Nodo Chosica</p>
-            <div style="border: 1px solid #30363d; padding: 30px; border-radius: 12px; background-color: #161b22; width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="border: 1px solid #30363d; padding: 30px; border-radius: 12px; background-color: #161b22; width: 450px;">
                 <p style="margin: 10px 0; color: #7ee787; font-weight: bold;">● Base de Datos MySQL: Conectada</p>
-                <p style="margin: 10px 0; color: #58a6ff;">● Versión del Motor: Prisma v6.4.1</p>
+                <p style="margin: 10px 0; color: #58a6ff;">● Motor: Prisma v6.4.1</p>
                 <hr style="border-color: #30363d; margin: 20px 0;">
-                <p style="color: #ffffff; font-size: 1.1rem;">Líder de Proyecto: <b>Filber</b></p>
-                <p style="color: #8b949e; font-size: 0.9rem;">Dominio: <a href="https://toq.life" style="color: #58a6ff; text-decoration: none;">toq.life</a></p>
+                <p style="color: #ffffff;">Líder de Proyecto: <b>Filber</b></p>
             </div>
         </div>
     `);
 });
 
-// 7. Función de Arranque (Solo para entorno Local/Docker)
+// 6. Función de Arranque Única
 const startServer = async () => {
     try {
         await prisma.$connect();
-        console.log("✅ Prisma: Conexión establecida con MySQL Hostinger.");
+        console.log("✅ Prisma: Conexión establecida correctamente.");
     } catch (error) {
         console.error("❌ Error Crítico al conectar Prisma:", error.message);
     }
+
+    // En Hostinger/Vercel/Docker, siempre necesitamos escuchar el puerto
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`📡 API Operativa en puerto: ${PORT}`);
+    });
 };
 
-/**
- * Lógica de Ejecución:
- * Si NODE_ENV no es 'production', levantamos el puerto (Docker/PC).
- * Si es 'production', Vercel o Hostinger se encargan de manejar el tráfico.
- */
-if (process.env.NODE_ENV !== 'production') {
-    startServer().then(() => {
-        app.listen(PORT, "0.0.0.0", () => {
-            console.log(`📡 API Operativa en: http://localhost:${PORT}`);
-        });
-    });
-}
+// Arrancamos el servidor una sola vez
+startServer();
 
 // EXPORTACIÓN PARA VERCEL / HOSTINGER
 module.exports = app;

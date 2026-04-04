@@ -1,0 +1,23 @@
+# ----------------------------------------------------------------------
+# Forward Vision - Configuración de Proxy Inverso para Node.js
+# ----------------------------------------------------------------------
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Forzar HTTPS para seguridad del sistema GIS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # 2. No procesar si el archivo o carpeta física existen (imágenes, etc.)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 3. Redirigir todo lo demás al proceso de Node.js
+    # IMPORTANTE: Asegúrate de que el puerto 5000 coincida con tu index.js
+    RewriteRule ^(.*)$ http://127.0.0.1:5000/$1 [P,L]
+</IfModule>
+
+# 4. Configuración de errores para evitar el 503 genérico
+ErrorDocument 503 /error_503.html
