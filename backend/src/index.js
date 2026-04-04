@@ -16,11 +16,12 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
 // 2. Middlewares
+// 3. Middlewares Globales
 app.use(cors({
-    origin: '*', 
+    origin: ['https://demostracion.toq.life', 'http://localhost:5173'], // Agrega tus dominios aquí
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
+    credentials: true // ¡Vital para que Axios no falle!
 }));
 app.use(express.json()); 
 
