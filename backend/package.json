@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "start.js",
   "scripts": {
+    "install": "npm install && npx prisma generate",
     "build": "npx prisma generate",
     "dev": "nodemon src/index.js",
     "start": "node start.js",
