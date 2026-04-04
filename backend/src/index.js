@@ -10,6 +10,7 @@ console.log("🔍 Nodo Chosica - URL DB:", process.env.DATABASE_URL ? "Detectada
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log('Listening on', PORT));
 
 // 2. Middlewares Globales
 app.use(cors({

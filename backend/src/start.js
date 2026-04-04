@@ -1,2 +1,6 @@
+process.on('unhandledRejection', (e) => console.error('unhandledRejection', e));
+process.on('uncaughtException', (e) => console.error('uncaughtException', e));
+
 require('dotenv').config();
-require('./index'); // aquí debe estar tu app.listen(process.env.PORT)
+console.log('Starting app…');
+require('./index.js');
