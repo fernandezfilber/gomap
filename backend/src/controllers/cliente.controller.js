@@ -14,16 +14,14 @@ exports.createCliente = async (req, res) => {
             return res.status(400).json({ error: "DNI y Caja NAP son obligatorios." });
         }
 
-        // Transacción para asegurar que no saturemos la caja
         const resultado = await prisma.$transaction(async (tx) => {
-            
-            // A. Verificar si la caja tiene puertos disponibles
+            // A. Verificar capacidad de la caja
             const caja = await tx.caja.findUnique({ where: { id: cajaId } });
             if (!caja || caja.puertosLibres <= 0) {
                 throw new Error("La Caja NAP seleccionada está saturada (0 puertos libres).");
             }
 
-            // B. Crear el cliente vinculado a la red de Forward Vision
+            // B. Crear el cliente con todos los campos técnicos
             const nuevoCliente = await tx.cliente.create({
                 data: {
                     nombre,
@@ -39,7 +37,7 @@ exports.createCliente = async (req, res) => {
                 }
             });
 
-            // C. Descontar puerto de la Caja NAP
+            // C. Descontar puerto
             await tx.caja.update({
                 where: { id: cajaId },
                 data: { puertosLibres: { decrement: 1 } }
