@@ -2,15 +2,15 @@ import axios from 'axios';
 import { handleGlobalError } from '../utils/errorHandler';
 
 const fvApi = axios.create({
-    // Prioriza la variable de entorno, si no, usa localhost
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    // Si estás en producción usará toq.life, si no, tu local
+    baseURL: import.meta.env.VITE_API_URL || 'https://toq.life/api',
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json'
     }
 });
 
-// --- INTERCEPTOR DE PETICIONES (Seguridad) ---
+// --- SEGURIDAD: Inyecta el Token en cada llamada ---
 fvApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -22,11 +22,10 @@ fvApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// --- INTERCEPTOR DE RESPUESTAS (Manejador de Errores) ---
+// --- EMERGENCIA: Atrapa errores de Hostinger (500, 401, etc.) ---
 fvApi.interceptors.response.use(
     (response) => response, 
     (error) => {
-        // Centralizamos el error (401, 404, 500, etc.)
         handleGlobalError(error); 
         return Promise.reject(error);
     }

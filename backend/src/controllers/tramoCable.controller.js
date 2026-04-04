@@ -1,10 +1,13 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. OBTENER TODOS: Con jerarquía completa (Postes, Proyecto y Equipos)
+// 1. OBTENER TODOS: Con filtro por Proyecto y manejo de errores
 exports.getTramos = async (req, res) => {
     try {
+        const { proyectoId } = req.query; // Importante: Leer el filtro del mapa
+
         const tramos = await prisma.tramoCable.findMany({
+            where: proyectoId ? { proyectoId: proyectoId } : {}, // Si hay ID, filtramos
             include: {
                 proyecto: { select: { nombre: true } },
                 posteInicio: { select: { codigo: true } },
@@ -14,13 +17,25 @@ exports.getTramos = async (req, res) => {
             },
             orderBy: { creadoEn: 'desc' }
         });
-        res.json(tramos);
+
+        // 🛠️ Limpieza de datos antes de enviar al Frontend
+        const tramosValidados = tramos.map(t => ({
+            ...t,
+            // Nos aseguramos que el path sea un objeto/array y no un string crudo
+            path: typeof t.path === 'string' ? JSON.parse(t.path || '[]') : (t.path || [])
+        }));
+
+        res.json(tramosValidados);
     } catch (error) {
-        res.status(500).json({ error: "Error al obtener cables del GIS" });
+        console.error("❌ ERROR GIS TRAMOS:", error.message);
+        res.status(500).json({ 
+            error: "Error al obtener cables del GIS",
+            detalle: error.message 
+        });
     }
 };
 
-// 2. CREAR: Validando anclaje obligatorio a POSTES y PROYECTO
+// 2. CREAR: Con anclaje y valores por defecto
 exports.createTramo = async (req, res) => {
     try {
         const { 
@@ -29,22 +44,20 @@ exports.createTramo = async (req, res) => {
             mufaOrigenId, cajaDestinoId 
         } = req.body;
 
-        // 1. Validación de Regla de Negocio
-        if (!proyectoId || !posteInicioId || !posteFinId) {
-            return res.status(400).json({ 
-                error: "Todo tramo debe tener un Proyecto, un Poste de Inicio y un Poste de Fin." 
-            });
+        // Validación de Regla de Negocio: Para Forward Vision, el proyecto es ley
+        if (!proyectoId) {
+            return res.status(400).json({ error: "El ID del proyecto es obligatorio." });
         }
 
-        // 2. Creación con campos EXACTOS del modelo
         const nuevoTramo = await prisma.tramoCable.create({
             data: {
-                nombre: nombre || `Link-${tipoCable || 'FIBRA'}-${Date.now().toString().slice(-4)}`,
-                tipoCable: tipoCable || "DROP", // Valor por defecto si viene vacío
+                nombre: nombre || `Link-${Date.now().toString().slice(-4)}`,
+                tipoCable: tipoCable || "FIBRA",
+                // Guardamos como string si la DB es MySQL y el campo es String
                 path: typeof path === 'string' ? path : JSON.stringify(path || []), 
                 proyectoId,
-                posteInicioId,
-                posteFinId,
+                posteInicioId: posteInicioId || null, // Permitimos nulos si no hay anclaje aún
+                posteFinId: posteFinId || null,
                 mufaOrigenId: mufaOrigenId || null,
                 cajaDestinoId: cajaDestinoId || null
             }
@@ -60,7 +73,7 @@ exports.createTramo = async (req, res) => {
     }
 };
 
-// 3. OBTENER POR ID: Detalle técnico completo para el técnico
+// 3. OBTENER POR ID
 exports.getTramoById = async (req, res) => {
     const { id } = req.params;
     try {
@@ -74,22 +87,31 @@ exports.getTramoById = async (req, res) => {
                 cajaDestino: true
             }
         });
+        
         if (!tramo) return res.status(404).json({ error: "Tramo no encontrado" });
+        
+        // Formatear path para el mapa
+        if (tramo.path && typeof tramo.path === 'string') {
+            tramo.path = JSON.parse(tramo.path);
+        }
+
         res.json(tramo);
     } catch (error) {
         res.status(500).json({ error: "Error al obtener el tramo específico" });
     }
 };
 
-// 4. ACTUALIZAR: Permite corregir la ruta o el anclaje a postes
+// 4. ACTUALIZAR
 exports.updateTramo = async (req, res) => {
     try {
         const { id } = req.params;
         const dataUpdate = { ...req.body };
         
-        if (dataUpdate.metraje) dataUpdate.metraje = parseFloat(dataUpdate.metraje);
+        // Si el path viene como array, lo convertimos a string para Prisma/MySQL
+        if (dataUpdate.path && typeof dataUpdate.path !== 'string') {
+            dataUpdate.path = JSON.stringify(dataUpdate.path);
+        }
 
-        // Si se actualizan postes o proyecto, Prisma validará las relaciones automáticamente
         const actualizada = await prisma.tramoCable.update({
             where: { id },
             data: dataUpdate
@@ -97,11 +119,12 @@ exports.updateTramo = async (req, res) => {
         
         res.json({ mensaje: "Tramo actualizado correctamente", data: actualizada });
     } catch (error) {
+        console.error("Error update:", error.message);
         res.status(500).json({ error: "Error al actualizar tramo" });
     }
 };
 
-// 5. ELIMINAR: Simple, ya que no tiene "hijos" directos que rompan la base
+// 5. ELIMINAR
 exports.deleteTramo = async (req, res) => {
     try {
         await prisma.tramoCable.delete({ where: { id: req.params.id } });

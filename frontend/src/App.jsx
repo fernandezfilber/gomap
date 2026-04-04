@@ -1,14 +1,15 @@
 import { BrowserRouter as Router } from 'react-router-dom';
-import AppRouter from './routes/AppRouter';
 import { Toaster } from 'react-hot-toast';
+import AppRouter from './routes/AppRouter';
 
 function App() {
   return (
+    // ESTA ES LA CLAVE: El Router debe envolver a TODO lo demás
     <Router>
-      {/* Notificaciones globales (Toasts) */}
+      {/* 1. Notificaciones primero */}
       <Toaster position="top-right" reverseOrder={false} />
       
-      {/* El cerebro de las rutas */}
+      {/* 2. El cerebro de las rutas después */}
       <AppRouter />
     </Router>
   );

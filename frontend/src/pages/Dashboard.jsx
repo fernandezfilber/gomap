@@ -1,24 +1,50 @@
-import React from 'react';
-import { useMapData } from '../hooks/useMapData';
+import { useState } from 'react';
+import Sidebar from '../components/layout/Sidebar';
+import MapaPrincipal from '../components/map/MapaPrincipal';
+
+// Importación de formularios activos
+import FormPoste from '../components/forms/FormPoste';
+import FormMufa from '../components/forms/FormMufa';
+import FormCaja from '../components/forms/FormCaja';
+import FormCliente from '../components/forms/FormCliente';
 
 const Dashboard = () => {
-    const { postes, tramos, troncales } = useMapData();
+    const [elementoActivo, setElementoActivo] = useState(null); 
+
+    const cerrarVentana = () => {
+        setElementoActivo(null);
+    };
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>Panel de Control</h2>
-            <div style={styles.grid}>
-                <div style={styles.card}><h4>Postes</h4><p>{postes.length}</p></div>
-                <div style={styles.card}><h4>Troncales</h4><p>{troncales.length}</p></div>
-                <div style={styles.card}><h4>Kms de Fibra</h4><p>{(tramos.length * 0.1).toFixed(2)} km</p></div>
-            </div>
+        <div className="flex h-screen w-screen bg-slate-950 overflow-hidden relative">
+            
+            <Sidebar />
+
+            <main className="flex-1 relative bg-white h-screen">
+                
+                {/* --- CAPA DE FORMULARIOS (Solo los necesarios) --- */}
+                {elementoActivo?.tipo === 'poste' && (
+                    <FormPoste data={elementoActivo} onCancel={cerrarVentana} />
+                )}
+                {elementoActivo?.tipo === 'mufa' && (
+                    <FormMufa data={elementoActivo} onCancel={cerrarVentana} />
+                )}
+                {elementoActivo?.tipo === 'caja' && (
+                    <FormCaja data={elementoActivo} onCancel={cerrarVentana} />
+                )}
+                {elementoActivo?.tipo === 'cliente' && (
+                    <FormCliente data={elementoActivo} onCancel={cerrarVentana} />
+                )}
+
+                {/* El mapa ocupa todo el espacio y maneja su propio Toolbox */}
+                <MapaPrincipal 
+                    onSelect={(data) => setElementoActivo(data)} 
+                    seleccion={elementoActivo}
+                />
+
+            </main>
         </div>
     );
-};
-
-const styles = {
-    grid: { display: 'flex', gap: '20px' },
-    card: { padding: '20px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', minWidth: '150px', textAlign: 'center' }
 };
 
 export default Dashboard;
