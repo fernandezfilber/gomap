@@ -150,3 +150,83 @@ exports.getHilosOcupados = async (req, res) => {
         res.status(500).json({ error: "Error al obtener hilos ocupados" });
     }
 };
+// 6. ACTUALIZAR MUFA: Manejo de cambio de hilos y ubicación
+exports.actualizarMufa = async (req, res) => {
+    const { id } = req.params;
+    const { 
+        codigo, troncalId, posteId, bufferEntrada, 
+        hiloEntrada, latitud, longitud, ratioSplitteo 
+    } = req.body;
+
+    try {
+        const resultado = await prisma.$transaction(async (tx) => {
+            // 1. Obtener estado actual de la mufa
+            const mufaActual = await tx.mufa.findUnique({ where: { id } });
+            if (!mufaActual) throw new Error("La mufa no existe");
+
+            // 2. LÓGICA SI CAMBIA LA TRONCAL O EL HILO
+            const cambioDeHilo = (troncalId && troncalId !== mufaActual.troncalId) || 
+                                (hiloEntrada && parseInt(hiloEntrada) !== mufaActual.hiloEntrada) ||
+                                (bufferEntrada && bufferEntrada !== mufaActual.bufferEntrada);
+
+            if (cambioDeHilo) {
+                // A. Devolver el hilo a la troncal antigua
+                await tx.troncal.update({
+                    where: { id: mufaActual.troncalId },
+                    data: { hilosLibres: { increment: 1 } }
+                });
+
+                // B. Verificar disponibilidad en la NUEVA troncal (o la misma si solo cambió el hilo)
+                const idDestino = troncalId || mufaActual.troncalId;
+                const troncalDestino = await tx.troncal.findUnique({ where: { id: idDestino } });
+                
+                if (!troncalDestino || troncalDestino.hilosLibres <= 0) {
+                    throw new Error("La troncal destino no tiene hilos disponibles.");
+                }
+
+                // C. Verificar que el nuevo hilo no esté ocupado
+                const nuevoHiloNum = hiloEntrada ? parseInt(hiloEntrada) : mufaActual.hiloEntrada;
+                const nuevoBuffer = bufferEntrada || mufaActual.bufferEntrada;
+
+                const hiloOcupado = await tx.mufa.findFirst({
+                    where: { 
+                        troncalId: idDestino, 
+                        bufferEntrada: nuevoBuffer, 
+                        hiloEntrada: nuevoHiloNum,
+                        id: { not: id } // Que no sea esta misma mufa
+                    }
+                });
+
+                if (hiloOcupado) {
+                    throw new Error(`El hilo ${nuevoHiloNum} ya está siendo usado por otra mufa.`);
+                }
+
+                // D. Descontar el hilo de la troncal destino
+                await tx.troncal.update({
+                    where: { id: idDestino },
+                    data: { hilosLibres: { decrement: 1 } }
+                });
+            }
+
+            // 3. Ejecutar la actualización
+            return await tx.mufa.update({
+                where: { id },
+                data: {
+                    codigo: codigo !== undefined ? codigo : mufaActual.codigo,
+                    troncalId: troncalId || mufaActual.troncalId,
+                    posteId: posteId || mufaActual.posteId,
+                    bufferEntrada: bufferEntrada || mufaActual.bufferEntrada,
+                    hiloEntrada: hiloEntrada ? parseInt(hiloEntrada) : mufaActual.hiloEntrada,
+                    ratioSplitteo: ratioSplitteo || mufaActual.ratioSplitteo,
+                    latitud: latitud ? parseFloat(latitud) : mufaActual.latitud,
+                    longitud: longitud ? parseFloat(longitud) : mufaActual.longitud
+                }
+            });
+        });
+
+        res.json({ mensaje: "Mufa actualizada correctamente", data: resultado });
+    } catch (error) {
+        console.error("❌ Error al actualizar mufa:", error.message);
+        res.status(400).json({ error: error.message });
+    }
+};
