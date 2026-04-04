@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
-const Redis = require("redis");
 
 // 1. Configuración de variables de entorno
 dotenv.config();
@@ -12,16 +11,7 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
-// 2. Configuración de Redis (Opcional en Vercel, Requerido en Docker)
-const redisClient = Redis.createClient({
-    url: process.env.REDIS_URL || "redis://fv_redis:6379",
-});
-
-redisClient.on("error", (err) => {
-    if (process.env.NODE_ENV !== 'production') console.log("⚠️ Redis inactivo:", err.message);
-});
-
-// 3. Middlewares Globales
+// 2. Middlewares Globales
 app.use(cors({
     origin: '*', 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -31,7 +21,7 @@ app.use(cors({
 
 app.use(express.json()); 
 
-// 4. Registro de Rutas de la API (Arquitectura GIS Forward Vision)
+// 3. Registro de Rutas de la API (Arquitectura GIS Forward Vision)
 app.use('/api/auth', require('./routes/auth.routes')); 
 app.use('/api/red', require('./routes/red.routes')); 
 app.use("/api/troncales", require("./routes/troncal.routes"));
@@ -41,7 +31,7 @@ app.use("/api/clientes", require("./routes/cliente.routes"));
 app.use("/api/postes", require("./routes/postes.routes"));
 app.use("/api/tramos", require("./routes/tramoCables.routes"));
 
-// 5. Middleware de Manejo de Errores
+// 4. Middleware de Manejo de Errores
 app.use((err, req, res, next) => {
     console.error("🔥 Error en el Servidor:", err.stack);
     res.status(500).json({
@@ -50,36 +40,31 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 6. Ruta de Bienvenida (Dashboard de Estado)
+// 5. Ruta de Bienvenida (Dashboard de Estado)
 app.get("/", (req, res) => {
     res.status(200).send(`
         <div style="background-color: #0d1117; color: #58a6ff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; text-align: center;">
             <h1 style="font-size: 2.5rem;">🚀 Forward Vision API</h1>
-            <p style="color: #8b949e;">Sistema GIS Activo - toq.life</p>
+            <p style="color: #8b949e;">Sistema GIS Activo - Chosica</p>
             <div style="border: 1px solid #30363d; padding: 20px; border-radius: 8px; background-color: #161b22; margin-top: 20px;">
-                <p style="color: #7ee787;">● API Operativa</p>
+                <p style="color: #7ee787;">● Base de Datos MySQL: Conectada</p>
                 <p style="color: #58a6ff;">Líder: Filber</p>
             </div>
         </div>
     `);
 });
 
-// 7. Lógica de Arranque Dual (Docker vs Vercel)
+// 6. Lógica de Arranque Condicional
 const startServer = async () => {
     try {
         await prisma.$connect();
-        console.log("✅ Prisma: DB conectada.");
-        
-        // Solo conectamos Redis si no estamos en Vercel o si la URL existe
-        if (process.env.NODE_ENV !== 'production' || process.env.REDIS_URL) {
-            await redisClient.connect().catch(() => {});
-        }
+        console.log("✅ Prisma: DB conectada correctamente.");
     } catch (error) {
-        console.error("❌ Error en pre-arranque:", error.message);
+        console.error("❌ Error en conexión a DB:", error.message);
     }
 };
 
-// Si NO estamos en producción (Vercel), levantamos el puerto manualmente (Docker)
+// Solo para Docker / Local
 if (process.env.NODE_ENV !== 'production') {
     startServer().then(() => {
         app.listen(PORT, "0.0.0.0", () => {
@@ -88,5 +73,5 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// EXPORTACIÓN OBLIGATORIA PARA VERCEL
+// EXPORTACIÓN PARA VERCEL / PRODUCCIÓN
 module.exports = app;
