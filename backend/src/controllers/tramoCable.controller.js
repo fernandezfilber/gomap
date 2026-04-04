@@ -4,37 +4,31 @@ const prisma = new PrismaClient();
 // 1. OBTENER TODOS: Con filtro por Proyecto y manejo de errores
 exports.getTramos = async (req, res) => {
     try {
-        const { proyectoId } = req.query; // Importante: Leer el filtro del mapa
+        const { proyectoId } = req.query;
 
         const tramos = await prisma.tramoCable.findMany({
-            where: proyectoId ? { proyectoId: proyectoId } : {}, // Si hay ID, filtramos
+            where: proyectoId ? { proyectoId: proyectoId } : {},
             include: {
                 proyecto: { select: { nombre: true } },
                 posteInicio: { select: { codigo: true } },
                 posteFin: { select: { codigo: true } },
                 mufaOrigen: { select: { codigo: true } },
                 cajaDestino: { select: { codigo: true } }
-            },
-            orderBy: { creadoEn: 'desc' }
+            }
+            // ❌ BORRAMOS LA LÍNEA DEL orderBy: { creadoEn: 'desc' }
         });
 
-        // 🛠️ Limpieza de datos antes de enviar al Frontend
         const tramosValidados = tramos.map(t => ({
             ...t,
-            // Nos aseguramos que el path sea un objeto/array y no un string crudo
             path: typeof t.path === 'string' ? JSON.parse(t.path || '[]') : (t.path || [])
         }));
 
         res.json(tramosValidados);
     } catch (error) {
-        console.error("❌ ERROR GIS TRAMOS:", error.message);
-        res.status(500).json({ 
-            error: "Error al obtener cables del GIS",
-            detalle: error.message 
-        });
+        console.error("❌ ERROR:", error.message);
+        res.status(500).json({ error: "Error al obtener cables", detalle: error.message });
     }
 };
-
 // 2. CREAR: Con anclaje y valores por defecto
 exports.createTramo = async (req, res) => {
     try {
