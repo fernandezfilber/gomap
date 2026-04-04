@@ -24,24 +24,24 @@ exports.getTramos = async (req, res) => {
 exports.createTramo = async (req, res) => {
     try {
         const { 
-            nombre, tipoCable, metraje, path, 
+            nombre, tipoCable, path, 
             proyectoId, posteInicioId, posteFinId, 
             mufaOrigenId, cajaDestinoId 
         } = req.body;
 
-        // Validación de Regla de Negocio: Anclaje físico obligatorio
+        // 1. Validación de Regla de Negocio
         if (!proyectoId || !posteInicioId || !posteFinId) {
             return res.status(400).json({ 
                 error: "Todo tramo debe tener un Proyecto, un Poste de Inicio y un Poste de Fin." 
             });
         }
 
+        // 2. Creación con campos EXACTOS del modelo
         const nuevoTramo = await prisma.tramoCable.create({
             data: {
-                nombre: nombre || `Link-${tipoCable}-${Date.now()}`,
-                tipoCable,
-                metraje: metraje ? parseFloat(metraje) : 0,
-                path: path || [], 
+                nombre: nombre || `Link-${tipoCable || 'FIBRA'}-${Date.now().toString().slice(-4)}`,
+                tipoCable: tipoCable || "DROP", // Valor por defecto si viene vacío
+                path: typeof path === 'string' ? path : JSON.stringify(path || []), 
                 proyectoId,
                 posteInicioId,
                 posteFinId,
@@ -52,8 +52,11 @@ exports.createTramo = async (req, res) => {
 
         res.status(201).json(nuevoTramo);
     } catch (error) {
-        console.error("❌ Error en registro de cable:", error);
-        res.status(500).json({ error: "Error al registrar el cable", detalle: error.message });
+        console.error("❌ Error en registro de cable:", error.message);
+        res.status(500).json({ 
+            error: "Error al registrar el cable", 
+            detalle: error.message 
+        });
     }
 };
 
