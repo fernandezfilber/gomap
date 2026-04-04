@@ -1,11 +1,11 @@
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-1.0.x"]
-  engineType    = "library"
-}
 datasource db {
   provider = "mysql"
-  
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "library"
 }
 
 // --- 1. GESTIÓN DE ACCESO Y PERSONAL ---
