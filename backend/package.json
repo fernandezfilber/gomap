@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "main": "start.js",
   "scripts": {
-    "install": "npm install && npx prisma generate",
+    "postinstall": "npx prisma generate",
     "build": "npx prisma generate",
     "dev": "nodemon src/index.js",
     "start": "node start.js",
     "vercel-build": "npx prisma generate"
   },
   "keywords": [],
-  "author": "",
+  "author": "Filber Fernandez",
   "license": "ISC",
-  "description": "",
+  "description": "API GIS Forward Vision - Nodo Chosica",
   "dependencies": {
     "@prisma/client": "^7.6.0",
     "bcryptjs": "^3.0.3",
@@ -22,8 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
     "pg": "^8.18.0",
-    "prisma": "^7.6.0",
-    "redis": "^5.10.0"
+    "prisma": "^7.6.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
