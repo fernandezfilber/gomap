@@ -21,83 +21,88 @@ exports.obtenerMapaRed = async (req, res) => {
     try {
         console.log("🌐 Cargando infraestructura completa para Forward Vision...");
 
-        // Ejecución en paralelo para no bloquear el hilo de Node.js
         const [postes, tramos, mufas, cajas, troncales] = await Promise.all([
-            // Capa de Postes: Incluye conteo de equipos para iconos dinámicos
+            // Capa de Postes: Conteo de equipos instalados
             prisma.poste.findMany({
                 include: {
                     _count: { select: { mufas: true, cajas: true } }
                 }
             }),
-            // Capa de Cables: Las líneas que unen todo
+            // Capa de Cables
             prisma.tramoCable.findMany(),
-            // Capa de Mufas: Incluye info de ocupación
+            // Capa de Mufas: Detalle de ramificación y splitteo
             prisma.mufa.findMany({
                 include: {
+                    troncal: { select: { nombre: true, bufferColor: true } },
                     _count: { select: { cajas: true } }
                 }
             }),
-            // Capa de Cajas NAP
+            // Capa de Cajas NAP: Detalle de abonados
             prisma.caja.findMany({
                 include: {
                     _count: { select: { clientes: true } }
                 }
             }),
-            // Capa de Troncales (Backbone)
+            // Capa de Troncales (Backbone de 96 hilos)
             prisma.troncal.findMany()
         ]);
 
-        // Formateamos la respuesta como "Capas" para el Frontend
+        // Formateamos la respuesta con lógica de negocio para el Frontend
         res.json({
             postes,
             tramos,
             mufas: mufas.map(m => ({
                 ...m,
-                hilosLibres: m.capacidadHilos - m._count.cajas,
-                estaLlena: m._count.cajas >= m.capacidadHilos
+                hilosUsados: m._count.cajas,
+                // Si ratio es 1:16, calculamos libres restando cajas
+                hilosLibresParaCajas: (parseInt(m.ratioSplitteo?.split(':')[1]) || 16) - m._count.cajas
             })),
             cajas: cajas.map(c => ({
                 ...c,
-                puertosLibres: c.puertosTotales - m._count.clientes
+                puertosEnUso: c._count.clientes,
+                estaSaturada: c._count.clientes >= c.puertosTotales
             })),
             troncales
         });
     } catch (error) {
         console.error("🔥 Error al cargar capas:", error);
-        res.status(500).json({ error: "No se pudo cargar la infraestructura" });
+        res.status(500).json({ error: "No se pudo cargar la infraestructura del servidor" });
     }
 };
 
-// B. VERIFICAR FACTIBILIDAD (Búsqueda Espacial)
+// B. VERIFICAR FACTIBILIDAD (Búsqueda Espacial en MySQL)
 exports.verificarFactibilidad = async (req, res) => {
     try {
         const { googleMapsUrl } = req.body;
         const coords = extraerCoordenadas(googleMapsUrl);
 
-        if (!coords) return res.status(400).json({ error: "Coordenadas inválidas" });
+        if (!coords) return res.status(400).json({ error: "URL de Google Maps inválida o sin coordenadas." });
 
         const { lat, lng } = coords;
 
-        // Búsqueda de cajas en radio de 300 metros usando SQL Raw (PostgreSQL)
-        const cajasCercanas = await prisma.$queryRaw`
-            SELECT id, codigo, latitud, longitud, "puertosTotales",
-            ROUND((6371 * acos(LEAST(1.0, GREATEST(-1.0, 
+        // Búsqueda de cajas en radio de 300 metros usando Haversine para MySQL (Hostinger)
+        // 6371 es el radio de la tierra en KM. Multiplicamos por 1000 para obtener metros.
+        const cajasCercanas = await prisma.$queryRawUnsafe(`
+            SELECT id, codigo, latitud, longitud, puertosTotales,
+            (6371 * acos(
                 cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + 
                 sin(radians(${lat})) * sin(radians(latitud))
-            ))) * 1000)::numeric, 2) AS distancia_metros
-            FROM "Caja"
-            WHERE (6371 * acos(LEAST(1.0, GREATEST(-1.0, 
-                cos(radians(${lat})) * cos(radians(latitud)) * cos(radians(longitud) - radians(${lng})) + 
-                sin(radians(${lat})) * sin(radians(latitud))
-            ))) * 1000) <= 300
-            ORDER BY distancia_metros ASC`;
+            ) * 1000) AS distancia_metros
+            FROM Caja
+            HAVING distancia_metros <= 300
+            ORDER BY distancia_metros ASC
+        `);
 
         res.json({
             disponible: cajasCercanas.length > 0,
             clienteCoords: { lat, lng },
-            cajas: cajasCercanas
+            cajas: cajasCercanas.map(c => ({
+                ...c,
+                distancia_metros: Math.round(c.distancia_metros * 100) / 100
+            }))
         });
     } catch (error) {
-        res.status(500).json({ error: "Error en cálculo de factibilidad" });
+        console.error("❌ Error en cálculo de factibilidad:", error);
+        res.status(500).json({ error: "Error en el motor de búsqueda espacial" });
     }
 };

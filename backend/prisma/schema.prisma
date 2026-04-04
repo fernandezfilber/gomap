@@ -1,3 +1,4 @@
+// --- CONFIGURACIÓN ---
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -5,11 +6,23 @@ datasource db {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-1.0.x"]
-  engineType    = "library"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+  engineType    = "binary"
 }
 
-// --- 1. GESTIÓN DE ACCESO Y PERSONAL ---
+// --- 1. GESTIÓN DE PROYECTOS Y ACCESO ---
+
+model Proyecto {
+  id          String       @id @default(uuid())
+  nombre      String       // Ej: "Despliegue Jicamarca Sector 3"
+  descripcion String?
+  estado      String       @default("PLANIFICACION") // PLANIFICACION, EN_EJECUCION, FINALIZADO
+  creadoEn    DateTime     @default(now())
+
+  // Relaciones
+  tramos      TramoCable[]
+  troncales   Troncal[]
+}
 
 model Usuario {
   id               String   @id @default(uuid())
@@ -19,174 +32,111 @@ model Usuario {
   rol              Rol      @default(TECNICO)
   activo           Boolean  @default(true)
   creadoEn         DateTime @default(now())
-
-  // Relación con averías que el técnico debe reparar
   averiasAsignadas Averia[]
 }
 
 enum Rol {
-  ADMIN   // Puede gestionar infraestructura y usuarios
-  TECNICO // Solo puede ver mapa, factibilidad y atender averías
+  ADMIN
+  TECNICO
 }
 
 // --- 2. INFRAESTRUCTURA DE RED (JERARQUÍA TÉCNICA) ---
 
 model Troncal {
-  id          String   @id @default(uuid())
-  nombre      String   @unique
-  prefijo     String   @unique
-  capacidad   Int      @default(96)
-  descripcion String?
+  id            String   @id @default(uuid())
+  nombre        String   @unique
+  bufferColor   String   // Color del Buffer principal
+  cantHilos     Int      @default(96)
+  hilosLibres   Int      // Contador dinámico
+  descripcion   String?
+  ruta          Json?    // [{lat, lng}, ...]
+
+  proyectoId    String
+  proyecto      Proyecto @relation(fields: [proyectoId], references: [id])
   
-  // Ruta principal por las calles (Polyline)
-  ruta        Json?    // [{lat: -11.1, lng: -76.1}, ...]
-  
-  creadoEn    DateTime @default(now())
-  mufas       Mufa[]
+  mufas         Mufa[]
+  creadoEn      DateTime @default(now())
 }
 
 model Mufa {
-  id             String       @id @default(uuid())
-  codigo         String       @unique 
-  bufferColor    String   
-  bufferPrefijo  String   
-  hiloColor      String   
+  id             String   @id @default(uuid())
+  codigo         String   @unique
   latitud        Float
   longitud       Float
-  direccion      String?
-  capacidadHilos Int          @default(16)
-  ratioSplitteo  String?      @default("1:16")
-
-  ruta           Json?        // Camino desde la Troncal hasta la Mufa
-  detalles       String?      @db.Text
-  estadoFisico   String?      @default("BUENO")
-  creadoEn       DateTime     @default(now())
-
-  // --- RELACIONES ---
-  // Una sola definición de troncal con Cascade para borrado seguro
-  troncalId      String
-  troncal        Troncal      @relation(fields: [troncalId], references: [id], onDelete: Cascade)
   
-  // Relación con Poste
-  posteId        String?   
-  poste          Poste?       @relation(fields: [posteId], references: [id])
+  // Trazabilidad de Fibra
+  bufferEntrada  String   // Color del buffer que entra
+  hiloEntrada    Int      // Número/Color del hilo que se "sangra"
+  ratioSplitteo  String   @default("1:16")
+  hilosDisponibles Int    @default(16) // Hilos después del splitter
 
-  // Equipos dependientes
+  // Relaciones Obligatorias
+  troncalId      String
+  troncal        Troncal  @relation(fields: [troncalId], references: [id], onDelete: Cascade)
+  
+  posteId        String
+  poste          Poste    @relation(fields: [posteId], references: [id])
+
   cajas          Caja[]
-
-  // Relación inversa para cables
-  tramosSalida   TramoCable[] @relation("CableDesdeMufa")
+  tramosOrigen   TramoCable[] @relation("CableDesdeMufa")
+  creadoEn       DateTime @default(now())
 }
 
 model Caja {
-  id             String    @id @default(uuid())
-  codigo         String    @unique
-  puertoMufa     Int       
-  puertoOlt      String?   
+  id             String   @id @default(uuid())
+  codigo         String   @unique
   latitud        Float
   longitud       Float
-  colorFibraCaja String?   
-  puertosTotales Int       @default(16)
-
-  ruta           Json?     // Camino desde la Mufa hasta la Caja
-  detalles       String?   @db.Text
-  observaciones  String?   
+  colorHiloCaja  String?  // Color del hilo que alimenta esta caja desde la mufa
+  puertosLibres  Int      @default(16)
 
   mufaId         String
-  mufa           Mufa      @relation(fields: [mufaId], references: [id], onDelete: Cascade)
+  mufa           Mufa     @relation(fields: [mufaId], references: [id], onDelete: Cascade)
   
+  posteId        String
+  poste          Poste    @relation(fields: [posteId], references: [id])
+
   clientes       Cliente[]
-  creadoEn       DateTime  @default(now())
-  
-  // Relación con Poste
-  posteId        String?   
-  poste          Poste?    @relation(fields: [posteId], references: [id])
-
-  // 🛰️ RELACIÓN INVERSA PARA TRAMOCABLE (Lo que faltaba)
-  tramosEntrada  TramoCable[] @relation("CableHaciaCaja")
+  tramosDestino  TramoCable[] @relation("CableHaciaCaja")
+  creadoEn       DateTime @default(now())
 }
 
-// --- 3. CLIENTES Y OPERACIONES ---
-
-model Cliente {
-  id              String   @id @default(uuid())
-  nombre          String
-  dni             String   @unique
-  telefono        String
-  direccion       String?
-  
-  onuExternalId   String?  @unique 
-  snMac           String?  @unique
-  
-  latitud         Float?
-  longitud        Float?
-  estadoServicio  String   @default("ACTIVO")
-  
-  cajaId          String
-  caja            Caja     @relation(fields: [cajaId], references: [id])
-  
-  averias         Averia[]
-  pagos           Pago[]
-  creadoEn        DateTime @default(now())
-}
-
-model Averia {
-  id              String   @id @default(uuid())
-  tipo            TipoAveria @default(SIN_INTERNET)
-  descripcion     String   @db.Text
-  estado          EstadoAveria @default(PENDIENTE)
-  prioridad       String   @default("MEDIA")
-  
-  clienteId       String
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  
-  tecnicoId       String?
-  tecnico         Usuario? @relation(fields: [tecnicoId], references: [id])
-  
-  creadoEn        DateTime @default(now())
-}
-
-model Pago {
-  id              String   @id @default(uuid())
-  monto           Float
-  metodo          Metodo     @default(YAPE)
-  estado          EstadoPago @default(PENDIENTE)
-  referencia      String?    @unique // Número de operación
-  fechaPago       DateTime   @default(now())
-
-  clienteId       String
-  cliente         Cliente    @relation(fields: [clienteId], references: [id])
-}
-
-// --- 4. INFRAESTRUCTURA FÍSICA ---
+// --- 3. INFRAESTRUCTURA FÍSICA Y CABLEADO ---
 
 model Poste {
   id          String   @id @default(uuid())
   codigo      String   @unique
   latitud     Float
   longitud    Float
-  tipo        String   @default("CONCRETO")
-  altura      String?  
-  propietario String? 
-
+  tipo        String   @default("CONCRETO") // MADERA, FIERRO
+  altura      String?
+  
   mufas       Mufa[]
   cajas       Caja[]
+  tramosInicio TramoCable[] @relation("InicioPoste")
+  tramosFin    TramoCable[] @relation("FinPoste")
   
   creadoEn    DateTime @default(now())
 }
 
 model TramoCable {
-  id            String  @id @default(uuid())
-  nombre        String? 
-  tipoCable     String  // ADSS, Drop, etc.
-  metraje       Float?  
+  id            String   @id @default(uuid())
+  nombre        String?
+  tipoCable     String   // ADSS, DROP
+  path          Json     // [{lat, lng}, ...]
+  colorVisual   String   @default("#8b5cf6")
+
+  proyectoId    String
+  proyecto      Proyecto @relation(fields: [proyectoId], references: [id])
+
+  // Puntos de anclaje (Obligatorios para no iniciar de la nada)
+  posteInicioId String
+  posteInicio   Poste    @relation("InicioPoste", fields: [posteInicioId], references: [id])
   
-  // Geometría de la línea
-  path          Json    // [{lat:..., lng:...}]
+  posteFinId    String
+  posteFin      Poste    @relation("FinPoste", fields: [posteFinId], references: [id])
 
-  creadoEn      DateTime @default(now())
-
-  // Relaciones con Mufa y Caja
+  // Relaciones lógicas opcionales
   mufaOrigenId  String?
   mufaOrigen    Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
   
@@ -194,30 +144,28 @@ model TramoCable {
   cajaDestino   Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
 }
 
-// --- 5. ENUMS ---
-
-enum Metodo {
-  YAPE
-  PLIN
-  TRANSFERENCIA
-  EFECTIVO
+// --- 4. OPERACIONES (CLIENTES, PAGOS, AVERIAS) ---
+// (Se mantienen igual, vinculados a Caja)
+model Cliente {
+  id      String @id @default(uuid())
+  nombre  String
+  dni     String @unique
+  cajaId  String
+  caja    Caja   @relation(fields: [cajaId], references: [id])
+  averias Averia[]
+  pagos   Pago[]
 }
 
-enum EstadoPago {
-  PENDIENTE
-  APROBADO
-  RECHAZADO
+model Averia {
+  id        String   @id @default(uuid())
+  clienteId String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  tecnicoId String?
+  tecnico   Usuario? @relation(fields: [tecnicoId], references: [id])
 }
 
-enum EstadoAveria {
-  PENDIENTE
-  EN_REPARACION
-  SOLUCIONADO
-}
-
-enum TipoAveria {
-  SIN_INTERNET
-  LENTITUD
-  CABLE_ROTO
-  CAJA_NAP_DANADA
+model Pago {
+  id        String @id @default(uuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
 }

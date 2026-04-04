@@ -12,19 +12,20 @@ import {
 
 const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTramo }) => {
   
-  // Colores estándar para identificar ramificaciones de splitters
   const coloresFibra = ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
   const [colorActivo, setColorActivo] = useState(coloresFibra[0]);
 
   const botones = [
     { id: 'VER', icon: <MousePointer2 size={18} />, label: 'Seleccionar', color: '#64748b' },
     { id: 'AGREGAR_POSTE', icon: <MapPin size={18} />, label: 'Nuevo Poste', color: '#ef4444' },
+    { id: 'AGREGAR_MUFA', icon: <GitCommit size={18} />, label: 'Agregar Mufa', color: '#f59e0b' },
+    { id: 'AGREGAR_CAJA', icon: <Box size={18} />, label: 'Agregar Caja NAP', color: '#3b82f6' },
     { id: 'TRAZAR_FIBRA', icon: <Share2 size={18} />, label: 'Trazar Tramo', color: '#8b5cf6' },
   ];
 
   const handleColorChange = (color) => {
     setColorActivo(color);
-    if (setColorTramo) setColorTramo(color); // Pasamos el color al hook useFibra
+    if (setColorTramo) setColorTramo(color);
   };
 
   return (
@@ -42,6 +43,7 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTram
               backgroundColor: modo === btn.id ? btn.color : '#f8fafc',
               color: modo === btn.id ? '#fff' : '#64748b',
               border: `1px solid ${modo === btn.id ? btn.color : '#e2e8f0'}`,
+              boxShadow: modo === btn.id ? `0 4px 12px ${btn.color}44` : 'none',
             }}
           >
             {btn.icon}
@@ -49,7 +51,6 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTram
         ))}
       </div>
 
-      {/* --- NUEVO: SELECTOR DE COLOR PARA RAMIFICACIÓN --- */}
       {modo === 'TRAZAR_FIBRA' && (
         <div style={styles.section}>
           <p style={styles.subTitle}>COLOR RAMA</p>
@@ -70,7 +71,6 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTram
         </div>
       )}
 
-      {/* Panel de Acciones Finales */}
       {modo === 'TRAZAR_FIBRA' && (
         <div style={styles.fiberActions}>
           <button 
@@ -87,7 +87,6 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTram
         </div>
       )}
 
-      {/* Botón rápido para capas (Opcional) */}
       <div style={{ marginTop: '10px' }}>
          <button onClick={() => setModo('CAPAS')} style={styles.layersBtn}>
             <Layers size={14} style={{ marginRight: 5 }} /> Capas
@@ -144,7 +143,8 @@ const styles = {
   },
   layersBtn: {
     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #f1f5f9',
+    backgroundColor: 'transparent', // <-- CORREGIDO AQUÍ
+    color: '#94a3b8', border: '1px solid #f1f5f9',
     padding: '6px', borderRadius: '8px', fontSize: '9px', cursor: 'pointer'
   }
 };

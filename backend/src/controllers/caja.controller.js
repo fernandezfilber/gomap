@@ -1,23 +1,23 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. OBTENER TODAS LAS CAJAS (Con infraestructura física y lógica)
+// 1. OBTENER TODAS LAS CAJAS (Inventario completo con capacidad de abonados)
 exports.getCajas = async (req, res) => {
     try {
         const cajas = await prisma.caja.findMany({
             include: { 
-                mufa: { select: { codigo: true, troncalId: true } },
-                poste: true,
-                _count: { select: { clientes: true } } // Para saber cuántos abonados tiene la NAP
+                mufa: { select: { codigo: true, ratioSplitteo: true } },
+                poste: { select: { codigo: true, latitud: true, longitud: true } },
+                _count: { select: { clientes: true } } 
             } 
         });
         res.json(cajas);
     } catch (error) {
-        res.status(500).json({ error: "Error al obtener inventario de cajas" });
+        res.status(500).json({ error: "Error al obtener inventario de cajas NAP" });
     }
 };
 
-// 2. CREAR CAJA NAP (Validando Splitter de Mufa)
+// 2. CREAR CAJA NAP (Validando salida de Splitter y anclaje a Poste)
 exports.createCaja = async (req, res) => {
     try {
         const { 
@@ -26,25 +26,23 @@ exports.createCaja = async (req, res) => {
             ruta, detalles, observaciones  
         } = req.body;
 
-        if (!mufaId) return res.status(400).json({ error: "El mufaId es obligatorio para conectar la caja." });
-
-        // 1. Validar existencia de la Mufa
-        const mufa = await prisma.mufa.findUnique({ where: { id: mufaId } });
-        if (!mufa) return res.status(404).json({ error: "Mufa de origen no encontrada" });
-
-        // 2. Lógica de Coordenadas (Prioridad al Poste)
-        let latFinal = latitud ? parseFloat(latitud) : 0;
-        let lngFinal = longitud ? parseFloat(longitud) : 0;
-
-        if (posteId) {
-            const poste = await prisma.poste.findUnique({ where: { id: posteId } });
-            if (poste) {
-                latFinal = poste.latitud;
-                lngFinal = poste.longitud;
-            }
+        // Validaciones de esquema v6
+        if (!mufaId || !posteId) {
+            return res.status(400).json({ error: "mufaId y posteId son obligatorios para la instalación." });
         }
 
-        // 3. Validar si el puerto del Splitter en la Mufa ya está ocupado
+        // 1. Verificar Mufa y su capacidad de splitter
+        const mufa = await prisma.mufa.findUnique({ where: { id: mufaId } });
+        if (!mufa) return res.status(404).json({ error: "Mufa de origen no encontrada." });
+
+        // 2. Sincronizar coordenadas con el Poste seleccionado
+        const poste = await prisma.poste.findUnique({ where: { id: posteId } });
+        if (!poste) return res.status(404).json({ error: "El poste seleccionado no existe." });
+
+        const latFinal = poste.latitud;
+        const lngFinal = poste.longitud;
+
+        // 3. Validar ocupación del puerto en el Splitter (1:8 o 1:16)
         const pMufa = parseInt(puertoMufa);
         const salidaOcupada = await prisma.caja.findFirst({
             where: { mufaId, puertoMufa: pMufa }
@@ -52,85 +50,41 @@ exports.createCaja = async (req, res) => {
         
         if (salidaOcupada) {
             return res.status(400).json({ 
-                error: `Conflicto: El puerto ${pMufa} de la mufa ya está alimentando a la caja ${salidaOcupada.codigo}` 
+                error: `El puerto ${pMufa} de la mufa ${mufa.codigo} ya está alimentando a otra NAP.` 
             });
         }
 
-        // 4. Generar Código Automático (Jerarquía: COD-MUFA-C01)
+        // 4. Generar Código Jerárquico: COD-MUFA-NAP-XX
         const nPuerto = pMufa.toString().padStart(2, '0');
-        const codigoAuto = `${mufa.codigo}-C${nPuerto}`;
+        const codigoAuto = `${mufa.codigo}-NAP${nPuerto}`;
 
-        // 5. Crear Caja
+        // 5. Crear Caja con conteo de puertos libres
         const nuevaCaja = await prisma.caja.create({
             data: {
                 codigo: codigoAuto,
                 puertoMufa: pMufa,
-                colorFibraCaja,
-                puertoOlt,
+                colorFibraCaja: colorFibraCaja || "Blanco",
+                puertoOlt: puertoOlt || "PON-1",
                 puertosTotales: parseInt(puertosTotales) || 16,
+                puertosLibres: parseInt(puertosTotales) || 16, // Inicia vacía
                 latitud: latFinal,
                 longitud: lngFinal,
                 mufaId,
-                posteId: posteId || null,
+                posteId,
                 ruta: ruta || null,
                 detalles: detalles || "",
                 observaciones: observaciones || ""
-            },
-            include: { poste: true, mufa: true }
+            }
         });
 
         res.status(201).json(nuevaCaja);
     } catch (error) {
-        console.error("❌ ERROR CAJA:", error.message);
-        res.status(500).json({ error: "Error al registrar la caja", detalle: error.message });
+        console.error("❌ ERROR CREAR CAJA:", error.message);
+        res.status(500).json({ error: "Error en el servidor al registrar la caja NAP" });
     }
 };
 
-// 3. ELIMINAR CAJA (Limpieza de enlaces físicos)
-exports.deleteCaja = async (req, res) => {
-    const { id } = req.params;
-    try {
-        await prisma.$transaction(async (tx) => {
-            // A. Borrar Tramos de Cable que lleguen a esta caja
-            await tx.tramoCable.deleteMany({ where: { cajaDestinoId: id } });
-
-            // B. Borrar la Caja (Los clientes se borran si el schema tiene Cascade)
-            await tx.caja.delete({ where: { id } });
-        });
-
-        res.json({ message: "Caja eliminada y puerto de mufa liberado correctamente." });
-    } catch (error) {
-        res.status(500).json({ error: "Error al eliminar la caja", detalle: error.message });
-    }
-};
-
-// 4. OBTENER SALIDAS OCUPADAS (Para el selector del frontend)
-exports.getHilosOcupados = async (req, res) => {
-    const { mufaId } = req.params;
-    try {
-        // Buscamos todas las cajas que dependen de esa mufa
-        const cajasVinculadas = await prisma.caja.findMany({
-            where: { mufaId: mufaId },
-            select: { 
-                puertoMufa: true,
-                codigo: true 
-            }
-        });
-
-        // Extraemos solo los números de puerto: [1, 3, 4...]
-        const puertosUsados = cajasVinculadas.map(c => c.puertoMufa);
-
-        res.json({
-            mufaId,
-            totalOcupados: puertosUsados.length,
-            puertosUsados: puertosUsados, // Array para que el frontend bloquee los inputs
-            detalle: cajasVinculadas
-        });
-    } catch (error) {
-        console.error("Error en hilos-ocupados:", error);
-        res.status(500).json({ error: "Error al consultar disponibilidad de hilos" });
-    }
-};
+// 3. ACTUALIZAR CAJA
 exports.actualizarCaja = async (req, res) => {
     const { id } = req.params;
     try {
@@ -138,8 +92,43 @@ exports.actualizarCaja = async (req, res) => {
             where: { id },
             data: req.body
         });
-        res.json(actualizada);
+        res.json({ mensaje: "Caja NAP actualizada", data: actualizada });
     } catch (error) {
         res.status(500).json({ error: "Error al actualizar la caja" });
+    }
+};
+
+// 4. ELIMINAR CAJA (Limpieza de cables asociados)
+exports.deleteCaja = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.$transaction(async (tx) => {
+            // Borrar tramos de cable que terminan en esta caja (Drop cables)
+            await tx.tramoCable.deleteMany({ where: { cajaDestinoId: id } });
+            await tx.caja.delete({ where: { id } });
+        });
+
+        res.json({ message: "Caja NAP eliminada y puerto de splitter liberado." });
+    } catch (error) {
+        res.status(500).json({ error: "Error al eliminar la caja NAP" });
+    }
+};
+
+// 5. CONSULTAR PUERTOS OCUPADOS (Para bloqueo de UI)
+exports.getHilosOcupados = async (req, res) => {
+    const { mufaId } = req.params;
+    try {
+        const cajas = await prisma.caja.findMany({
+            where: { mufaId },
+            select: { puertoMufa: true, codigo: true }
+        });
+
+        res.json({
+            mufaId,
+            puertosUsados: cajas.map(c => c.puertoMufa),
+            detalle: cajas
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Error al consultar disponibilidad" });
     }
 };

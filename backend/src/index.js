@@ -34,6 +34,7 @@ app.use("/api/cajas", require("./routes/caja.routes"));
 app.use("/api/clientes", require("./routes/cliente.routes"));
 app.use("/api/postes", require("./routes/postes.routes"));
 app.use("/api/tramos", require("./routes/tramoCables.routes"));
+app.use("/api/proyectos", require("./routes/proyecto.routes"));
 
 // 4. Manejo de Errores
 app.use((err, req, res, next) => {
