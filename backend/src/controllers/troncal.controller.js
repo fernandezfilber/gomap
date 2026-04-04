@@ -4,34 +4,39 @@ const prisma = new PrismaClient();
 // 1. CREAR: Vinculado a Proyecto y con inventario de hilos inicial
 exports.createTroncal = async (req, res) => {
     try {
-        const { nombre, bufferColor, capacidad, descripcion, ruta, proyectoId } = req.body;
+        // 1. Extraemos según los nombres REALES de tu modelo Prisma
+        const { nombre, bufferColor, cantHilos, descripcion, ruta, proyectoId } = req.body;
         
-        // Validaciones obligatorias según el nuevo esquema
-        if (!nombre || !bufferColor || !capacidad || !proyectoId) {
+        // 2. Validaciones estrictas
+        if (!nombre || !bufferColor || !cantHilos || !proyectoId) {
             return res.status(400).json({ 
-                error: "Nombre, Color de Buffer, Capacidad y Proyecto ID son obligatorios." 
+                error: "Nombre, Color de Buffer, cantHilos y proyectoId son obligatorios." 
             });
         }
 
+        // 3. Creación en la DB
         const nueva = await prisma.troncal.create({
             data: { 
                 nombre, 
                 bufferColor, 
-                capacidad: parseInt(capacidad), 
-                hilosLibres: parseInt(capacidad), // Al nacer, todos los hilos están libres
-                descripcion, 
-                ruta: ruta || [],
-                proyectoId // Relación con el proyecto de Jicamarca u otro
+                cantHilos: parseInt(cantHilos), 
+                hilosLibres: parseInt(cantHilos), // Inicializamos igual que la capacidad total
+                descripcion: descripcion || "", 
+                ruta: ruta || "", // Tu esquema dice String?, no Array
+                proyectoId 
             }
         });
 
         res.status(201).json(nueva);
     } catch (error) {
-        console.error("❌ Error al crear troncal:", error);
-        res.status(500).json({ error: "Error al crear troncal", detalle: error.message });
+        console.error("❌ Error en Troncal:", error.message);
+        res.status(500).json({ 
+            error: "Error al crear troncal", 
+            detalle: error.message,
+            codigoPrisma: error.code 
+        });
     }
 };
-
 // 2. OBTENER TODAS: Incluyendo datos del proyecto y conteo de mufas
 exports.getTroncales = async (req, res) => {
     try {
