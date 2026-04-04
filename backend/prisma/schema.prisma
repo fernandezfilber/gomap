@@ -6,7 +6,10 @@ datasource db {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+  // Esta combinación cubre el 99% de los servidores Linux modernos
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  // Library es más ligero que Binary para Hostinger
+  engineType    = "library" 
 }
 // --- 1. GESTIÓN DE PROYECTOS Y ACCESO ---
 
