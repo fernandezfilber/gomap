@@ -1,33 +1,55 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: [
+    { emit: 'stdout', level: 'query' },
+    { emit: 'stdout', level: 'error' },
+    { emit: 'stdout', level: 'info' },
+    { emit: 'stdout', level: 'warn' },
+  ],
+});
 
-// 1. CREAR: Inicializar una zona de despliegue
 exports.crearProyecto = async (req, res) => {
+  console.log("--- 🛰️ INICIO DE OPERACIÓN: CREAR PROYECTO ---");
+  console.log("📦 Datos recibidos del cliente:", req.body);
+
   try {
     const { nombre, descripcion } = req.body;
 
     if (!nombre) {
-      return res.status(400).json({ error: "El nombre del proyecto es obligatorio." });
+      console.warn("⚠️ Intento de creación sin nombre");
+      return res.status(400).json({ error: "Nombre obligatorio" });
     }
 
+    console.log("⏳ Prisma intentando 'create' en la DB...");
+    
     const proyecto = await prisma.proyecto.create({
       data: { 
         nombre, 
         descripcion,
-        estado: "PLANIFICACION" // Estado inicial por defecto
+        estado: "PLANIFICACION" 
       }
     });
 
-    res.status(201).json({
-      mensaje: "Proyecto de red creado correctamente",
-      proyecto
-    });
+    console.log("✅ Proyecto creado con éxito ID:", proyecto.id);
+    res.status(201).json(proyecto);
+
   } catch (error) {
-    console.error("❌ Error al crear proyecto:", error);
-    res.status(500).json({ error: "No se pudo crear el proyecto" });
+    console.error("❌ ERROR DETECTADO EN PRIMA:");
+    console.error("Cod Error:", error.code); // P2002, P1001, etc.
+    console.error("Mensaje:", error.message);
+    
+    // Esto nos dirá si el binario de Rust falló por librerías
+    if (error.message.includes("engine")) {
+      console.error("🚨 Fallo crítico del Query Engine de Prisma");
+    }
+
+    res.status(500).json({ 
+      error: "Error del motor de base de datos",
+      detalles: error.message,
+      codigo: error.code 
+    });
   }
 };
-
 // 2. LISTAR: Resumen de todos los proyectos con conteo de cables
 exports.listarProyectos = async (req, res) => {
   try {
