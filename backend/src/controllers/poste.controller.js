@@ -38,16 +38,31 @@ exports.createPoste = async (req, res) => {
                 latitud: parseFloat(latitud), 
                 longitud: parseFloat(longitud), 
                 tipo: tipo || 'CONCRETO', 
-                altura: altura || '8m', 
-                propietario: propietario || 'Forward Vision' 
+                altura: altura || '8m'
+                // Si 'propietario' no está en tu Model de abajo, quítalo de aquí o agrégalo al schema
             }
         });
+        
+        console.log("✅ Poste creado:", nuevoPoste.codigo);
         res.status(201).json(nuevoPoste);
+
     } catch (error) {
-        res.status(400).json({ error: "Error al crear poste. El código podría estar duplicado." });
+        // --- 🛰️ DEBUG PARA FILBER ---
+        console.error("❌ ERROR REAL EN CREATE POSTE:", error.code, error.message);
+        
+        // Si el código de error es P2002, es realmente un duplicado
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: "El código del poste ya existe en la base de datos." });
+        }
+
+        // Si es otro error, queremos saber cuál es
+        res.status(500).json({ 
+            error: "Error interno del servidor", 
+            mensajeOriginal: error.message,
+            codigoPrisma: error.code 
+        });
     }
 };
-
 // 3. DETALLE DE POSTE (Crucial para el "DetalleEquipo.jsx" que armamos)
 exports.getPosteWithEquipos = async (req, res) => {
     const { id } = req.params;
