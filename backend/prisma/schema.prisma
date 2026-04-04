@@ -44,31 +44,35 @@ model Troncal {
 }
 
 model Mufa {
-  id             String   @id @default(uuid())
-  codigo         String   @unique 
+  id             String       @id @default(uuid())
+  codigo         String       @unique 
   bufferColor    String   
   bufferPrefijo  String   
   hiloColor      String   
   latitud        Float
   longitud       Float
   direccion      String?
-  capacidadHilos Int      @default(16)
+  capacidadHilos Int          @default(16)
+  ratioSplitteo  String?      @default("1:16")
 
-  ruta           Json?    // Camino desde la Troncal hasta la Mufa
-  detalles       String?  @db.Text
-  estadoFisico   String?  @default("BUENO")
+  ruta           Json?        // Camino desde la Troncal hasta la Mufa
+  detalles       String?      @db.Text
+  estadoFisico   String?      @default("BUENO")
+  creadoEn       DateTime     @default(now())
 
+  // --- RELACIONES ---
+  // Una sola definición de troncal con Cascade para borrado seguro
   troncalId      String
-  troncal        Troncal  @relation(fields: [troncalId], references: [id])
-  
-  cajas          Caja[]
-  creadoEn       DateTime @default(now())
+  troncal        Troncal      @relation(fields: [troncalId], references: [id], onDelete: Cascade)
   
   // Relación con Poste
   posteId        String?   
-  poste          Poste?   @relation(fields: [posteId], references: [id])
+  poste          Poste?       @relation(fields: [posteId], references: [id])
 
-  // 🛰️ RELACIÓN INVERSA PARA TRAMOCABLE (Lo que faltaba)
+  // Equipos dependientes
+  cajas          Caja[]
+
+  // Relación inversa para cables
   tramosSalida   TramoCable[] @relation("CableDesdeMufa")
 }
 

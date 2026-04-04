@@ -1,49 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Componentes y Hooks propios
-import Toolbar from './Toolbar';
-import { useFibra } from '../../hooks/useFibra';
-import { useInfraestructura } from '../../hooks/useInfraestructura';
+// Hooks y Servicios Personalizados
+import { useMapData } from '../../hooks/useMapData';
+import { useDrawFiber } from '../../hooks/useDrawFiber';
+import { useGestionRed } from '../../hooks/useGestionRed';
+import { redService } from '../../api/redService';
 
+// Componentes de Interfaz
+import Toolbar from './Toolbar';
+import DetalleEquipo from './DetalleEquipo';
+import ConfirmDelete from './ConfirmDelete';
+
+// Configuración de Iconos
 const posteIcon = new L.Icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/2991/2991231.png',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
+    iconSize: [30, 30], iconAnchor: [15, 30],
 });
 
 const MapaRed = () => {
+    // 1. ESTADOS DE INTERFAZ
     const [modo, setModo] = useState('VER');
-    const [postes, setPostes] = useState([]);
-    const [tramosGuardados, setTramosGuardados] = useState([]); // 🚀 Estado para los cables de la DB
+    const [seleccionado, setSeleccionado] = useState(null);
+    const [showConfirm, setShowConfirm] = useState(false);
 
-    const { puntosCable, trazando, agregarPunto, iniciarTrazo, finalizarTrazo } = useFibra('http://localhost:5000/api/tramos');
-    const { agregarEquipo } = useInfraestructura('http://localhost:5000/api');
+    // 2. HOOKS DE LÓGICA (Separados por funcionalidad)
+    const { postes, tramos, troncales, reload } = useMapData();
+    const { actualizarElemento, eliminarElemento } = useGestionRed(reload);
+    
+    const { 
+        puntos, trazando, setTrazando, agregarPunto, guardar, color, setPuntos 
+    } = useDrawFiber(async (nuevoTramo) => {
+        await redService.crearTramo(nuevoTramo);
+        reload();
+    });
 
-    // 1. Cargar Postes y Tramos desde el Backend
-    const cargarDatos = async () => {
-        try {
-            const [resPostes, resTramos] = await Promise.all([
-                fetch('http://localhost:5000/api/postes').then(r => r.json()),
-                fetch('http://localhost:5000/api/tramos').then(r => r.json())
-            ]);
-            setPostes(resPostes);
-            setTramosGuardados(resTramos);
-        } catch (err) {
-            console.error("Error cargando infraestructura:", err);
-        }
-    };
-
-    useEffect(() => {
-        cargarDatos();
-    }, []);
-
+    // 3. EVENTOS DE CLICK EN EL MAPA
     const MapEvents = () => {
         useMapEvents({
-            click: (e) => {
-                if (modo === 'TRAZAR_FIBRA' || trazando) {
+            click: async (e) => {
+                if (modo === 'AGREGAR_POSTE') {
+                    const codigo = prompt("Código del nuevo poste:");
+                    if (codigo) {
+                        await redService.crearPoste({ 
+                            codigo, 
+                            latitud: e.latlng.lat, 
+                            longitud: e.latlng.lng 
+                        });
+                        reload();
+                        setModo('VER');
+                    }
+                } else if (trazando) {
                     agregarPunto(e.latlng);
                 }
             },
@@ -51,84 +60,106 @@ const MapaRed = () => {
         return null;
     };
 
-    return (
-        <div style={{ position: 'relative', height: '100vh', width: '100%', cursor: trazando ? 'crosshair' : 'grab' }}>
-            
-            {trazando && (
-                <div style={styles.floatingAlert}>
-                    🛰️ MODO TRAZADO ACTIVO: Haz click para agregar puntos de fibra
-                </div>
-            )}
+    // 4. MANEJADORES DE ACCIONES
+    const handleFinalizarTrazo = async () => {
+        const nombre = prompt("Nombre del tramo/cable:");
+        if (!nombre) return;
+        const tipo = prompt("¿Es TRONCAL o RAMAL?", "RAMAL");
+        
+        await guardar({ nombre, tipoCable: tipo });
+        setModo('VER');
+    };
 
+    const confirmDeleteAction = async () => {
+        await eliminarElemento(seleccionado.tipo, seleccionado.data.id);
+        setShowConfirm(false);
+        setSeleccionado(null);
+    };
+
+    return (
+        <div style={{ position: 'relative', height: '100vh', width: '100%' }}>
+            {/* BARRA DE HERRAMIENTAS */}
             <Toolbar 
                 modo={modo} 
-                setModo={(nuevoModo) => {
-                    setModo(nuevoModo);
-                    if (nuevoModo === 'TRAZAR_FIBRA') iniciarTrazo();
+                setModo={(m) => {
+                    setModo(m);
+                    setTrazando(m === 'TRAZAR_FIBRA');
+                    if (m !== 'TRAZAR_FIBRA') setPuntos([]);
                 }} 
-                onFinalizarTrazo={async () => {
-                    await finalizarTrazo({ nombre: 'Troncal Chosica', tipoCable: 'ADSS 24H' });
-                    setModo('VER');
-                    cargarDatos(); // 🔄 Recargar para ver el nuevo cable
-                }}
-                hayTrazoActivo={puntosCable.length > 1}
+                onFinalizarTrazo={handleFinalizarTrazo}
+                hayTrazoActivo={puntos.length > 1}
             />
 
             <MapContainer center={[-11.935, -76.702]} zoom={15} style={{ height: '100%', width: '100%' }}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; Forward Vision' />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapEvents />
 
-                {/* 2. DIBUJAR TRAMOS GUARDADOS (Transformando objetos a arrays) */}
-                {tramosGuardados.map((tramo) => {
-                    // Leaflet necesita [[lat, lng], [lat, lng]]
-                    const posiciones = tramo.path.map(p => [p.lat, p.lng]);
-                    return (
-                        <Polyline 
-                            key={tramo.id} 
-                            positions={posiciones} 
-                            color="#8b5cf6" 
-                            weight={5}
-                        >
-                            <Popup>
-                                <strong>{tramo.nombre}</strong><br/>
-                                Cable: {tramo.tipoCable}
-                            </Popup>
-                        </Polyline>
-                    );
-                })}
+                {/* CAPA: TRONCALES (Líneas gruesas negras/oscuras) */}
+                {troncales.map((t) => (
+                    <Polyline 
+                        key={`troncal-${t.id}`} 
+                        positions={t.ruta.map(p => [p.lat, p.lng])} 
+                        color="#0f172a" 
+                        weight={6}
+                        eventHandlers={{ click: () => setSeleccionado({ data: t, tipo: 'troncales' }) }}
+                    />
+                ))}
 
-                {/* 3. PREVISUALIZACIÓN DEL TRAZO ACTUAL */}
-                {puntosCable.length > 0 && (
-                    <Polyline positions={puntosCable} color="#f59e0b" weight={3} dashArray="5, 10" />
-                )}
+                {/* CAPA: TRAMOS/RAMALES (Líneas de colores) */}
+                {tramos.map((t) => (
+                    <Polyline 
+                        key={`tramo-${t.id}`} 
+                        positions={t.path.map(p => [p.lat, p.lng])} 
+                        color={t.color || "#8b5cf6"} 
+                        weight={3}
+                        eventHandlers={{ click: () => setSeleccionado({ data: t, tipo: 'tramos' }) }}
+                    />
+                ))}
 
-                {/* 4. POSTES */}
+                {/* PREVISUALIZACIÓN DE TRAZO ACTUAL */}
+                {trazando && <Polyline positions={puntos} color={color} weight={4} dashArray="10, 10" />}
+
+                {/* CAPA: POSTES Y EQUIPOS */}
                 {postes.map((p) => (
-                    <Marker key={p.id} position={[p.latitud, p.longitud]} icon={posteIcon}>
+                    <Marker key={`poste-${p.id}`} position={[p.latitud, p.longitud]} icon={posteIcon}>
                         <Popup>
                             <div style={{ textAlign: 'center' }}>
-                                <h4>Poste: {p.codigo}</h4>
-                                <button onClick={() => agregarEquipo('mufas', p.id)} style={styles.popupBtn}>+ Mufa</button>
-                                <button onClick={() => agregarEquipo('cajas', p.id)} style={styles.popupBtn}>+ Caja</button>
+                                <strong>Poste: {p.codigo}</strong><hr/>
+                                <button 
+                                    onClick={() => setSeleccionado({ data: p, tipo: 'postes' })}
+                                    style={styles.btnInfo}
+                                > Ver Detalles / Gestionar </button>
                             </div>
                         </Popup>
                     </Marker>
                 ))}
             </MapContainer>
+
+            {/* MODAL DE EDICIÓN/DETALLE */}
+            {seleccionado && (
+                <DetalleEquipo 
+                    equipo={seleccionado.data} 
+                    tipo={seleccionado.tipo}
+                    onUpdate={actualizarElemento}
+                    onDelete={() => setShowConfirm(true)}
+                    onClose={() => setSeleccionado(null)}
+                />
+            )}
+
+            {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+            <ConfirmDelete 
+                isOpen={showConfirm}
+                tipo={seleccionado?.tipo}
+                nombre={seleccionado?.data?.codigo || seleccionado?.data?.nombre}
+                onConfirm={confirmDeleteAction}
+                onCancel={() => setShowConfirm(false)}
+            />
         </div>
     );
 };
 
 const styles = {
-    floatingAlert: {
-        position: 'absolute', top: '25px', left: '50%', transform: 'translateX(-50%)',
-        zIndex: 1100, backgroundColor: '#8b5cf6', color: 'white', padding: '10px 20px',
-        borderRadius: '30px', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.4)'
-    },
-    popupBtn: {
-        fontSize: '10px', padding: '5px 8px', margin: '2px', cursor: 'pointer',
-        backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px'
-    }
+    btnInfo: { backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', width: '100%' }
 };
 
 export default MapaRed;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   MousePointer2, 
   MapPin, 
@@ -6,22 +6,31 @@ import {
   Box, 
   Share2, 
   Save, 
-  Trash2 
+  Trash2,
+  Layers
 } from 'lucide-react';
 
-const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo }) => {
+const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo, setColorTramo }) => {
   
+  // Colores estándar para identificar ramificaciones de splitters
+  const coloresFibra = ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
+  const [colorActivo, setColorActivo] = useState(coloresFibra[0]);
+
   const botones = [
-    { id: 'VER', icon: <MousePointer2 size={20} />, label: 'Seleccionar', color: '#3b82f6' },
-    { id: 'AGREGAR_POSTE', icon: <MapPin size={20} />, label: 'Poste', color: '#ef4444' },
-    { id: 'AGREGAR_MUFA', icon: <GitCommit size={20} />, label: 'Mufa', color: '#10b981' },
-    { id: 'AGREGAR_CAJA', icon: <Box size={20} />, label: 'Caja NAP', color: '#f59e0b' },
-    { id: 'TRAZAR_FIBRA', icon: <Share2 size={20} />, label: 'Jalar Fibra', color: '#8b5cf6' },
+    { id: 'VER', icon: <MousePointer2 size={18} />, label: 'Seleccionar', color: '#64748b' },
+    { id: 'AGREGAR_POSTE', icon: <MapPin size={18} />, label: 'Nuevo Poste', color: '#ef4444' },
+    { id: 'TRAZAR_FIBRA', icon: <Share2 size={18} />, label: 'Trazar Tramo', color: '#8b5cf6' },
   ];
+
+  const handleColorChange = (color) => {
+    setColorActivo(color);
+    if (setColorTramo) setColorTramo(color); // Pasamos el color al hook useFibra
+  };
 
   return (
     <div style={styles.container}>
       <h4 style={styles.title}>HERRAMIENTAS GIS</h4>
+      
       <div style={styles.grid}>
         {botones.map((btn) => (
           <button
@@ -40,7 +49,28 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo }) => {
         ))}
       </div>
 
-      {/* Panel de Control de Fibra (Solo aparece si estás trazando) */}
+      {/* --- NUEVO: SELECTOR DE COLOR PARA RAMIFICACIÓN --- */}
+      {modo === 'TRAZAR_FIBRA' && (
+        <div style={styles.section}>
+          <p style={styles.subTitle}>COLOR RAMA</p>
+          <div style={styles.colorGrid}>
+            {coloresFibra.map(c => (
+              <div 
+                key={c}
+                onClick={() => handleColorChange(c)}
+                style={{
+                  ...styles.colorCircle,
+                  backgroundColor: c,
+                  border: colorActivo === c ? '2px solid #1e293b' : '1px solid #e2e8f0',
+                  transform: colorActivo === c ? 'scale(1.2)' : 'scale(1)'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Panel de Acciones Finales */}
       {modo === 'TRAZAR_FIBRA' && (
         <div style={styles.fiberActions}>
           <button 
@@ -48,81 +78,74 @@ const Toolbar = ({ modo, setModo, onFinalizarTrazo, hayTrazoActivo }) => {
             disabled={!hayTrazoActivo}
             style={styles.saveBtn}
           >
-            <Save size={16} style={{ marginRight: 5 }} />
-            Guardar Tramo
+            <Save size={14} style={{ marginRight: 5 }} />
+            Guardar
           </button>
           <button onClick={() => setModo('VER')} style={styles.cancelBtn}>
-            <Trash2 size={16} />
+            <Trash2 size={14} />
           </button>
         </div>
       )}
+
+      {/* Botón rápido para capas (Opcional) */}
+      <div style={{ marginTop: '10px' }}>
+         <button onClick={() => setModo('CAPAS')} style={styles.layersBtn}>
+            <Layers size={14} style={{ marginRight: 5 }} /> Capas
+         </button>
+      </div>
     </div>
   );
 };
 
 const styles = {
   container: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    zIndex: 1000,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: '15px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    width: '120px',
-    backdropFilter: 'blur(5px)',
+    position: 'absolute', top: '20px', right: '20px', zIndex: 1000,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    padding: '15px', borderRadius: '16px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+    width: '110px', backdropFilter: 'blur(8px)',
   },
   title: {
-    margin: '0 0 12px 0',
-    fontSize: '10px',
-    fontWeight: 'bold',
-    color: '#94a3b8',
-    textAlign: 'center',
-    letterSpacing: '1px',
+    margin: '0 0 10px 0', fontSize: '9px', fontWeight: 'bold',
+    color: '#94a3b8', textAlign: 'center', letterSpacing: '0.5px',
   },
   grid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
+    display: 'grid', gridTemplateColumns: '1fr', gap: '8px',
   },
   button: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '40px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    height: '38px', borderRadius: '10px', cursor: 'pointer',
+    transition: 'all 0.2s ease', border: 'none'
+  },
+  section: {
+    marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #f1f5f9'
+  },
+  subTitle: {
+    fontSize: '8px', fontWeight: 'bold', color: '#cbd5e1', marginBottom: '8px', textAlign: 'center'
+  },
+  colorGrid: {
+    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px'
+  },
+  colorCircle: {
+    width: '18px', height: '18px', borderRadius: '50%', cursor: 'pointer', transition: '0.2s'
   },
   fiberActions: {
-    marginTop: '15px',
-    borderTop: '1px solid #e2e8f0',
-    paddingTop: '10px',
+    marginTop: '12px', display: 'flex', gap: '4px'
   },
   saveBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    padding: '8px',
-    borderRadius: '6px',
-    fontSize: '11px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    marginBottom: '5px'
+    flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#10b981', color: 'white', border: 'none',
+    padding: '8px', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer'
   },
   cancelBtn: {
-    width: '100%',
-    backgroundColor: '#f1f5f9',
-    color: '#ef4444',
-    border: 'none',
-    padding: '5px',
-    borderRadius: '6px',
-    cursor: 'pointer'
+    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fee2e2', color: '#ef4444', border: 'none',
+    padding: '8px', borderRadius: '8px', cursor: 'pointer'
+  },
+  layersBtn: {
+    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'transparent', color: '#94a3b8', border: '1px solid #f1f5f9',
+    padding: '6px', borderRadius: '8px', fontSize: '9px', cursor: 'pointer'
   }
 };
 

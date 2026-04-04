@@ -1,7 +1,8 @@
 import axios from 'axios';
-import { handleGlobalError } from '../utils/errorHandler'; // <--- Importamos el manejador central
+import { handleGlobalError } from '../utils/errorHandler';
 
 const fvApi = axios.create({
+    // Prioriza la variable de entorno, si no, usa localhost
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
     withCredentials: true,
     headers: {
@@ -9,7 +10,7 @@ const fvApi = axios.create({
     }
 });
 
-// --- INTERCEPTOR DE PETICIONES ---
+// --- INTERCEPTOR DE PETICIONES (Seguridad) ---
 fvApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -21,13 +22,12 @@ fvApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// --- INTERCEPTOR DE RESPUESTAS ---
+// --- INTERCEPTOR DE RESPUESTAS (Manejador de Errores) ---
 fvApi.interceptors.response.use(
     (response) => response, 
     (error) => {
-        // En lugar de hacer un switch gigante aquí, llamamos a nuestro manejador
+        // Centralizamos el error (401, 404, 500, etc.)
         handleGlobalError(error); 
-        
         return Promise.reject(error);
     }
 );

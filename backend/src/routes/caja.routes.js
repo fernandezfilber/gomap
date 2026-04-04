@@ -10,7 +10,7 @@ router.get('/', cajaController.getCajas);
 
 // NUEVA RUTA: Obtener qué hilos/salidas están ocupadas en una mufa específica
 // Se usa en el frontend al seleccionar una mufa para limpiar el selector
-router.get('/mufas/:mufaId/ocupados', verifyToken, cajaController.getHilosOcupados);
+router.get('/mufas/:mufaId/ocupados', cajaController.getHilosOcupados);
 
 // Crear caja (Protegido: Solo Admin)
 router.post('/', cajaController.createCaja);

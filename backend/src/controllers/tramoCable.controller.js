@@ -1,87 +1,89 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// 1. CREAR TRAMO DE CABLE (Une dos puntos en el mapa)
-exports.createTramo = async (req, res) => {
-  try {
-    const { 
-      nombre, 
-      tipoCable, 
-      metraje, 
-      path,        // Array de coordenadas [{lat, lng}, ...]
-      origenId,    // ID de Mufa o Caja de donde sale
-      destinoId    // ID de Mufa o Caja a donde llega
-    } = req.body;
-
-    const nuevoTramo = await prisma.tramoCable.create({
-      data: {
-        nombre: nombre || `Enlace-${tipoCable}-${Date.now()}`,
-        tipoCable,
-        metraje: metraje ? parseFloat(metraje) : 0,
-        path: path || [], 
-        origenId,
-        destinoId
-      }
-    });
-
-    res.status(201).json(nuevoTramo);
-  } catch (error) {
-    console.error("ERROR TRAMO:", error.message);
-    res.status(500).json({ error: "Error al registrar el tramo de cable" });
-  }
-};
-
-// 2. OBTENER TODOS LOS TRAMOS (Para dibujar la red completa en Leaflet)
+// 1. OBTENER TODOS: Con detalles de a dónde pertenecen
 exports.getTramos = async (req, res) => {
-  try {
-    const tramos = await prisma.tramoCable.findMany();
-    res.json(tramos);
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener los cables" });
-  }
-};
-
-// 🛰️ 3. OBTENER UN TRAMO ESPECÍFICO (Esta es la que faltaba y causaba el crash)
-exports.getTramoById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const tramo = await prisma.tramoCable.findUnique({
-      where: { id }
-    });
-    
-    if (!tramo) {
-      return res.status(404).json({ error: "Tramo no encontrado" });
+    try {
+        const tramos = await prisma.tramoCable.findMany({
+            include: {
+                mufaOrigen: { select: { codigo: true, troncalId: true } },
+                cajaDestino: { select: { codigo: true } }
+            }
+        });
+        res.json(tramos);
+    } catch (error) {
+        res.status(500).json({ error: "Error al obtener cables" });
     }
-    
-    res.json(tramo);
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener detalles del cable" });
-  }
 };
 
-// 4. ACTUALIZAR TRAMO (Cuando mueves los puntos de la línea en el mapa)
-exports.updateTramo = async (req, res) => {
-  try {
+// 2. CREAR: Validando que el origen/destino existan
+exports.createTramo = async (req, res) => {
+    try {
+        const { nombre, tipoCable, metraje, path, mufaOrigenId, cajaDestinoId } = req.body;
+
+        if (!mufaOrigenId && !cajaDestinoId) {
+            return res.status(400).json({ error: "El tramo debe estar conectado a una Mufa o Caja." });
+        }
+
+        const nuevoTramo = await prisma.tramoCable.create({
+            data: {
+                nombre: nombre || `Link-${tipoCable}-${Date.now()}`,
+                tipoCable,
+                metraje: metraje ? parseFloat(metraje) : 0,
+                path: path || [], 
+                mufaOrigenId: mufaOrigenId || null,
+                cajaDestinoId: cajaDestinoId || null
+            }
+        });
+
+        res.status(201).json(nuevoTramo);
+    } catch (error) {
+        res.status(500).json({ error: "Error al registrar el cable", detalle: error.message });
+    }
+};
+
+// 3. OBTENER POR ID (La función que faltaba y hacía crashear el sistema)
+exports.getTramoById = async (req, res) => {
     const { id } = req.params;
-    const actualizada = await prisma.tramoCable.update({
-      where: { id },
-      data: {
-        ...req.body,
-        metraje: req.body.metraje ? parseFloat(req.body.metraje) : undefined
-      }
-    });
-    res.json(actualizada);
-  } catch (error) {
-    res.status(500).json({ error: "Error al actualizar el tramo" });
-  }
+    try {
+        const tramo = await prisma.tramoCable.findUnique({
+            where: { id },
+            include: {
+                mufaOrigen: true,
+                cajaDestino: true
+            }
+        });
+        if (!tramo) return res.status(404).json({ error: "Tramo no encontrado" });
+        res.json(tramo);
+    } catch (error) {
+        res.status(500).json({ error: "Error al obtener el tramo específico" });
+    }
 };
 
-// 5. ELIMINAR TRAMO
+// 4. ACTUALIZAR: Protegiendo datos numéricos
+exports.updateTramo = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const dataUpdate = { ...req.body };
+        
+        if (dataUpdate.metraje) dataUpdate.metraje = parseFloat(dataUpdate.metraje);
+
+        const actualizada = await prisma.tramoCable.update({
+            where: { id },
+            data: dataUpdate
+        });
+        res.json(actualizada);
+    } catch (error) {
+        res.status(500).json({ error: "Error al actualizar tramo" });
+    }
+};
+
+// 5. ELIMINAR
 exports.deleteTramo = async (req, res) => {
-  try {
-    await prisma.tramoCable.delete({ where: { id: req.params.id } });
-    res.json({ message: "Tramo de cable eliminado" });
-  } catch (error) {
-    res.status(500).json({ error: "Error al eliminar el tramo" });
-  }
+    try {
+        await prisma.tramoCable.delete({ where: { id: req.params.id } });
+        res.json({ message: "Tramo de cable eliminado del GIS" });
+    } catch (error) {
+        res.status(500).json({ error: "Error al eliminar el tramo" });
+    }
 };
