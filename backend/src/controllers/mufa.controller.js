@@ -19,60 +19,65 @@ exports.getMufas = async (req, res) => {
 
 // 2. CREAR MUFA: Con Transacción y Descuento de Hilos en Troncal
 exports.crearMufa = async (req, res) => {
-    try {
-        const { 
-            codigo, troncalId, posteId, bufferEntrada, 
-            hiloEntrada, latitud, longitud, ratioSplitteo 
-        } = req.body;
+    const { codigo, troncalId, posteId, bufferEntrada, hiloEntrada, latitud, longitud } = req.body;
 
-        // Inicia transacción para asegurar integridad de hilos
+    try {
+        // 🛡️ TODO O NADA: Usamos una transacción de Prisma
         const resultado = await prisma.$transaction(async (tx) => {
             
-            // A. Verificar disponibilidad en la Troncal
-            const troncal = await tx.troncal.findUnique({ where: { id: troncalId } });
-            if (!troncal || troncal.hilosLibres <= 0) {
-                throw new Error("Troncal no encontrada o sin hilos disponibles.");
-            }
-
-            // B. Verificar que el hilo de entrada no esté ya ocupado en esa troncal
-            const hiloOcupado = await tx.mufa.findFirst({
-                where: { troncalId, bufferEntrada, hiloEntrada }
+            // 1. Validar que la Troncal existe y tiene hilos
+            const troncal = await tx.troncal.findUnique({ 
+                where: { id: troncalId },
+                include: { _count: { select: { mufas: true } } } 
             });
-            if (hiloOcupado) {
-                throw new Error(`El hilo ${hiloEntrada} del buffer ${bufferEntrada} ya está en uso.`);
+
+            if (!troncal) throw new Error("La troncal seleccionada no existe.");
+            
+            if (troncal.hilosLibres <= 0) {
+                throw new Error(`La troncal ${troncal.nombre} ya no tiene hilos disponibles.`);
             }
 
-            // C. Crear la Mufa
-            const nueva = await tx.mufa.create({
+            // 2. Validar que el HILO ESPECÍFICO no esté ocupado
+            const hiloOcupado = await tx.mufa.findFirst({
+                where: { troncalId, bufferEntrada, hiloEntrada: parseInt(hiloEntrada) }
+            });
+
+            if (hiloOcupado) {
+                throw new Error(`El hilo ${hiloEntrada} del buffer ${bufferEntrada} ya está siendo usado por la mufa ${hiloOcupado.codigo}.`);
+            }
+
+            // 3. Crear la Mufa vinculada
+            const nuevaMufa = await tx.mufa.create({
                 data: {
-                    codigo: codigo || `MUF-${Date.now()}`,
+                    codigo: codigo || `MUF-JIC-${Date.now().toString().slice(-4)}`,
                     bufferEntrada,
                     hiloEntrada: parseInt(hiloEntrada),
-                    ratioSplitteo: ratioSplitteo || "1:16",
-                    hilosDisponibles: 16, // Hilos que entrega el splitter
                     latitud: parseFloat(latitud),
                     longitud: parseFloat(longitud),
                     troncalId,
-                    posteId
+                    posteId,
+                    hilosDisponibles: 16 // Capacidad que entrega esta mufa hacia las NAP
                 }
             });
 
-            // D. Descontar hilo de la Troncal principal
+            // 4. ACTUALIZAR TRONCAL: Descontar el hilo automáticamente
             await tx.troncal.update({
                 where: { id: troncalId },
-                data: { hilosLibres: { decrement: 1 } }
+                data: { 
+                    hilosLibres: { decrement: 1 } 
+                }
             });
 
-            return nueva;
+            return nuevaMufa;
         });
 
         res.status(201).json(resultado);
+
     } catch (error) {
-        console.error("❌ Error en Crear Mufa:", error.message);
+        console.error("❌ ERROR INGENIERÍA MUFA:", error.message);
         res.status(400).json({ error: error.message });
     }
 };
-
 // 3. DETALLE DE MUFA: Con cálculo de disponibilidad para Cajas NAP
 exports.getMufaById = async (req, res) => {
     const { id } = req.params;
