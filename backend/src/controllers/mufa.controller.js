@@ -19,43 +19,57 @@ exports.getMufas = async (req, res) => {
 
 // 2. CREAR MUFA: Con Transacción y Descuento de Hilos en Troncal
 exports.crearMufa = async (req, res) => {
-    const { codigo, troncalId, posteId, bufferEntrada, hiloEntrada, latitud, longitud } = req.body;
-
     try {
-        // PASO 1: Verificar disponibilidad (Operación simple de lectura)
-        const troncal = await prisma.troncal.findUnique({
-            where: { id: troncalId }
-        });
+        const { 
+            codigo, troncalId, posteId, bufferEntrada, 
+            hiloEntrada, latitud, longitud, ratioSplitteo 
+        } = req.body;
 
-        if (!troncal || troncal.hilosLibres <= 0) {
-            return res.status(400).json({ error: "La troncal no tiene hilos disponibles." });
-        }
-
-        // PASO 2: Crear la Mufa (Operación simple de escritura)
-        const nuevaMufa = await prisma.mufa.create({
-            data: {
-                codigo: codigo || `MUF-JIC-${Date.now().toString().slice(-4)}`,
-                bufferEntrada,
-                hiloEntrada: parseInt(hiloEntrada),
-                latitud: parseFloat(latitud),
-                longitud: parseFloat(longitud),
-                troncalId,
-                posteId,
-                hilosDisponibles: 16
+        // Inicia transacción para asegurar integridad de hilos
+        const resultado = await prisma.$transaction(async (tx) => {
+            
+            // A. Verificar disponibilidad en la Troncal
+            const troncal = await tx.troncal.findUnique({ where: { id: troncalId } });
+            if (!troncal || troncal.hilosLibres <= 0) {
+                throw new Error("Troncal no encontrada o sin hilos disponibles.");
             }
+
+            // B. Verificar que el hilo de entrada no esté ya ocupado en esa troncal
+            const hiloOcupado = await tx.mufa.findFirst({
+                where: { troncalId, bufferEntrada, hiloEntrada }
+            });
+            if (hiloOcupado) {
+                throw new Error(`El hilo ${hiloEntrada} del buffer ${bufferEntrada} ya está en uso.`);
+            }
+
+            // C. Crear la Mufa
+            const nueva = await tx.mufa.create({
+                data: {
+                    codigo: codigo || `MUF-${Date.now()}`,
+                    bufferEntrada,
+                    hiloEntrada: parseInt(hiloEntrada),
+                    ratioSplitteo: ratioSplitteo || "1:16",
+                    hilosDisponibles: 16, // Hilos que entrega el splitter
+                    latitud: parseFloat(latitud),
+                    longitud: parseFloat(longitud),
+                    troncalId,
+                    posteId
+                }
+            });
+
+            // D. Descontar hilo de la Troncal principal
+            await tx.troncal.update({
+                where: { id: troncalId },
+                data: { hilosLibres: { decrement: 1 } }
+            });
+
+            return nueva;
         });
 
-        // PASO 3: Actualizar Troncal (Operación simple de actualización)
-        await prisma.troncal.update({
-            where: { id: troncalId },
-            data: { hilosLibres: { decrement: 1 } }
-        });
-
-        res.status(201).json(nuevaMufa);
-
+        res.status(201).json(resultado);
     } catch (error) {
-        console.error("❌ ERROR MUFA LIGERO:", error.message);
-        res.status(500).json({ error: "Error en el servidor", detalle: error.message });
+        console.error("❌ Error en Crear Mufa:", error.message);
+        res.status(400).json({ error: error.message });
     }
 };
 
