@@ -1,14 +1,12 @@
+generator client {
+  provider = "prisma-client"           // ← Obligatorio en Prisma 7
+  output   = "../src/generated/client" // ← Muy importante (ajusta la ruta si es necesario)
+}
+
 datasource db {
   provider = "mysql"
-  
+  // NO pongas url aquí
 }
-
-generator client {
-  provider      = "prisma-client-js"
-  engineType    = "binary" // <--- ESTO ES VITAL
-  binaryTargets = ["native", "debian-openssl-1.1.x"]
-}
-
 
 model Proyecto {
   id          String       @id @default(uuid())
