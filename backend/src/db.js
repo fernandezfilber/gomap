@@ -1,6 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+// src/db.js
+// Antes: const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('./generated/client'); // <--- Nueva ruta
 
-// Esto evita que se creen múltiples instancias de Prisma en desarrollo
 const prisma = global.prisma || new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
 });
