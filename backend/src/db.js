@@ -1,8 +1,18 @@
 // src/db.js
 const { PrismaClient } = require('./generated/client');
+const path = require('path');
+// Forzamos la carga del .env desde la raíz del proyecto
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-// No pasamos parámetros, Prisma buscará DATABASE_URL en el entorno automáticamente
-const prisma = global.prisma || new PrismaClient();
+const dbUrl = process.env.DATABASE_URL;
+
+if (!dbUrl) {
+  console.error("❌ ERROR: DATABASE_URL no encontrada en el entorno.");
+}
+
+const prisma = global.prisma || new PrismaClient({
+  datasourceUrl: dbUrl, // Propiedad oficial de Prisma 7
+});
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
