@@ -1,20 +1,8 @@
 // src/db.js
-const { PrismaClient } = require('./generated/client');
+const { PrismaClient } = require('@prisma/client');
 
-// No le pasamos NADA al constructor aquí para evitar errores de validación
-const prisma = new PrismaClient({
-  log: ['error', 'warn'],
-});
+const prisma = global.prisma || new PrismaClient();
 
-// Forzamos la URL directamente en el objeto de configuración interna
-// Esto sobreescribe cualquier configuración previa y es muy efectivo
-if (process.env.DATABASE_URL) {
-  prisma._engineConfig.datasources = [
-    {
-      name: 'db',
-      url: process.env.DATABASE_URL,
-    },
-  ];
-}
+if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 module.exports = prisma;
