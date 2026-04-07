@@ -1,0 +1,4 @@
+git rm -r --cached src/generated/client
+git add .gitignore
+git commit -m "ignore prisma generated client"
+git push
