@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 
 // 1. CREAR AVERÍA: Apertura de ticket de soporte
 exports.crearAveria = async (req, res) => {

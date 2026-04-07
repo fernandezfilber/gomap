@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 
 // 1. OBTENER TODOS LOS POSTES (Optimizado con contadores de equipos y cables)
 exports.getPostes = async (req, res) => {

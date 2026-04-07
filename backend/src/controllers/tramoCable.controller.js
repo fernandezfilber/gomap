@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 
 // 1. OBTENER TODOS: Con filtro por Proyecto y manejo de errores
 exports.getTramos = async (req, res) => {

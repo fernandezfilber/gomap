@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../db');
 
 // 1. OBTENER TODAS LAS CAJAS (Inventario completo con capacidad de abonados)
 exports.getCajas = async (req, res) => {

@@ -1,12 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({
-  log: [
-    { emit: 'stdout', level: 'query' },
-    { emit: 'stdout', level: 'error' },
-    { emit: 'stdout', level: 'info' },
-    { emit: 'stdout', level: 'warn' },
-  ],
-});
+const prisma = require('../db');
 
 exports.crearProyecto = async (req, res) => {
   console.log("--- 🛰️ INICIO DE OPERACIÓN: CREAR PROYECTO ---");
