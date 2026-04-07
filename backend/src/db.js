@@ -1,16 +1,31 @@
-const { PrismaClient } = require('@prisma/client');
+import "dotenv/config";
+import { PrismaClient } from '@prisma/client'
+import { PrismaMariaDb } from '@prisma/adapter-mariadb'
 
-// 1. FORZADO DE MOTOR
-process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
+// Verificamos que la URL exista
+const databaseUrl = process.env.DATABASE_URL
+if (!databaseUrl) {
+  throw new Error('❌ DATABASE_URL no está definida en el .env')
+}
 
-const DB_URL = "mysql://u882418259_vision:ForwardVision2026@193.203.175.194:3306/u882418259_forward";
+// Opción 1: La más simple y recomendada
+const adapter = new PrismaMariaDb(databaseUrl)
 
-console.log("🛠️ Nodo Chosica: Usando constructor de conexión directa Prisma 7...");
+// Si prefieres pasar los parámetros uno por uno (descomenta y borra la línea de arriba):
+/*
+const adapter = new PrismaMariaDb({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: 3306,
+  connectionLimit: 10,
+})
+*/
 
-// 2. CONSTRUCTOR CON PROPIEDAD DIRECTA (datasourceUrl en minúsculas la 'd')
-// En Prisma 7, esta es la propiedad oficial para pasar la URL fuera de datasources.
 const prisma = new PrismaClient({
-  datasourceUrl: DB_URL
-});
+  adapter,                    // ← Obligatorio en Prisma 7
+  // log: ['query', 'info', 'warn', 'error'],   // descomenta si quieres ver las consultas
+})
 
-module.exports = prisma;
+export default prisma
