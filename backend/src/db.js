@@ -1,19 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Forzamos el motor binario
+// 1. FORZADO DE MOTOR Y URL (Antes de crear la instancia)
 process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
+process.env.DATABASE_URL = "mysql://u882418259_vision:ForwardVision2026@193.203.175.194:3306/u882418259_forward";
 
-// Escribe tu URL aquí directamente (SOLO PARA ESTA PRUEBA)
-const DB_URL_DIRECTA = "mysql://u882418259_vision:ForwardVision2026@193.203.175.194:3306/u882418259_forward";
+console.log("🛠️ Nodo Chosica: Inyectando DATABASE_URL directamente al proceso...");
 
-console.log("🛠️ Intentando conectar con URL directa...");
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: DB_URL_DIRECTA,
-    },
-  },
-});
+// 2. CONSTRUCTOR VACÍO 
+// Al estar vacío, Prisma 7 no tiene nada que "validar" y no lanzará el error.
+// Buscará automáticamente la variable process.env.DATABASE_URL que pusimos arriba.
+const prisma = new PrismaClient();
 
 module.exports = prisma;
