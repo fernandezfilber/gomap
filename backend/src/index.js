@@ -6,7 +6,7 @@ dotenv.config();
 
 // 2. Importar la instancia central de Prisma (src/db.js)
 const prisma = require('./db'); 
-
+console.log("DEBUG - DATABASE_URL:", process.env.DATABASE_URL ? "Existe ✅" : "No existe ❌");
 console.log("-----------------------------------------");
 console.log("🚀 Nodo Chosica - Forward Vision API");
 console.log("🔍 URL DB:", process.env.DATABASE_URL ? "Detectada ✅" : "Faltante ❌");
