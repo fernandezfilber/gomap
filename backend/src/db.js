@@ -1,32 +1,22 @@
-const { PrismaClient } = require('@prisma/client');
 const path = require('path');
 const dotenv = require('dotenv');
 
-// 1. Forzamos la carga del .env con ruta absoluta
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// 1. CARGA CRÍTICA: Cargamos el .env ANTES que cualquier otra cosa
+const result = dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// 2. EMERGENCIA: Si Hostinger no inyectó la variable, la inyectamos nosotros al proceso
-if (process.env.DATABASE_URL && !process.env.PRISMA_CLI_QUERY_ENGINE_TYPE) {
-    process.env.PRISMA_CLI_QUERY_ENGINE_TYPE = 'binary';
-    process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
+if (result.error) {
+    console.error("❌ ERROR: No se pudo leer el archivo .env físico:", result.error);
 }
 
-const dbUrl = process.env.DATABASE_URL;
+// 2. FORZADO DE MOTOR: Le decimos a Node que Prisma es Binario
+process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
 
-// 3. Constructor con configuración de "Rescate"
-const prisma = global.prisma || new PrismaClient({
-  datasources: {
-    db: {
-      url: dbUrl,
-    },
-  },
-  // Forzamos a que no intente usar aceleradores externos
-  __internal: {
-    engine: {
-      endpoint: undefined,
-    },
-  },
-});
+// 3. IMPORTACIÓN: Recién ahora importamos Prisma
+const { PrismaClient } = require('@prisma/client');
+
+// 4. CONSTRUCTOR VACÍO: Prisma buscará process.env.DATABASE_URL por su cuenta
+// Esto evita el error de "Unknown property" porque no le pasamos ninguna propiedad
+const prisma = global.prisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
