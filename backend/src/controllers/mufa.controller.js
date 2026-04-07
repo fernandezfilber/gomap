@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+
 const prisma = require('../db');
 
 // 1. OBTENER TODAS: Vista general para el mapa con relaciones

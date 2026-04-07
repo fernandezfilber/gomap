@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+
 const prisma = require('../db');
 
 exports.crearProyecto = async (req, res) => {

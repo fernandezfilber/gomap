@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+
 const prisma = require('../db');
 // 1. CREAR CLIENTE: Con validación de capacidad en la Caja NAP
 exports.createCliente = async (req, res) => {

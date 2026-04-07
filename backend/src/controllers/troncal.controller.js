@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+
 const prisma = require('../db');
 // 1. CREAR: Vinculado a Proyecto y con inventario de hilos inicial
 exports.createTroncal = async (req, res) => {
