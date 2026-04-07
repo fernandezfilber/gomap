@@ -1,23 +1,19 @@
-const path = require('path');
-const dotenv = require('dotenv');
-
-// 1. CARGA CRÍTICA: Cargamos el .env ANTES que cualquier otra cosa
-const result = dotenv.config({ path: path.join(__dirname, '../.env') });
-
-if (result.error) {
-    console.error("❌ ERROR: No se pudo leer el archivo .env físico:", result.error);
-}
-
-// 2. FORZADO DE MOTOR: Le decimos a Node que Prisma es Binario
-process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
-
-// 3. IMPORTACIÓN: Recién ahora importamos Prisma
 const { PrismaClient } = require('@prisma/client');
 
-// 4. CONSTRUCTOR VACÍO: Prisma buscará process.env.DATABASE_URL por su cuenta
-// Esto evita el error de "Unknown property" porque no le pasamos ninguna propiedad
-const prisma = global.prisma || new PrismaClient();
+// Forzamos el motor binario
+process.env.PRISMA_CLIENT_ENGINE_TYPE = 'binary';
 
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+// Escribe tu URL aquí directamente (SOLO PARA ESTA PRUEBA)
+const DB_URL_DIRECTA = "mysql://u882418259_vision:ForwardVision2026@193.203.175.194:3306/u882418259_forward";
+
+console.log("🛠️ Intentando conectar con URL directa...");
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: DB_URL_DIRECTA,
+    },
+  },
+});
 
 module.exports = prisma;
