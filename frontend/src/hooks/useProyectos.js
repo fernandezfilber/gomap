@@ -23,12 +23,18 @@ const useProyectos = () => {
     }, [proyectoSeleccionado]);
 
     // 2. CREAR: Registra un nuevo sector de red
-    const crearProyecto = async (datos) => {
-        const { data } = await fvApi.post('/proyectos', datos);
-        setProyectos((prev) => [data, ...prev]);
+// En src/hooks/useProyectos.js
+const crearProyecto = async (nuevoProyecto) => {
+    try {
+        const { data } = await fvApi.post('/proyectos', nuevoProyecto);
+        // Actualizamos la lista local para que aparezca en el select del Sidebar
+        setProyectos([...proyectos, data]);
         return data;
-    };
-
+    } catch (error) {
+        console.error("Error al crear proyecto:", error);
+        throw error;
+    }
+};
     // 3. ACTUALIZAR: Cambia nombre o descripción (Limpio de avisos ESLint)
     const actualizarProyecto = async (id, datosActualizados) => {
         const { data } = await fvApi.put(`/proyectos/${id}`, datosActualizados);

@@ -23,6 +23,7 @@ const useTramos = (proyectoId) => {
                         pathLimpio = t.path;
                     }
                 } catch (e) {
+                    e
                     console.error("Error en formato de path para tramo:", t.id);
                     pathLimpio = []; // Fallback para no romper el mapa
                 }
@@ -32,6 +33,7 @@ const useTramos = (proyectoId) => {
             setTramos(tramosProcesados);
             console.log("Cables (tramos) visualizados:", tramosProcesados.length);
         } catch (err) {
+            err
             console.error("Error 500 detectado: El servidor tiene problemas con la tabla de tramos.");
         } finally {
             setLoading(false);
@@ -77,6 +79,7 @@ const useTramos = (proyectoId) => {
             await fvApi.delete(`/tramos/${id}`);
             setTramos((prev) => prev.filter((t) => t.id !== id));
         } catch (error) {
+            error
             console.error("No se pudo eliminar el tramo seleccionado.");
         }
     };
