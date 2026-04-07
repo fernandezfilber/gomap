@@ -1,19 +1,20 @@
 // src/db.js
 const { PrismaClient } = require('./generated/client');
-const path = require('path');
-// Forzamos la carga del .env desde la raíz del proyecto
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const dbUrl = process.env.DATABASE_URL;
-
-if (!dbUrl) {
-  console.error("❌ ERROR: DATABASE_URL no encontrada en el entorno.");
-}
-
-const prisma = global.prisma || new PrismaClient({
-  datasourceUrl: dbUrl, // Propiedad oficial de Prisma 7
+// No le pasamos NADA al constructor aquí para evitar errores de validación
+const prisma = new PrismaClient({
+  log: ['error', 'warn'],
 });
 
-if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+// Forzamos la URL directamente en el objeto de configuración interna
+// Esto sobreescribe cualquier configuración previa y es muy efectivo
+if (process.env.DATABASE_URL) {
+  prisma._engineConfig.datasources = [
+    {
+      name: 'db',
+      url: process.env.DATABASE_URL,
+    },
+  ];
+}
 
 module.exports = prisma;
