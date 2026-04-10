@@ -1,19 +1,5 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-// 1. Cargar variables de entorno primero
-dotenv.config();
-
-// 2. Importar la instancia central de Prisma (src/db.js)
-const prisma = require('./db'); 
-console.log("DEBUG - DATABASE_URL:", process.env.DATABASE_URL ? "Existe ✅" : "No existe ❌");
-console.log("-----------------------------------------");
-console.log("🚀 Nodo Chosica - Forward Vision API");
-console.log("🔍 URL DB:", process.env.DATABASE_URL ? "Detectada ✅" : "Faltante ❌");
-console.log("-----------------------------------------");
-
-const app = express();
-const PORT = process.env.PORT || 5000;
+const express = require('express');
+const cors = require('cors'); // <--- Ya está declarado aquí, ¡con esto basta!
 
 // 3. Middlewares Globales
 app.use(cors({

@@ -1,12 +1,12 @@
 generator client {
-  provider = "prisma-client"           // ← Obligatorio en Prisma 7
-  output   = "../src/generated/client" // ← Muy importante (ajusta la ruta si es necesario)
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
-  // NO pongas url aquí
+  url      = env("DATABASE_URL")
 }
+
 
 model Proyecto {
   id          String       @id @default(uuid())

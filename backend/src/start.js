@@ -1,6 +1,7 @@
-process.on('unhandledRejection', (e) => console.error('unhandledRejection', e));
-process.on('uncaughtException', (e) => console.error('uncaughtException', e));
-
-require('dotenv').config();
-console.log('Starting app…');
-require('./index.js');
+try {
+    console.log("🚀 Iniciando SupportComputer directamente...");
+    // Importamos tu server.js original
+    require("./server"); 
+} catch (error) {
+    console.error("❌ Error al cargar server.js:", error.message);
+}
