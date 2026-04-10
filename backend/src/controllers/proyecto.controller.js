@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 exports.crearProyecto = async (req, res) => {
   console.log("--- 🛰️ INICIO DE OPERACIÓN: CREAR PROYECTO ---");

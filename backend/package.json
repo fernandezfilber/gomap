@@ -8,7 +8,7 @@
     "dev": "nodemon src/start.js",
     "postinstall": "npx prisma generate && npx prisma db push"
   },
-   "keywords": [],
+  "keywords": [],
   "author": "Filber",
   "license": "ISC",
   "description": "Backend para SupportComputer - Forward Vision",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.2",
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 // 1. CREAR AVERÍA: Apertura de ticket de soporte
 exports.crearAveria = async (req, res) => {

@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 // 1. OBTENER TODAS: Vista general para el mapa con relaciones
 exports.getMufas = async (req, res) => {

@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 // 1. OBTENER TODOS: Con filtro por Proyecto y manejo de errores
 exports.getTramos = async (req, res) => {

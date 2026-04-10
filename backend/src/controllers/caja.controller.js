@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 // 1. OBTENER TODAS LAS CAJAS (Inventario completo con capacidad de abonados)
 exports.getCajas = async (req, res) => {

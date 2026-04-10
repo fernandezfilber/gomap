@@ -1,5 +1,5 @@
 
-const prisma = require('../db');
+const prisma = require('../config/db');
 
 // --- 1. UTILIDAD: EXTRACCIÓN DE COORDENADAS ---
 const extraerCoordenadas = (input) => {
