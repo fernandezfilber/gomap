@@ -1,50 +1,48 @@
-// src/app.js
+// src/app.js - VERSIÓN SEGURA PARA DEBUG
 const express = require('express');
 const cors = require('cors');
-const morgan = require('morgan');   // ← Agregado para ver logs de peticiones
+const morgan = require('morgan');
 
 const app = express();
 
-// Middlewares
-app.use(morgan('dev'));  // ← Muy útil para debugging
+app.use(morgan('dev'));
 app.use(cors({
-    origin: ['https://demostracion.toq.life', 'https://toq.life', 'http://localhost:5173'],
+    origin: '*',
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==================== RUTAS ====================
+console.log("📦 Cargando rutas...");
 
-// Ruta de prueba para verificar que Express funciona
-app.get("/api/test", (req, res) => {
-    res.json({ message: "✅ API funcionando correctamente" });
-});
+// Ruta de prueba
+app.get("/api/test", (req, res) => res.json({ ok: true, message: "API viva" }));
 
-// Tus rutas reales
-app.use('/api/auth', require('./routes/auth.routes'));
-app.use('/api/red', require('./routes/red.routes'));
-app.use('/api/troncales', require('./routes/troncal.routes'));
-app.use('/api/mufas', require('./routes/mufa.routes'));
-app.use('/api/cajas', require('./routes/caja.routes'));
-app.use('/api/clientes', require('./routes/cliente.routes'));
-app.use('/api/postes', require('./routes/postes.routes'));
-app.use('/api/tramos', require('./routes/tramoCables.routes'));   // ← Esta es la que estás probando
-app.use('/api/proyectos', require('./routes/proyecto.routes'));
+// Carga segura de rutas (con try-catch)
+const loadRoute = (path, name) => {
+    try {
+        app.use(path, require(name));
+        console.log(`✅ Ruta cargada: ${path}`);
+    } catch (err) {
+        console.error(`❌ ERROR al cargar ${path} →`, err.message);
+    }
+};
 
-// Ruta principal
+// Carga una por una
+loadRoute('/api/auth', './routes/auth.routes');
+loadRoute('/api/red', './routes/red.routes');
+loadRoute('/api/troncales', './routes/troncal.routes');
+loadRoute('/api/mufas', './routes/mufa.routes');
+loadRoute('/api/cajas', './routes/caja.routes');
+loadRoute('/api/clientes', './routes/cliente.routes');
+loadRoute('/api/postes', './routes/postes.routes');
+loadRoute('/api/tramos', './routes/tramoCables.routes');   // ← Probable culpable
+loadRoute('/api/proyectos', './routes/proyecto.routes');
+
 app.get("/", (req, res) => {
-    res.send("<h1>✅ Forward Vision API - Running</h1>");
+    res.send("<h1>✅ API Running (Modo Debug)</h1>");
 });
 
-// Middleware para rutas no encontradas (404)
-app.use((req, res) => {
-    res.status(404).json({
-        error: "Ruta no encontrada",
-        ruta: req.path
-    });
-});
-
-console.log("📦 App Express cargada con todas las rutas");
+console.log("📦 App Express cargada (modo seguro)");
 
 module.exports = app;
