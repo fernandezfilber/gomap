@@ -1,10 +1,11 @@
-const { init } = require("./server");
+// src/start.js
+require('dotenv').config();   // ← PRIMERO de todo
 
-console.log("🚀 Iniciando SupportComputer directamente desde start.js...");
+console.log("🚀 Iniciando servidor Forward Vision...");
 
-// Manejo de errores globales para que el VPS no se caiga sin avisar
-process.on("unhandledRejection", (err) => {
-    console.error("❌ Fallo no controlado (Promise):", err.message);
+const { init } = require('./server');
+
+init().catch(err => {
+    console.error("❌ Error fatal al iniciar:", err);
+    process.exit(1);
 });
-
-init();

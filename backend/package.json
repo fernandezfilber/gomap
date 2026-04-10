@@ -2,6 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "main": "node src/start.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node src/start.js",
     "dev": "nodemon src/start.js",

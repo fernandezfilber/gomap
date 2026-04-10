@@ -1,26 +1,26 @@
-const app = require("./app"); // <--- Importamos el app de arriba
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
-const dotenv = require("dotenv");
+// src/server.js
+const app = require('./app');
+const { PrismaClient } = require('@prisma/client');
 
-dotenv.config();
+const prisma = new PrismaClient();
 
 const PORT = Number(process.env.PORT) || 8080;
 
 const init = async () => {
     try {
-        console.log("--- Iniciando Capa de Datos ---");
+        console.log("--- Conectando a la base de datos ---");
         await prisma.$connect();
-        console.log("✅ Prisma: Conexión establecida correctamente.");
+        console.log("✅ Prisma conectado correctamente");
 
         app.listen(PORT, "0.0.0.0", () => {
-            console.log(`📡 API Operativa en puerto: ${PORT}`);
-            console.log(`🔗 Acceso: https://toq.life`);
+            console.log(`📡 Servidor corriendo en puerto ${PORT}`);
+            console.log(`🔗 https://toq.life`);
         });
+
     } catch (error) {
-        console.error("❌ ERROR CRÍTICO AL INICIAR SERVICIOS:", error.message);
+        console.error("❌ ERROR AL INICIAR:", error.message);
         
-        // Modo emergencia: El servidor levanta aunque falle la DB para dar señales de vida
+        // Modo emergencia
         app.listen(PORT, "0.0.0.0", () => {
             console.log(`⚠️ Servidor en MODO EMERGENCIA en puerto ${PORT}`);
         });
