@@ -1,10 +1,10 @@
-const express = require("express");
-const app = express();
+const { init } = require("./server");
 
-const PORT = process.env.PORT || 3000;
+console.log("🚀 Iniciando SupportComputer directamente desde start.js...");
 
-app.get("/health", (_, res) => res.status(200).send("ok"));
-
-app.listen(PORT, "0.0.0.0", () => {
- console.log(`Server listening on ${PORT}`);
+// Manejo de errores globales para que el VPS no se caiga sin avisar
+process.on("unhandledRejection", (err) => {
+    console.error("❌ Fallo no controlado (Promise):", err.message);
 });
+
+init();
