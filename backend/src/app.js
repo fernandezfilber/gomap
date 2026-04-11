@@ -29,7 +29,7 @@ const loadRoute = (path, name) => {
 };
 
 // Carga una por una
-loadRoute('/api/auth', './routes/auth.routes');
+loadRoute('/api/empresas', './routes/empresa.routes');loadRoute('/api/auth', './routes/auth.routes');
 loadRoute('/api/red', './routes/red.routes');
 loadRoute('/api/troncales', './routes/troncal.routes');
 loadRoute('/api/mufas', './routes/mufa.routes');
