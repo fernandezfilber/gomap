@@ -7,160 +7,197 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-model Proyecto {
-  id          String       @id @default(uuid())
-  nombre      String
-  descripcion String?
-  estado      String       @default("PLANIFICACION")
-  creadoEn    DateTime     @default(now())
-  tramos      TramoCable[]
-  troncales   Troncal[]
-}
-
-model Usuario {
-  id               String   @id @default(uuid())
-  nombre           String
-  email            String   @unique
-  password         String
-  rol              Rol      @default(TECNICO)
-  activo           Boolean  @default(true)
-  creadoEn         DateTime @default(now())
-  averiasAsignadas Averia[]
-}
-
-model Troncal {
+// ====================== EMPRESA (Tenant) ======================
+model Empresa {
   id          String   @id @default(uuid())
-  nombre      String   @unique
-  bufferColor String
-  cantHilos   Int      @default(96)
-  hilosLibres Int
-  descripcion String?
-  ruta        String?  @db.LongText
-  proyectoId  String
+  nombre      String
+  razonSocial String?
+  ruc         String?  @unique
+  telefono    String?
+  direccion   String?
+  activo      Boolean  @default(true)
   creadoEn    DateTime @default(now())
-  mufas       Mufa[]
-  proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
 
-  @@index([proyectoId], map: "Troncal_proyectoId_fkey")
+  usuarios  Usuario[]
+  proyectos Proyecto[]
+
+  @@map("empresas")
 }
 
-model Mufa {
-  id               String       @id @default(uuid())
-  codigo           String       @unique
-  latitud          Float
-  longitud         Float
-  bufferEntrada    String
-  hiloEntrada      Int
-  ratioSplitteo    String       @default("1:16")
-  hilosDisponibles Int          @default(16)
-  troncalId        String
-  posteId          String
-  creadoEn         DateTime     @default(now())
-  cajas            Caja[]
-  poste            Poste        @relation(fields: [posteId], references: [id])
-  troncal          Troncal      @relation(fields: [troncalId], references: [id], onDelete: Cascade)
-  tramosOrigen     TramoCable[] @relation("CableDesdeMufa")
-
-  @@index([posteId], map: "Mufa_posteId_fkey")
-  @@index([troncalId], map: "Mufa_troncalId_fkey")
-}
-
-model Caja {
-  id            String       @id @default(uuid())
-  codigo        String       @unique
-  latitud       Float
-  longitud      Float
-  colorHiloCaja String?
-  puertosLibres Int          @default(16)
-  mufaId        String
-  posteId       String
-  creadoEn      DateTime     @default(now())
-  mufa          Mufa         @relation(fields: [mufaId], references: [id], onDelete: Cascade)
-  poste         Poste        @relation(fields: [posteId], references: [id])
-  clientes      Cliente[]
-  tramosDestino TramoCable[] @relation("CableHaciaCaja")
-
-  @@index([mufaId], map: "Caja_mufaId_fkey")
-  @@index([posteId], map: "Caja_posteId_fkey")
-}
-
-model Poste {
-  id           String       @id @default(uuid())
-  codigo       String       @unique
-  latitud      Float
-  longitud     Float
-  tipo         String       @default("CONCRETO")
-  altura       String?
-  creadoEn     DateTime     @default(now())
-  cajas        Caja[]
-  mufas        Mufa[]
-  tramosFin    TramoCable[] @relation("FinPoste")
-  tramosInicio TramoCable[] @relation("InicioPoste")
-}
-
-model TramoCable {
-  id            String   @id @default(uuid())
-  nombre        String?
-  tipoCable     String
-  path          String   @db.LongText
-  colorVisual   String   @default("#8b5cf6")
-  proyectoId    String
-  posteInicioId String
-  posteFinId    String
-  mufaOrigenId  String?
-  cajaDestinoId String?
-  cajaDestino   Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
-  mufaOrigen    Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
-  posteFin      Poste    @relation("FinPoste", fields: [posteFinId], references: [id])
-  posteInicio   Poste    @relation("InicioPoste", fields: [posteInicioId], references: [id])
-  proyecto      Proyecto @relation(fields: [proyectoId], references: [id])
-
-  @@index([cajaDestinoId], map: "TramoCable_cajaDestinoId_fkey")
-  @@index([mufaOrigenId], map: "TramoCable_mufaOrigenId_fkey")
-  @@index([posteFinId], map: "TramoCable_posteFinId_fkey")
-  @@index([posteInicioId], map: "TramoCable_posteInicioId_fkey")
-  @@index([proyectoId], map: "TramoCable_proyectoId_fkey")
-}
-
-model Cliente {
-  id              String   @id @default(uuid())
-  nombre          String
-  dni             String   @unique
-  telefono        String?  // Agregado
-  direccion       String?  // Agregado
-  snMac           String?  // Agregado
-  latitud         Float?   // Agregado
-  longitud        Float?   // Agregado
-  estadoServicio  String   @default("ACTIVO") // Agregado
-  cajaId          String
-  caja            Caja     @relation(fields: [cajaId], references: [id])
-  averias         Averia[]
-  pagos           Pago[]
-
-  @@index([cajaId], map: "Cliente_cajaId_fkey")
-}
-
-model Averia {
-  id        String   @id @default(uuid())
-  clienteId String
-  tecnicoId String?
-  cliente   Cliente  @relation(fields: [clienteId], references: [id])
-  tecnico   Usuario? @relation(fields: [tecnicoId], references: [id])
-
-  @@index([clienteId], map: "Averia_clienteId_fkey")
-  @@index([tecnicoId], map: "Averia_tecnicoId_fkey")
-}
-
-model Pago {
+// ====================== USUARIO ======================
+model Usuario {
   id        String  @id @default(uuid())
-  clienteId String
-  cliente   Cliente @relation(fields: [clienteId], references: [id])
+  nombre    String
+  email     String  @unique
+  password  String
+  rol       Rol     @default(TECNICO)
+  activo    Boolean @default(true)
+  empresaId String
 
-  @@index([clienteId], map: "Pago_clienteId_fkey")
+  creadoEn    DateTime  @default(now())
+  ultimoLogin DateTime?
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId])
+  @@map("usuarios")
 }
 
 enum Rol {
   ADMIN
   TECNICO
+  VIEWER
+}
+
+// ====================== PROYECTO ======================
+model Proyecto {
+  id          String   @id @default(uuid())
+  nombre      String
+  descripcion String?
+  estado      String   @default("PLANIFICACION")
+  creadoEn    DateTime @default(now())
+
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  troncales Troncal[]
+  tramos    TramoCable[]
+
+  @@index([empresaId])
+  @@map("proyectos")
+}
+
+// ====================== POSTE ======================
+model Poste {
+  id       String   @id @default(uuid())
+  codigo   String   @unique
+  latitud  Float
+  longitud Float
+  tipo     String   @default("CONCRETO")
+  altura   String?
+  creadoEn DateTime @default(now())
+
+  // Relaciones
+  mufa         Mufa?        @relation("PosteMufa")
+  caja         Caja?        @relation("PosteCaja")
+  tramosInicio TramoCable[] @relation("InicioPoste")
+  tramosFin    TramoCable[] @relation("FinPoste")
+
+  @@map("postes")
+}
+
+// ====================== TRONCAL ======================
+model Troncal {
+  id          String  @id @default(uuid())
+  nombre      String  @unique
+  bufferColor String
+  cantHilos   Int     @default(96)
+  hilosLibres Int
+  descripcion String?
+  ruta        String? @db.LongText
+  proyectoId  String
+
+  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
+  mufas    Mufa[]
+
+  creadoEn DateTime @default(now())
+
+  @@index([proyectoId])
+  @@map("troncales")
+}
+
+// ====================== MUFA ======================
+model Mufa {
+  id               String @id @default(uuid())
+  codigo           String @unique
+  latitud          Float
+  longitud         Float
+  bufferEntrada    String
+  hiloEntrada      Int
+  ratioSplitteo    String @default("1:16")
+  hilosDisponibles Int    @default(16)
+
+  posteId   String @unique
+  troncalId String
+
+  poste        Poste        @relation("PosteMufa", fields: [posteId], references: [id])
+  troncal      Troncal      @relation(fields: [troncalId], references: [id], onDelete: Cascade)
+  tramosOrigen TramoCable[] @relation("CableDesdeMufa")
+
+  creadoEn DateTime @default(now())
+  cajas    Caja[]
+
+  @@index([troncalId])
+  @@map("mufas")
+}
+
+// ====================== CAJA ======================
+model Caja {
+  id            String  @id @default(uuid())
+  codigo        String  @unique
+  latitud       Float
+  longitud      Float
+  colorHiloCaja String?
+  puertosLibres Int     @default(16)
+
+  posteId String  @unique
+  mufaId  String?
+
+  poste Poste @relation("PosteCaja", fields: [posteId], references: [id])
+  mufa  Mufa? @relation(fields: [mufaId], references: [id], onDelete: Cascade)
+
+  clientes      Cliente[]
+  tramosDestino TramoCable[] @relation("CableHaciaCaja")
+
+  creadoEn DateTime @default(now())
+
+  @@map("cajas")
+}
+
+// ====================== TRAMO CABLE ======================
+model TramoCable {
+  id          String  @id @default(uuid())
+  nombre      String?
+  tipoCable   String
+  path        String  @db.LongText
+  colorVisual String  @default("#8b5cf6")
+
+  proyectoId    String
+  posteInicioId String
+  posteFinId    String
+  mufaOrigenId  String?
+  cajaDestinoId String?
+
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
+  posteInicio Poste    @relation("InicioPoste", fields: [posteInicioId], references: [id])
+  posteFin    Poste    @relation("FinPoste", fields: [posteFinId], references: [id])
+  mufaOrigen  Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
+  cajaDestino Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  @@index([proyectoId])
+  @@index([posteInicioId])
+  @@index([posteFinId])
+  @@map("tramo_cables")
+}
+
+// ====================== CLIENTE ======================
+model Cliente {
+  id             String  @id @default(uuid())
+  nombre         String
+  dni            String  @unique
+  telefono       String?
+  direccion      String?
+  snMac          String?
+  latitud        Float?
+  longitud       Float?
+  estadoServicio String  @default("ACTIVO")
+
+  cajaId String
+  caja   Caja   @relation(fields: [cajaId], references: [id])
+
+  creadoEn DateTime @default(now())
+
+  @@map("clientes")
 }

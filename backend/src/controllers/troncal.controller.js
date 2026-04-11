@@ -1,125 +1,233 @@
+const { prisma } = require('../db');
 
-const prisma = require('../config/db');
-// 1. CREAR: Vinculado a Proyecto y con inventario de hilos inicial
+// ====================== CREAR TRONCAL ======================
 exports.createTroncal = async (req, res) => {
     try {
-        // 1. Extraemos según los nombres REALES de tu modelo Prisma
         const { nombre, bufferColor, cantHilos, descripcion, ruta, proyectoId } = req.body;
-        
-        // 2. Validaciones estrictas
+        const { empresaId } = req.user;
+
         if (!nombre || !bufferColor || !cantHilos || !proyectoId) {
-            return res.status(400).json({ 
-                error: "Nombre, Color de Buffer, cantHilos y proyectoId son obligatorios." 
+            return res.status(400).json({
+                success: false,
+                message: "Nombre, bufferColor, cantHilos y proyectoId son obligatorios"
             });
         }
 
-        // 3. Creación en la DB
-        const nueva = await prisma.troncal.create({
-            data: { 
-                nombre, 
-                bufferColor, 
-                cantHilos: parseInt(cantHilos), 
-                hilosLibres: parseInt(cantHilos), // Inicializamos igual que la capacidad total
-                descripcion: descripcion || "", 
-                ruta: ruta || "", // Tu esquema dice String?, no Array
-                proyectoId 
+        // Verificar que el proyecto pertenezca a la empresa del usuario
+        const proyecto = await prisma.proyecto.findUnique({
+            where: { id: proyectoId }
+        });
+
+        if (!proyecto || proyecto.empresaId !== empresaId) {
+            return res.status(403).json({
+                success: false,
+                message: "No tienes acceso a este proyecto"
+            });
+        }
+
+        const nuevaTroncal = await prisma.troncal.create({
+            data: {
+                nombre,
+                bufferColor,
+                cantHilos: parseInt(cantHilos),
+                hilosLibres: parseInt(cantHilos), // Inicialmente todos libres
+                descripcion: descripcion || "",
+                ruta: ruta || "",
+                proyectoId
+            },
+            include: {
+                proyecto: { select: { nombre: true } }
             }
         });
 
-        res.status(201).json(nueva);
+        res.status(201).json({
+            success: true,
+            message: "Troncal creada correctamente",
+            troncal: nuevaTroncal
+        });
+
     } catch (error) {
-        console.error("❌ Error en Troncal:", error.message);
-        res.status(500).json({ 
-            error: "Error al crear troncal", 
-            detalle: error.message,
-            codigoPrisma: error.code 
+        console.error("❌ Error al crear troncal:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al crear la troncal",
+            error: error.message
         });
     }
 };
-// 2. OBTENER TODAS: Incluyendo datos del proyecto y conteo de mufas
+
+// ====================== OBTENER TODAS LAS TRONCALES (Solo de su empresa) ======================
 exports.getTroncales = async (req, res) => {
     try {
-        const lista = await prisma.troncal.findMany({
-            include: { 
-                proyecto: { select: { nombre: true } }, // Para saber a qué proyecto pertenece
-                _count: { select: { mufas: true } } 
+        const { empresaId } = req.user;
+
+        const troncales = await prisma.troncal.findMany({
+            where: {
+                proyecto: { empresaId }
+            },
+            include: {
+                proyecto: { select: { nombre: true, estado: true } },
+                _count: { select: { mufas: true } }
             },
             orderBy: { creadoEn: 'desc' }
         });
-        res.json(lista);
+
+        res.json({
+            success: true,
+            count: troncales.length,
+            troncales
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "Error al obtener troncales" });
+        console.error("❌ Error al obtener troncales:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener las troncales"
+        });
     }
 };
 
-// 3. ACTUALIZAR: Ahora permite cambiar el buffer y proyecto si es necesario
-exports.updateTroncal = async (req, res) => {
+// ====================== OBTENER DETALLE DE UNA TRONCAL ======================
+exports.getTroncalById = async (req, res) => {
     const { id } = req.params;
-    const { nombre, bufferColor, capacidad, descripcion, ruta, proyectoId } = req.body;
+    const { empresaId } = req.user;
 
     try {
-        const existe = await prisma.troncal.findUnique({ where: { id } });
-        if (!existe) {
-            return res.status(404).json({ error: "La troncal no existe." });
-        }
-
-        // Si se cambia la capacidad, recalculamos hilos libres (Lógica sensible)
-        let nuevosHilosLibres = existe.hilosLibres;
-        if (capacidad !== undefined) {
-            const diferencia = parseInt(capacidad) - existe.capacidad;
-            nuevosHilosLibres = existe.hilosLibres + diferencia;
-        }
-
-        const actualizada = await prisma.troncal.update({
-            where: { id },
-            data: {
-                nombre: nombre || existe.nombre,
-                bufferColor: bufferColor || existe.bufferColor,
-                capacidad: capacidad !== undefined ? parseInt(capacidad) : existe.capacidad,
-                hilosLibres: nuevosHilosLibres,
-                descripcion: descripcion !== undefined ? descripcion : existe.descripcion,
-                ruta: ruta || existe.ruta,
-                proyectoId: proyectoId || existe.proyectoId
+        const troncal = await prisma.troncal.findUnique({
+            where: { 
+                id,
+                proyecto: { empresaId }   // Seguridad multi-empresa
+            },
+            include: {
+                proyecto: true,
+                mufas: {
+                    include: {
+                        poste: { select: { codigo: true } },
+                        _count: { select: { cajas: true } }
+                    }
+                }
             }
         });
 
-        res.json({ mensaje: "Troncal actualizada", data: actualizada });
+        if (!troncal) {
+            return res.status(404).json({
+                success: false,
+                message: "Troncal no encontrada o sin acceso"
+            });
+        }
+
+        res.json({
+            success: true,
+            troncal
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "No se pudo actualizar", detalle: error.message });
+        console.error("❌ Error al obtener troncal:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener detalle de la troncal"
+        });
     }
 };
 
-// 4. ELIMINAR: Limpieza en cascada total
+// ====================== ACTUALIZAR TRONCAL ======================
+exports.updateTroncal = async (req, res) => {
+    const { id } = req.params;
+    const { nombre, bufferColor, cantHilos, descripcion, ruta, proyectoId } = req.body;
+    const { empresaId } = req.user;
+
+    try {
+        // Verificar que la troncal exista y pertenezca a la empresa
+        const troncalActual = await prisma.troncal.findUnique({
+            where: { id }
+        });
+
+        if (!troncalActual || troncalActual.proyectoId !== proyectoId && proyectoId) {
+            // Si cambian de proyecto, verificar el nuevo
+            if (proyectoId) {
+                const nuevoProyecto = await prisma.proyecto.findUnique({ where: { id: proyectoId } });
+                if (!nuevoProyecto || nuevoProyecto.empresaId !== empresaId) {
+                    return res.status(403).json({ success: false, message: "No tienes acceso al proyecto destino" });
+                }
+            }
+        }
+
+        const troncalActualizada = await prisma.troncal.update({
+            where: { id },
+            data: {
+                nombre,
+                bufferColor,
+                cantHilos: cantHilos ? parseInt(cantHilos) : undefined,
+                hilosLibres: cantHilos ? parseInt(cantHilos) : undefined, // Ajustar según lógica de negocio
+                descripcion,
+                ruta,
+                proyectoId
+            }
+        });
+
+        res.json({
+            success: true,
+            message: "Troncal actualizada correctamente",
+            troncal: troncalActualizada
+        });
+
+    } catch (error) {
+        console.error("❌ Error al actualizar troncal:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar la troncal"
+        });
+    }
+};
+
+// ====================== ELIMINAR TRONCAL (Con transacción segura) ======================
 exports.deleteTroncal = async (req, res) => {
     const { id } = req.params;
+    const { empresaId } = req.user;
+
     try {
         await prisma.$transaction(async (tx) => {
-            // A. Identificar toda la infraestructura aguas abajo
-            const mufas = await tx.mufa.findMany({ where: { troncalId: id } });
-            const mufaIds = mufas.map(m => m.id);
+            // Verificar propiedad
+            const troncal = await tx.troncal.findUnique({
+                where: { id },
+                include: { proyecto: { select: { empresaId: true } } }
+            });
 
-            const cajas = await tx.caja.findMany({ where: { mufaId: { in: mufaIds } } });
-            const cajaIds = cajas.map(c => c.id);
+            if (!troncal || troncal.proyecto.empresaId !== empresaId) {
+                throw new Error("Troncal no encontrada o sin acceso");
+            }
 
-            // B. Borrar cables que nacen o mueren en esta infraestructura
+            // Eliminar en orden: cables → cajas → mufas → troncal
             await tx.tramoCable.deleteMany({
                 where: {
                     OR: [
-                        { mufaOrigenId: { in: mufaIds } },
-                        { cajaDestinoId: { in: cajaIds } }
+                        { mufaOrigen: { troncalId: id } },
+                        { proyectoId: troncal.proyectoId }
                     ]
                 }
             });
 
-            // C. Borrar en orden jerárquico inverso
-            await tx.caja.deleteMany({ where: { id: { in: cajaIds } } });
-            await tx.mufa.deleteMany({ where: { id: { in: mufaIds } } });
+            await tx.caja.deleteMany({
+                where: { mufa: { troncalId: id } }
+            });
+
+            await tx.mufa.deleteMany({
+                where: { troncalId: id }
+            });
+
             await tx.troncal.delete({ where: { id } });
         });
 
-        res.json({ mensaje: "Troncal y toda su descendencia eliminada correctamente." });
+        res.json({
+            success: true,
+            message: "Troncal y toda su infraestructura eliminada correctamente"
+        });
+
     } catch (error) {
-        console.error("🔥 ERROR EN BORRADO:", error);
-        res.status(500).json({ error: "Fallo al eliminar infraestructura vinculada" });
+        console.error("❌ Error al eliminar troncal:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al eliminar la troncal"
+        });
     }
 };

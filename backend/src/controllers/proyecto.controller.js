@@ -1,125 +1,196 @@
+const { prisma } = require('../db');
 
-const prisma = require('../config/db');
-
+// ====================== CREAR PROYECTO ======================
 exports.crearProyecto = async (req, res) => {
-  console.log("--- 🛰️ INICIO DE OPERACIÓN: CREAR PROYECTO ---");
-  console.log("📦 Datos recibidos del cliente:", req.body);
+    console.log("--- 🛰️ CREANDO PROYECTO ---");
 
-  try {
-    const { nombre, descripcion } = req.body;
+    try {
+        const { nombre, descripcion, estado } = req.body;
+        const { empresaId } = req.user;   // ← Viene del middleware
 
-    if (!nombre) {
-      console.warn("⚠️ Intento de creación sin nombre");
-      return res.status(400).json({ error: "Nombre obligatorio" });
-    }
-
-    console.log("⏳ Prisma intentando 'create' en la DB...");
-    
-    const proyecto = await prisma.proyecto.create({
-      data: { 
-        nombre, 
-        descripcion,
-        estado: "PLANIFICACION" 
-      }
-    });
-
-    console.log("✅ Proyecto creado con éxito ID:", proyecto.id);
-    res.status(201).json(proyecto);
-
-  } catch (error) {
-    console.error("❌ ERROR DETECTADO EN PRIMA:");
-    console.error("Cod Error:", error.code); // P2002, P1001, etc.
-    console.error("Mensaje:", error.message);
-    
-    // Esto nos dirá si el binario de Rust falló por librerías
-    if (error.message.includes("engine")) {
-      console.error("🚨 Fallo crítico del Query Engine de Prisma");
-    }
-
-    res.status(500).json({ 
-      error: "Error del motor de base de datos",
-      detalles: error.message,
-      codigo: error.code 
-    });
-  }
-};
-// 2. LISTAR: Resumen de todos los proyectos con conteo de cables
-exports.listarProyectos = async (req, res) => {
-  try {
-    const proyectos = await prisma.proyecto.findMany({
-      include: { 
-        _count: { 
-          select: { 
-            tramos: true,
-            troncales: true 
-          } 
-        } 
-      },
-      orderBy: { creadoEn: 'desc' }
-    });
-    res.json(proyectos);
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener la lista de proyectos" });
-  }
-};
-
-// 3. DETALLE PROFUNDO: Carga toda la infraestructura de una zona (GIS)
-exports.getProyectoDetalle = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const proyecto = await prisma.proyecto.findUnique({
-      where: { id },
-      include: {
-        // Traemos las troncales y sus mufas
-        troncales: {
-          include: {
-            _count: { select: { mufas: true } }
-          }
-        },
-        // Traemos todos los cables del proyecto con sus anclajes
-        tramos: {
-          include: {
-            posteInicio: { select: { codigo: true, latitud: true, longitud: true } },
-            posteFin: { select: { codigo: true, latitud: true, longitud: true } }
-          }
+        if (!nombre) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "El nombre del proyecto es obligatorio" 
+            });
         }
-      }
-    });
 
-    if (!proyecto) {
-      return res.status(404).json({ error: "Proyecto no encontrado" });
+        const proyecto = await prisma.proyecto.create({
+            data: {
+                nombre,
+                descripcion,
+                estado: estado || "PLANIFICACION",
+                empresaId   // ← Seguridad: siempre asignado a la empresa del usuario
+            },
+            include: {
+                empresa: {
+                    select: { nombre: true }
+                }
+            }
+        });
+
+        console.log(`✅ Proyecto creado: ${proyecto.nombre} (ID: ${proyecto.id})`);
+
+        res.status(201).json({
+            success: true,
+            message: "Proyecto creado exitosamente",
+            proyecto
+        });
+
+    } catch (error) {
+        console.error("❌ Error al crear proyecto:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al crear el proyecto",
+            error: error.message
+        });
     }
-
-    res.json(proyecto);
-  } catch (error) {
-    res.status(500).json({ error: "Error al cargar el detalle técnico del proyecto" });
-  }
 };
 
-// 4. ACTUALIZAR: Modificar nombre, descripción o estado (ej: pasar a EN_EJECUCION)
+// ====================== LISTAR PROYECTOS (Solo de su empresa) ======================
+exports.listarProyectos = async (req, res) => {
+    try {
+        const { empresaId } = req.user;
+
+        const proyectos = await prisma.proyecto.findMany({
+            where: { empresaId },   // ← Filtrado por empresa
+            include: {
+                _count: {
+                    select: {
+                        troncales: true,
+                        tramos: true
+                    }
+                }
+            },
+            orderBy: { creadoEn: 'desc' }
+        });
+
+        res.json({
+            success: true,
+            count: proyectos.length,
+            proyectos
+        });
+
+    } catch (error) {
+        console.error("❌ Error al listar proyectos:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener la lista de proyectos"
+        });
+    }
+};
+
+// ====================== OBTENER DETALLE DE UN PROYECTO ======================
+exports.getProyectoDetalle = async (req, res) => {
+    const { id } = req.params;
+    const { empresaId } = req.user;
+
+    try {
+        const proyecto = await prisma.proyecto.findUnique({
+            where: { 
+                id,
+                empresaId   // ← Seguridad: solo puede ver proyectos de su empresa
+            },
+            include: {
+                troncales: {
+                    include: {
+                        _count: { select: { mufas: true } }
+                    }
+                },
+                tramos: {
+                    include: {
+                        posteInicio: { select: { codigo: true, latitud: true, longitud: true } },
+                        posteFin:    { select: { codigo: true, latitud: true, longitud: true } }
+                    }
+                }
+            }
+        });
+
+        if (!proyecto) {
+            return res.status(404).json({
+                success: false,
+                message: "Proyecto no encontrado o no tienes acceso"
+            });
+        }
+
+        res.json({
+            success: true,
+            proyecto
+        });
+
+    } catch (error) {
+        console.error("❌ Error al obtener detalle del proyecto:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al cargar el detalle del proyecto"
+        });
+    }
+};
+
+// ====================== ACTUALIZAR PROYECTO ======================
 exports.actualizarProyecto = async (req, res) => {
-  const { id } = req.params;
-  const { nombre, descripcion, estado } = req.body;
-  try {
-    const actualizado = await prisma.proyecto.update({
-      where: { id },
-      data: { nombre, descripcion, estado }
-    });
-    res.json({ mensaje: "Proyecto actualizado", proyecto: actualizado });
-  } catch (error) {
-    res.status(500).json({ error: "No se pudo actualizar el proyecto" });
-  }
+    const { id } = req.params;
+    const { nombre, descripcion, estado } = req.body;
+    const { empresaId } = req.user;
+
+    try {
+        const proyectoActualizado = await prisma.proyecto.update({
+            where: { 
+                id,
+                empresaId   // ← Seguridad
+            },
+            data: { nombre, descripcion, estado }
+        });
+
+        res.json({
+            success: true,
+            message: "Proyecto actualizado correctamente",
+            proyecto: proyectoActualizado
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                success: false,
+                message: "Proyecto no encontrado o sin acceso"
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar el proyecto"
+        });
+    }
 };
 
-// 5. ELIMINAR: Borrado seguro (Cascade)
+// ====================== ELIMINAR PROYECTO ======================
 exports.eliminarProyecto = async (req, res) => {
-  const { id } = req.params;
-  try {
-    // Al eliminar el proyecto, el schema v6 borrará troncales y cables asociados
-    await prisma.proyecto.delete({ where: { id } });
-    res.json({ mensaje: "Proyecto e infraestructura asociada eliminados correctamente" });
-  } catch (error) {
-    console.error("🔥 Error en eliminación destructiva:", error);
-    res.status(500).json({ error: "Error al eliminar el proyecto y sus dependencias" });
-  }
+    const { id } = req.params;
+    const { empresaId } = req.user;
+
+    try {
+        await prisma.proyecto.delete({
+            where: { 
+                id,
+                empresaId   // ← Seguridad
+            }
+        });
+
+        res.json({
+            success: true,
+            message: "Proyecto y toda su infraestructura eliminados correctamente"
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                success: false,
+                message: "Proyecto no encontrado o sin acceso"
+            });
+        }
+        console.error("❌ Error al eliminar proyecto:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al eliminar el proyecto"
+        });
+    }
 };

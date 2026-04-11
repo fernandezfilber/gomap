@@ -1,155 +1,241 @@
+const { prisma } = require('../db');
 
-const prisma = require('../config/db');
-
-// 1. OBTENER TODOS LOS POSTES (Optimizado con contadores de equipos y cables)
+// ====================== OBTENER TODOS LOS POSTES (Solo de su empresa) ======================
 exports.getPostes = async (req, res) => {
     try {
+        const { empresaId } = req.user;
+
         const postes = await prisma.poste.findMany({
+            where: {
+                // Filtramos a través de los tramos que pertenecen a proyectos de su empresa
+                OR: [
+                    { tramosInicio: { some: { proyecto: { empresaId } } } },
+                    { tramosFin:    { some: { proyecto: { empresaId } } } }
+                ]
+            },
             include: {
                 _count: {
                     select: { 
-                        cajas: true, 
-                        mufas: true,
-                        tramosInicio: true, // Cables que salen
-                        tramosFin: true     // Cables que llegan
+                        mufas: true, 
+                        cajas: true,
+                        tramosInicio: true,
+                        tramosFin: true
                     }
-                }
-            }
+                },
+                mufas: { select: { id: true, codigo: true } },
+                cajas: { select: { id: true, codigo: true } }
+            },
+            orderBy: { creadoEn: 'desc' }
         });
-        res.json(postes);
+
+        res.json({
+            success: true,
+            count: postes.length,
+            postes
+        });
+
     } catch (error) {
-        console.error("❌ ERROR GET POSTES:", error.message);
-        res.status(500).json({ error: "Error al obtener la lista de postes" });
+        console.error("❌ Error al obtener postes:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener la lista de postes"
+        });
     }
 };
 
-// 2. CREAR POSTE (Mantenemos validación de coordenadas)
+// ====================== CREAR POSTE ======================
 exports.createPoste = async (req, res) => {
     try {
-        const { codigo, latitud, longitud, tipo, altura, propietario } = req.body;
+        const { codigo, latitud, longitud, tipo, altura } = req.body;
+        const { empresaId } = req.user;
 
         if (!latitud || !longitud) {
-            return res.status(400).json({ error: "Las coordenadas (lat/lng) son obligatorias." });
+            return res.status(400).json({
+                success: false,
+                message: "Las coordenadas (latitud y longitud) son obligatorias"
+            });
         }
 
         const nuevoPoste = await prisma.poste.create({
-            data: { 
-                codigo: codigo || `P-${Date.now()}`, 
-                latitud: parseFloat(latitud), 
-                longitud: parseFloat(longitud), 
-                tipo: tipo || 'CONCRETO', 
+            data: {
+                codigo: codigo || `P-${Date.now()}`,
+                latitud: parseFloat(latitud),
+                longitud: parseFloat(longitud),
+                tipo: tipo || 'CONCRETO',
                 altura: altura || '8m'
-                // Si 'propietario' no está en tu Model de abajo, quítalo de aquí o agrégalo al schema
             }
         });
-        
-        console.log("✅ Poste creado:", nuevoPoste.codigo);
-        res.status(201).json(nuevoPoste);
+
+        console.log(`✅ Poste creado: ${nuevoPoste.codigo}`);
+
+        res.status(201).json({
+            success: true,
+            message: "Poste creado correctamente",
+            poste: nuevoPoste
+        });
 
     } catch (error) {
-        // --- 🛰️ DEBUG PARA FILBER ---
-        console.error("❌ ERROR REAL EN CREATE POSTE:", error.code, error.message);
-        
-        // Si el código de error es P2002, es realmente un duplicado
+        console.error("❌ Error al crear poste:", error);
+
         if (error.code === 'P2002') {
-            return res.status(400).json({ error: "El código del poste ya existe en la base de datos." });
+            return res.status(400).json({
+                success: false,
+                message: "Ya existe un poste con ese código"
+            });
         }
 
-        // Si es otro error, queremos saber cuál es
-        res.status(500).json({ 
-            error: "Error interno del servidor", 
-            mensajeOriginal: error.message,
-            codigoPrisma: error.code 
+        res.status(500).json({
+            success: false,
+            message: "Error al crear el poste"
         });
     }
 };
-// 3. DETALLE DE POSTE (Crucial para el "DetalleEquipo.jsx" que armamos)
+
+// ====================== OBTENER DETALLE DE UN POSTE ======================
 exports.getPosteWithEquipos = async (req, res) => {
     const { id } = req.params;
+    const { empresaId } = req.user;
+
     try {
         const poste = await prisma.poste.findUnique({
             where: { id },
             include: {
-                // Traemos mufas con sus hilos y cajas con sus clientes
-                mufas: { 
-                    select: { 
-                        id: true, 
-                        codigo: true, 
-                        ratioSplitteo: true, 
+                mufas: {
+                    select: {
+                        id: true,
+                        codigo: true,
+                        ratioSplitteo: true,
                         hiloEntrada: true,
-                        bufferEntrada: true 
-                    } 
-                }, 
-                cajas: { 
-                    include: { 
-                        _count: { select: { clientes: true } } 
-                    } 
+                        hilosDisponibles: true,
+                        bufferEntrada: true
+                    }
                 },
-                // Ver qué cables están anclados aquí
-                tramosInicio: { select: { id: true, nombre: true, tipoCable: true } },
-                tramosFin: { select: { id: true, nombre: true, tipoCable: true } }
-            }
-        });
-
-        if (!poste) return res.status(404).json({ error: "Poste no encontrado." });
-        
-        res.json(poste);
-    } catch (error) {
-        res.status(500).json({ error: "Error al obtener detalles del poste" });
-    }
-};
-
-// 4. ACTUALIZAR (Mantenemos protección de tipos de datos)
-exports.updatePoste = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const dataUpdate = { ...req.body };
-
-        if (dataUpdate.latitud) dataUpdate.latitud = parseFloat(dataUpdate.latitud);
-        if (dataUpdate.longitud) dataUpdate.longitud = parseFloat(dataUpdate.longitud);
-
-        const actualizado = await prisma.poste.update({
-            where: { id },
-            data: dataUpdate
-        });
-
-        res.json({ mensaje: "Poste actualizado correctamente", poste: actualizado });
-    } catch (error) {
-        res.status(500).json({ error: "Error al actualizar el poste." });
-    }
-};
-
-// 5. ELIMINAR POSTE (Protección de Integridad de Red mejorada)
-exports.deletePoste = async (req, res) => {
-    const { id } = req.params;
-    try {
-        // Verificamos TODA la infraestructura conectada
-        const chequeo = await prisma.poste.findUnique({
-            where: { id },
-            include: {
-                _count: { 
-                    select: { 
-                        mufas: true, 
-                        cajas: true, 
-                        tramosInicio: true, 
-                        tramosFin: true 
-                    } 
+                cajas: {
+                    include: {
+                        _count: { select: { clientes: true } },
+                        clientes: { select: { id: true, nombre: true, dni: true } }
+                    }
+                },
+                tramosInicio: {
+                    where: { proyecto: { empresaId } },
+                    select: { id: true, nombre: true, tipoCable: true, colorVisual: true }
+                },
+                tramosFin: {
+                    where: { proyecto: { empresaId } },
+                    select: { id: true, nombre: true, tipoCable: true, colorVisual: true }
                 }
             }
         });
 
-        const { mufas, cajas, tramosInicio, tramosFin } = chequeo._count;
+        if (!poste) {
+            return res.status(404).json({
+                success: false,
+                message: "Poste no encontrado o sin acceso"
+            });
+        }
+
+        res.json({
+            success: true,
+            poste
+        });
+
+    } catch (error) {
+        console.error("❌ Error al obtener detalle del poste:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener el detalle del poste"
+        });
+    }
+};
+
+// ====================== ACTUALIZAR POSTE ======================
+exports.updatePoste = async (req, res) => {
+    const { id } = req.params;
+    const { codigo, latitud, longitud, tipo, altura } = req.body;
+    const { empresaId } = req.user;
+
+    try {
+        const dataUpdate = {};
+        if (codigo) dataUpdate.codigo = codigo;
+        if (latitud) dataUpdate.latitud = parseFloat(latitud);
+        if (longitud) dataUpdate.longitud = parseFloat(longitud);
+        if (tipo) dataUpdate.tipo = tipo;
+        if (altura) dataUpdate.altura = altura;
+
+        const posteActualizado = await prisma.poste.update({
+            where: { id },
+            data: dataUpdate
+        });
+
+        res.json({
+            success: true,
+            message: "Poste actualizado correctamente",
+            poste: posteActualizado
+        });
+
+    } catch (error) {
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                success: false,
+                message: "Poste no encontrado"
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar el poste"
+        });
+    }
+};
+
+// ====================== ELIMINAR POSTE (Con protección) ======================
+exports.deletePoste = async (req, res) => {
+    const { id } = req.params;
+    const { empresaId } = req.user;
+
+    try {
+        // Verificar si el poste tiene elementos conectados
+        const poste = await prisma.poste.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        mufas: true,
+                        cajas: true,
+                        tramosInicio: true,
+                        tramosFin: true
+                    }
+                }
+            }
+        });
+
+        if (!poste) {
+            return res.status(404).json({
+                success: false,
+                message: "Poste no encontrado"
+            });
+        }
+
+        const { mufas, cajas, tramosInicio, tramosFin } = poste._count;
 
         if (mufas > 0 || cajas > 0 || tramosInicio > 0 || tramosFin > 0) {
-            return res.status(400).json({ 
-                error: "⚠️ Operación bloqueada", 
-                detalle: `El poste tiene: ${mufas} mufas, ${cajas} cajas y ${tramosInicio + tramosFin} cables conectados. Elimine o mueva estos elementos primero.` 
+            return res.status(400).json({
+                success: false,
+                message: `No se puede eliminar. El poste tiene ${mufas} mufa(s), ${cajas} caja(s) y ${tramosInicio + tramosFin} cable(s) conectados.`
             });
         }
 
         await prisma.poste.delete({ where: { id } });
-        res.json({ message: "Poste retirado del sistema correctamente." });
+
+        res.json({
+            success: true,
+            message: "Poste eliminado correctamente"
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "Error al eliminar el poste." });
+        console.error("❌ Error al eliminar poste:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al eliminar el poste"
+        });
     }
 };

@@ -1,17 +1,12 @@
+// src/db.js (Versión mejorada)
 const { PrismaClient } = require('@prisma/client');
 
-// Instanciamos el cliente de Prisma
-const prisma = new PrismaClient();
+let prisma;
 
-// Verificamos la conexión al iniciar
-const connectDB = async () => {
-  try {
-    await prisma.$connect();
-    console.log('Conexión a la base de datos   exitosa');
-  } catch (error) {
-    console.error(' Error al conectar con la base de datos', error);
-    process.exit(1);
-  }
-};
+if (!prisma) {
+    prisma = new PrismaClient({
+        log: ['query', 'info', 'warn', 'error'], // útil para debug
+    });
+}
 
-module.exports = { prisma, connectDB };
+module.exports = { prisma };
