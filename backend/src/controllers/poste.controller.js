@@ -1,4 +1,4 @@
-const { prisma } = require('../db');
+const { prisma } = require('../config/db');
 
 // ====================== OBTENER TODOS LOS POSTES (Solo de su empresa) ======================
 exports.getPostes = async (req, res) => {
