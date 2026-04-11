@@ -1,12 +1,14 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Esto le dice a Prisma que prepare motores para tu PC (native) 
+  // y para los servidores de Hostinger (debian)
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
-
 // ====================== EMPRESA (Tenant) ======================
 model Empresa {
   id          String   @id @default(uuid())
