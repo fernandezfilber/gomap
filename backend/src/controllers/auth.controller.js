@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { prisma } = require('../db'); // Asegúrate de usar el db.js que creamos antes
-
+const { prisma } = require('../config/db'); // 👈 Esta es la ruta correcta según tu app.js
 // ====================== LOGIN ======================
 exports.login = async (req, res) => {
     const { email, password } = req.body;
