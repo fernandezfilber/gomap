@@ -10,7 +10,14 @@ exports.crearEmpresa = async (req, res) => {
         }
 
         const nuevaEmpresa = await prisma.empresa.create({
-            data: { nombre, razonSocial, ruc, telefono, direccion }
+            // Usamos solo los campos que existen en el esquema para evitar errores de validación
+            data: { 
+                nombre, 
+                razonSocial: razonSocial || null, 
+                ruc: ruc || null, 
+                telefono: telefono || null, 
+                direccion: direccion || null 
+            }
         });
 
         res.status(201).json({
@@ -19,8 +26,13 @@ exports.crearEmpresa = async (req, res) => {
             empresa: nuevaEmpresa
         });
     } catch (error) {
-        console.error("❌ Error al crear empresa:", error);
-        res.status(500).json({ success: false, message: "Error interno del servidor" });
+        // IMPORTANTE: Cambia el log para ver el error real en los logs de Hostinger
+        console.error("❌ Error Detallado:", error.message); 
+        res.status(500).json({ 
+            success: false, 
+            message: "Error interno", 
+            error: error.message // ← Agrégalo solo para esta prueba para ver qué pasa
+        });
     }
 };
 
