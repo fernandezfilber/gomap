@@ -1,24 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const cajaController = require('../controllers/caja.controller');
-const { verifyToken, isAdmin } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+// En src/routes/caja.routes.js
 
 // --- RUTAS DE CAJAS NAP ---
 
 // Obtener todas las cajas (Lectura pública o protegida según prefieras)
-router.get('/', cajaController.getCajas);
+// ✅ CORREGIDO: Ahora inyecta req.user para que el controlador sepa qué empresa filtrar
+router.get('/', verifyToken, cajaController.getCajas);
 
-// NUEVA RUTA: Obtener qué hilos/salidas están ocupadas en una mufa específica
-// Se usa en el frontend al seleccionar una mufa para limpiar el selector
-router.get('/mufas/:mufaId/ocupados', cajaController.getHilosOcupados);
+// ✅ CORREGIDO: También protegemos la consulta de hilos
+router.get('/mufas/:mufaId/ocupados', verifyToken, cajaController.getHilosOcupados);
 
 // Crear caja (Protegido: Solo Admin)
-router.post('/', cajaController.createCaja);
+router.post('/', verifyToken, cajaController.createCaja);
 
 // Actualizar caja (Protegido: Solo Admin)
-router.put('/:id', cajaController.actualizarCaja);
+router.put('/:id', verifyToken, cajaController.actualizarCaja);
 
 // Eliminar caja (Protegido: Solo Admin)
-router.delete('/:id', cajaController.deleteCaja);
+router.delete('/:id', verifyToken, cajaController.deleteCaja);
 
 module.exports = router;

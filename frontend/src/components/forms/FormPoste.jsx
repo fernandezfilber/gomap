@@ -1,86 +1,105 @@
-import { useState } from 'react'; // ❌ Quitamos useEffect, ya no es necesario
-import { X, Save, Trash2, MapPin, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Save, Loader2 } from 'lucide-react';
 import usePostes from '../../hooks/usePostes';
 
 const FormPoste = ({ data, onCancel }) => {
-    const { actualizarPoste, eliminarPoste, loading } = usePostes();
+    const { crearPoste, actualizarPoste, loading } = usePostes();
+    const isNew = data?.isNew || false;
 
-    // ✅ Inicializamos el estado una sola vez. 
-    // Como usaremos un 'key' externo, este estado se reseteará solo al cambiar de poste.
-    const [poste, setPoste] = useState(data?.data || null);
-
-    if (!data || data.isNew || !poste) return null;
+    const [poste, setPoste] = useState({
+        codigo: data?.codigo || `P-${Date.now().toString().slice(-5)}`,
+        latitud: data?.latitud || data?.coords?.latitud || 0,
+        longitud: data?.longitud || data?.coords?.longitud || 0,
+        tipo: data?.tipo || 'CONCRETO',
+        altura: data?.altura || '8m'
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await actualizarPoste(poste.id, poste);
+            if (isNew) {
+                await crearPoste(poste);
+            } else {
+                await actualizarPoste(data.id, poste);
+            }
             onCancel();
         } catch (error) {
-            console.error("Error al actualizar:", error);
+            alert("Error al guardar el poste");
         }
     };
 
     return (
-        <div className="absolute top-24 left-6 z-[1002] w-80 bg-white shadow-2xl rounded-3xl border border-slate-200 overflow-hidden animate-in slide-in-from-left duration-200">
-            <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-blue-400"/>
-                    <span className="font-black text-[10px] uppercase tracking-widest">Editar: {poste.codigo}</span>
-                </div>
-                <button onClick={onCancel} className="hover:bg-white/20 p-1 rounded-full"><X size={18}/></button>
+        <div className="absolute top-20 left-6 z-[1002] w-[400px] bg-white shadow-2xl rounded-3xl overflow-hidden">
+            <div className="bg-blue-600 px-6 py-5 text-white flex justify-between">
+                <h3 className="font-black">{isNew ? 'NUEVO POSTE' : 'EDITAR POSTE'}</h3>
+                <button onClick={onCancel}><X size={20} /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
                 <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Identificador</label>
-                    <input 
-                        className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                        value={poste.codigo || ''}
-                        onChange={(e) => setPoste({...poste, codigo: e.target.value})}
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Código del Poste</label>
+                    <input
+                        type="text"
+                        value={poste.codigo}
+                        onChange={(e) => setPoste({ ...poste, codigo: e.target.value })}
+                        className="w-full p-4 bg-slate-100 border border-slate-300 rounded-2xl focus:border-blue-500 outline-none font-mono"
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase">Material</label>
-                        <select 
-                            className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                            value={poste.tipo || 'CONCRETO'}
-                            onChange={(e) => setPoste({...poste, tipo: e.target.value})}
-                        >
-                            <option value="CONCRETO">Concreto</option>
-                            <option value="MADERA">Madera</option>
-                        </select>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Latitud</label>
+                        <input
+                            type="number"
+                            step="0.000001"
+                            value={poste.latitud}
+                            onChange={(e) => setPoste({ ...poste, latitud: parseFloat(e.target.value) })}
+                            className="w-full p-4 bg-slate-100 border border-slate-300 rounded-2xl focus:border-blue-500 outline-none"
+                        />
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase">Altura</label>
-                        <select 
-                            className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                            value={poste.altura || '8M'}
-                            onChange={(e) => setPoste({...poste, altura: e.target.value})}
-                        >
-                            <option value="8M">8 Metros</option>
-                            <option value="12M">12 Metros</option>
-                        </select>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Longitud</label>
+                        <input
+                            type="number"
+                            step="0.000001"
+                            value={poste.longitud}
+                            onChange={(e) => setPoste({ ...poste, longitud: parseFloat(e.target.value) })}
+                            className="w-full p-4 bg-slate-100 border border-slate-300 rounded-2xl focus:border-blue-500 outline-none"
+                        />
                     </div>
                 </div>
 
-                <button 
-                    type="submit" 
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo</label>
+                        <select
+                            value={poste.tipo}
+                            onChange={(e) => setPoste({ ...poste, tipo: e.target.value })}
+                            className="w-full p-4 bg-slate-100 border border-slate-300 rounded-2xl focus:border-blue-500 outline-none"
+                        >
+                            <option value="CONCRETO">Concreto</option>
+                            <option value="MADERA">Madera</option>
+                            <option value="METALICO">Metálico</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Altura</label>
+                        <input
+                            type="text"
+                            value={poste.altura}
+                            onChange={(e) => setPoste({ ...poste, altura: e.target.value })}
+                            className="w-full p-4 bg-slate-100 border border-slate-300 rounded-2xl focus:border-blue-500 outline-none"
+                        />
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
                     disabled={loading}
-                    className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-xs hover:bg-blue-700 flex items-center justify-center gap-2"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3"
                 >
-                    {loading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
-                    GUARDAR CAMBIOS
-                </button>
-                
-                <button 
-                    type="button" 
-                    onClick={() => eliminarPoste(poste.id).then(onCancel)}
-                    className="w-full py-2 text-red-500 text-[10px] font-bold"
-                >
-                    ELIMINAR POSTE
+                    {loading ? <Loader2 className="animate-spin" /> : <Save />}
+                    {isNew ? 'CREAR POSTE' : 'GUARDAR CAMBIOS'}
                 </button>
             </form>
         </div>

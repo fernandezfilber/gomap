@@ -1,26 +1,51 @@
+const { prisma } = require('../db');
 
-const prisma = require('../config/db');
-// 1. CREAR CLIENTE: Con validación de capacidad en la Caja NAP
+// ====================== CREAR CLIENTE ======================
 exports.createCliente = async (req, res) => {
     try {
         const { 
             nombre, dni, telefono, direccion, 
-            cajaId, snMac, onuExternalId, 
-            latitud, longitud, estadoServicio 
+            snMac, latitud, longitud, estadoServicio,
+            cajaId 
         } = req.body;
 
-        if (!cajaId || !dni) {
-            return res.status(400).json({ error: "DNI y Caja NAP son obligatorios." });
+        const { empresaId } = req.user;
+
+        if (!nombre || !dni || !cajaId) {
+            return res.status(400).json({
+                success: false,
+                message: "Nombre, DNI y cajaId son obligatorios"
+            });
         }
 
         const resultado = await prisma.$transaction(async (tx) => {
-            // A. Verificar capacidad de la caja
-            const caja = await tx.caja.findUnique({ where: { id: cajaId } });
-            if (!caja || caja.puertosLibres <= 0) {
-                throw new Error("La Caja NAP seleccionada está saturada (0 puertos libres).");
+
+            // 1. Verificar que la caja pertenezca a la empresa del usuario
+            const caja = await tx.caja.findUnique({
+                where: { id: cajaId },
+                include: {
+                    mufa: {
+                        include: {
+                            troncal: {
+                                include: {
+                                    proyecto: { select: { empresaId: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (!caja) throw new Error("Caja no encontrada");
+            if (caja.mufa.troncal.proyecto.empresaId !== empresaId) {
+                throw new Error("No tienes acceso a esta caja");
             }
 
-            // B. Crear el cliente con todos los campos técnicos
+            if (caja.puertosLibres <= 0) {
+                throw new Error("La caja NAP seleccionada no tiene puertos libres");
+            }
+
+            // 2. Crear el cliente
             const nuevoCliente = await tx.cliente.create({
                 data: {
                     nombre,
@@ -28,7 +53,6 @@ exports.createCliente = async (req, res) => {
                     telefono,
                     direccion,
                     snMac,
-                    onuExternalId,
                     latitud: latitud ? parseFloat(latitud) : caja.latitud,
                     longitud: longitud ? parseFloat(longitud) : caja.longitud,
                     estadoServicio: estadoServicio || "ACTIVO",
@@ -36,7 +60,7 @@ exports.createCliente = async (req, res) => {
                 }
             });
 
-            // C. Descontar puerto
+            // 3. Descontar un puerto de la caja
             await tx.caja.update({
                 where: { id: cajaId },
                 data: { puertosLibres: { decrement: 1 } }
@@ -45,69 +69,157 @@ exports.createCliente = async (req, res) => {
             return nuevoCliente;
         });
 
-        res.status(201).json(resultado);
+        res.status(201).json({
+            success: true,
+            message: "Cliente registrado correctamente",
+            cliente: resultado
+        });
+
     } catch (error) {
-        console.error("❌ Error al registrar cliente:", error.message);
-        res.status(400).json({ error: error.message });
+        console.error("❌ Error al crear cliente:", error);
+        res.status(400).json({
+            success: false,
+            message: error.message || "Error al registrar el cliente"
+        });
     }
 };
 
-// 2. OBTENER CLIENTES: Con trazabilidad completa hasta la Troncal
+// ====================== OBTENER TODOS LOS CLIENTES (Solo de su empresa) ======================
 exports.getClientes = async (req, res) => {
     try {
+        const { empresaId } = req.user;
+
         const clientes = await prisma.cliente.findMany({
-            include: { 
-                caja: { 
-                    include: { 
-                        mufa: { 
-                            include: { troncal: { select: { nombre: true } } } 
-                        },
-                        poste: { select: { codigo: true } }
-                    } 
-                } 
+            where: {
+                caja: {
+                    mufa: {
+                        troncal: {
+                            proyecto: { empresaId }
+                        }
+                    }
+                }
+            },
+            include: {
+                caja: {
+                    include: {
+                        poste: { select: { codigo: true } },
+                        mufa: {
+                            include: {
+                                troncal: { select: { nombre: true, bufferColor: true } }
+                            }
+                        }
+                    }
+                }
             },
             orderBy: { creadoEn: 'desc' }
         });
-        res.json(clientes);
+
+        res.json({
+            success: true,
+            count: clientes.length,
+            clientes
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "Error al obtener lista de abonados" });
+        console.error("❌ Error al obtener clientes:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al obtener la lista de clientes"
+        });
     }
 };
 
-// 3. ACTUALIZAR CLIENTE (Cambio de estado o dirección)
+// ====================== ACTUALIZAR CLIENTE ======================
 exports.updateCliente = async (req, res) => {
     const { id } = req.params;
+    const { nombre, telefono, direccion, snMac, estadoServicio } = req.body;
+    const { empresaId } = req.user;
+
     try {
-        const actualizado = await prisma.cliente.update({
-            where: { id },
-            data: req.body
+        const clienteActualizado = await prisma.cliente.update({
+            where: { 
+                id,
+                caja: {
+                    mufa: {
+                        troncal: { proyecto: { empresaId } }
+                    }
+                }
+            },
+            data: {
+                nombre,
+                telefono,
+                direccion,
+                snMac,
+                estadoServicio
+            }
         });
-        res.json({ mensaje: "Datos de abonado actualizados", cliente: actualizado });
+
+        res.json({
+            success: true,
+            message: "Cliente actualizado correctamente",
+            cliente: clienteActualizado
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "Error al actualizar cliente" });
+        if (error.code === 'P2025') {
+            return res.status(404).json({
+                success: false,
+                message: "Cliente no encontrado o sin acceso"
+            });
+        }
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar el cliente"
+        });
     }
 };
 
-// 4. ELIMINAR CLIENTE: Repone el puerto a la Caja NAP
+// ====================== ELIMINAR CLIENTE (Libera puerto) ======================
 exports.deleteCliente = async (req, res) => {
     const { id } = req.params;
+    const { empresaId } = req.user;
+
     try {
         await prisma.$transaction(async (tx) => {
-            const cliente = await tx.cliente.findUnique({ where: { id } });
-            if (!cliente) throw new Error("Cliente no encontrado");
+            const cliente = await tx.cliente.findUnique({
+                where: { id },
+                include: {
+                    caja: {
+                        include: {
+                            mufa: {
+                                include: {
+                                    troncal: { select: { proyecto: { empresaId: true } } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
-            // A. Reponer el puerto en la caja para un nuevo abonado
+            if (!cliente || cliente.caja.mufa.troncal.proyecto.empresaId !== empresaId) {
+                throw new Error("Cliente no encontrado o sin acceso");
+            }
+
+            // Liberar puerto en la caja
             await tx.caja.update({
                 where: { id: cliente.cajaId },
                 data: { puertosLibres: { increment: 1 } }
             });
 
-            // B. Borrar el registro del cliente
+            // Eliminar cliente
             await tx.cliente.delete({ where: { id } });
         });
 
-        res.json({ mensaje: "Cliente retirado y puerto liberado en la NAP." });
+        res.json({
+            success: true,
+            message: "Cliente eliminado y puerto liberado correctamente"
+        });
+
     } catch (error) {
-        res.status(500).json({ error: "Error al eliminar cliente", detalle: error.message });
+        console.error("❌ Error al eliminar cliente:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al eliminar el cliente"
+        });
     }
 };

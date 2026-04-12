@@ -1,6 +1,9 @@
 const router = require("express").Router();
 const tramoController = require("../controllers/tramoCable.controller"); // Asegúrate del punto: .controller
-
+const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+// En src/routes/caja.routes.js
+router.use(verifyToken); // 👈 Esto inyecta req.user
+router.use(checkTenant); // 👈 Esto valida la empresa
 // 1. Obtener todos (Carga inicial del mapa)
 router.get("/", tramoController.getTramos);
 

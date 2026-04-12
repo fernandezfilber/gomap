@@ -1,55 +1,52 @@
-import { useState, useCallback, useEffect } from 'react'; // Añadimos useEffect
+import { useState, useEffect, useCallback } from 'react';
 import fvApi from '../api/fvApi';
 
-const usePostes = (proyectoId) => {
+const usePostes = () => {
     const [postes, setPostes] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // 1. LISTAR: Ahora es más flexible
     const fetchPostes = useCallback(async () => {
-        // Quitamos el 'if (!proyectoId) return;' para que pueda cargar datos globales
         setLoading(true);
         try {
-            // Si hay proyectoId lo mandamos en la URL, si no, pedimos la ruta limpia
-            const url = proyectoId ? `/postes?proyectoId=${proyectoId}` : '/postes';
-            const { data } = await fvApi.get(url);
-            
-            console.log("Datos recibidos en el Hook:", data.length); 
-            setPostes(data);
-        } catch (error) {
-            console.error("Error al traer postes:", error);
+            const { data } = await fvApi.get('/postes');
+            setPostes(data.postes || data);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error al cargar postes');
         } finally {
             setLoading(false);
         }
-    }, [proyectoId]);
+    }, []);
 
-    // 🔥 CRÍTICO: El hook debe dispararse solo al cargar o cambiar el proyecto
+    const crearPoste = async (data) => {
+        const res = await fvApi.post('/postes', data);
+        setPostes(prev => [res.data.poste || res.data, ...prev]);
+        return res.data;
+    };
+
+    const actualizarPoste = async (id, data) => {
+        const res = await fvApi.put(`/postes/${id}`, data);
+        setPostes(prev => prev.map(p => p.id === id ? res.data : p));
+        return res.data;
+    };
+
+    const eliminarPoste = async (id) => {
+        await fvApi.delete(`/postes/${id}`);
+        setPostes(prev => prev.filter(p => p.id !== id));
+    };
+
     useEffect(() => {
         fetchPostes();
     }, [fetchPostes]);
 
-    // 2. CREAR
-    const crearPoste = async (datos) => {
-        const payload = {
-            ...datos,
-            proyectoId: proyectoId || datos.proyectoId, // Aseguramos que guarde el ID
-            altura: datos.altura || "8m",
-            tipo: datos.tipo || "CONCRETO"
-        };
-        
-        const { data } = await fvApi.post('/postes', payload);
-        // Refrescamos la lista completa para asegurar sincronización
-        fetchPostes(); 
-        return data;
-    };
-
-    // ... (Resto de funciones: actualizarPoste, eliminarPoste se mantienen igual)
-
     return {
         postes,
         loading,
+        error,
         fetchPostes,
-        crearPoste
+        crearPoste,
+        actualizarPoste,
+        eliminarPoste
     };
 };
 

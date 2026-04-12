@@ -1,107 +1,194 @@
-import { useState } from 'react';
-import useAuth from '../hooks/useAuth';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Eye, EyeOff, ArrowRight, Building2, User, ShieldCheck } from 'lucide-react';
+import fvApi from '../api/fvApi';
 
 const Register = () => {
-    const [nombre, setNombre] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const { register, loading, error } = useAuth();
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [error, setError] = useState('');
+
+    const [formData, setFormData] = useState({
+        nombreEmpresa: '',
+        ruc: '',
+        direccion: '',
+        nombreAdmin: '',
+        email: '',
+        password: ''
+    });
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError('');
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         try {
-            // ID de Forward Vision generado en tu VPS
-            const empresaId = "2a4cf363-5c61-4c3a-85b6-166ef40204ea"; 
+            const res = await fvApi.post('/auth/registro-total', formData);
             
-            // Llamamos al registro pasando los 4 parámetros necesarios
-            await register(nombre, email, password, empresaId);
+            if (res.data.success) {
+                setSuccess(true);
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2800);
+            }
         } catch (err) {
-            console.error("Fallo al registrar técnico en el Nodo:", err.message);
+            setError(err.response?.data?.message || "Error al registrar la empresa");
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-            <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl transition-all hover:border-blue-900/50">
-                
-                {/* Logo y Encabezado */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4 shadow-lg shadow-blue-900/20">
-                        <span className="text-2xl font-black text-white italic">FV</span>
+        <div className="min-h-screen bg-[#0a0f1c] flex items-center justify-center p-6">
+            <div className="max-w-2xl w-full">
+                {/* Header */}
+                <div className="flex flex-col items-center mb-10">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-400 rounded-3xl flex items-center justify-center mb-4 shadow-2xl shadow-blue-500/30">
+                        <span className="text-4xl font-black text-white">FM</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Alta de Personal</h1>
-                    <p className="text-slate-400 mt-1 text-xs uppercase tracking-widest font-semibold">Nodo Chosica - Registro</p>
+                    <h1 className="text-4xl font-black tracking-tighter">FiberMap</h1>
+                    <p className="text-slate-400 mt-1">Registro de Nueva Empresa</p>
                 </div>
 
-                {/* Mensaje de Error dinámico del VPS */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-3 animate-bounce">
-                        <span className="text-red-500 text-sm font-medium">⚠️ {error}</span>
-                    </div>
-                )}
+                <div className="bg-slate-900 border border-slate-700 rounded-3xl p-10 md:p-14 shadow-2xl">
+                    {success ? (
+                        <div className="text-center py-16">
+                            <ShieldCheck size={80} className="text-green-500 mx-auto mb-6" />
+                            <h2 className="text-3xl font-bold text-white mb-3">¡Registro Exitoso!</h2>
+                            <p className="text-slate-400 text-lg">Tu empresa ha sido creada correctamente.<br />Redirigiendo al login...</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                            {error && (
+                                <div className="bg-red-500/10 border border-red-500 text-red-400 p-4 rounded-2xl text-sm">
+                                    {error}
+                                </div>
+                            )}
 
-                {/* Formulario de Registro */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Nombre Completo</label>
-                        <input 
-                            type="text" 
-                            className="w-full bg-slate-800 border border-slate-700 p-3.5 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                            placeholder="Ej. Filber Fernandez"
-                            value={nombre}
-                            onChange={(e) => setNombre(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Email Corporativo</label>
-                        <input 
-                            type="email" 
-                            className="w-full bg-slate-800 border border-slate-700 p-3.5 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                            placeholder="usuario@forwardvision.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Contraseña de Acceso</label>
-                        <input 
-                            type="password" 
-                            className="w-full bg-slate-800 border border-slate-700 p-3.5 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                            placeholder="Mínimo 6 caracteres"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <button 
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white p-4 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-wait"
-                    >
-                        {loading ? (
-                            <div className="flex items-center justify-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                <span>Registrando...</span>
+                            {/* Datos de la Empresa */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <Building2 size={22} /> Información de la Empresa
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-2">Nombre de la Empresa</label>
+                                        <input
+                                            type="text"
+                                            name="nombreEmpresa"
+                                            value={formData.nombreEmpresa}
+                                            onChange={handleChange}
+                                            required
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                            placeholder="Mi ISP Fiber SAC"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-2">RUC</label>
+                                        <input
+                                            type="text"
+                                            name="ruc"
+                                            value={formData.ruc}
+                                            onChange={handleChange}
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                            placeholder="20601234567"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-5">
+                                    <label className="block text-sm text-slate-400 mb-2">Dirección / Sede</label>
+                                    <input
+                                        type="text"
+                                        name="direccion"
+                                        value={formData.direccion}
+                                        onChange={handleChange}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                        placeholder="Av. Principal 123, Lima"
+                                    />
+                                </div>
                             </div>
-                        ) : (
-                            'Crear Cuenta de Técnico'
-                        )}
-                    </button>
-                </form>
 
-                {/* Enlace para volver al Login */}
-                <p className="mt-6 text-center text-slate-400 text-sm">
-                    ¿Ya tienes una credencial activa?{' '}
-                    <Link to="/login" className="text-blue-500 font-bold hover:underline">
+                            <div className="h-px bg-slate-800 my-4"></div>
+
+                            {/* Datos del Administrador */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                    <User size={22} /> Administrador Principal
+                                </h3>
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-2">Nombre Completo</label>
+                                        <input
+                                            type="text"
+                                            name="nombreAdmin"
+                                            value={formData.nombreAdmin}
+                                            onChange={handleChange}
+                                            required
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                            placeholder="Juan Pérez"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-2">Correo Electrónico</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            required
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                            placeholder="admin@tuisp.com"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-2">Contraseña</label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                required
+                                                className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-4 focus:border-blue-500 outline-none"
+                                                placeholder="Crea una contraseña segura"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400"
+                                            >
+                                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 py-5 rounded-2xl font-bold text-lg transition-all active:scale-[0.98] disabled:opacity-70 mt-6"
+                            >
+                                {loading ? "Creando cuenta..." : "Crear Mi Empresa en FiberMap"}
+                            </button>
+                        </form>
+                    )}
+                </div>
+
+                <div className="text-center mt-8 text-slate-500">
+                    ¿Ya tienes cuenta?{' '}
+                    <Link to="/login" className="text-blue-400 hover:text-blue-500 font-medium">
                         Inicia sesión aquí
                     </Link>
-                </p>
+                </div>
             </div>
         </div>
     );

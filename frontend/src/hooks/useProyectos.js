@@ -5,62 +5,44 @@ const useProyectos = () => {
     const [proyectos, setProyectos] = useState([]);
     const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // 1. LISTAR: Trae todos los sectores (Jicamarca, Chosica, etc.)
     const fetchProyectos = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const { data } = await fvApi.get('/proyectos');
-            setProyectos(data);
+            setProyectos(data.proyectos || data);
             
-            // Auto-selección: Si solo hay uno, lo marcamos como activo
-            if (data.length === 1 && !proyectoSeleccionado) {
-                setProyectoSeleccionado(data[0]);
+            if (data.proyectos?.length === 1 && !proyectoSeleccionado) {
+                setProyectoSeleccionado(data.proyectos[0]);
             }
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error al cargar proyectos');
         } finally {
             setLoading(false);
         }
     }, [proyectoSeleccionado]);
 
-    // 2. CREAR: Registra un nuevo sector de red
-// En src/hooks/useProyectos.js
-const crearProyecto = async (nuevoProyecto) => {
-    try {
+    const crearProyecto = async (nuevoProyecto) => {
         const { data } = await fvApi.post('/proyectos', nuevoProyecto);
-        // Actualizamos la lista local para que aparezca en el select del Sidebar
-        setProyectos([...proyectos, data]);
+        setProyectos(prev => [data.proyecto || data, ...prev]);
         return data;
-    } catch (error) {
-        console.error("Error al crear proyecto:", error);
-        throw error;
-    }
-};
-    // 3. ACTUALIZAR: Cambia nombre o descripción (Limpio de avisos ESLint)
+    };
+
     const actualizarProyecto = async (id, datosActualizados) => {
         const { data } = await fvApi.put(`/proyectos/${id}`, datosActualizados);
-        
-        setProyectos((prev) => 
-            prev.map((p) => (p.id === id ? data : p))
-        );
-        
-        if (proyectoSeleccionado?.id === id) {
-            setProyectoSeleccionado(data);
-        }
+        setProyectos(prev => prev.map(p => p.id === id ? data : p));
+        if (proyectoSeleccionado?.id === id) setProyectoSeleccionado(data);
         return data;
     };
 
-    // 4. ELIMINAR: Borra el sector y toda su infraestructura vinculada
     const eliminarProyecto = async (id) => {
         await fvApi.delete(`/proyectos/${id}`);
-        
-        setProyectos((prev) => prev.filter((p) => p.id !== id));
-        
-        if (proyectoSeleccionado?.id === id) {
-            setProyectoSeleccionado(null);
-        }
+        setProyectos(prev => prev.filter(p => p.id !== id));
+        if (proyectoSeleccionado?.id === id) setProyectoSeleccionado(null);
     };
 
-    // Ejecución inicial al cargar la App
     useEffect(() => {
         fetchProyectos();
     }, [fetchProyectos]);
@@ -69,11 +51,12 @@ const crearProyecto = async (nuevoProyecto) => {
         proyectos,
         proyectoSeleccionado,
         setProyectoSeleccionado,
+        loading,
+        error,
         fetchProyectos,
         crearProyecto,
         actualizarProyecto,
-        eliminarProyecto,
-        loading
+        eliminarProyecto
     };
 };
 

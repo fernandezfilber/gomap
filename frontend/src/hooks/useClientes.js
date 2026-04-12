@@ -1,54 +1,53 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import fvApi from '../api/fvApi';
 
-const useClientes = (proyectoId) => {
+const useClientes = (proyectoId = null) => {
     const [clientes, setClientes] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // 1. LISTAR: Traer abonados del sector actual
     const fetchClientes = useCallback(async () => {
-        if (!proyectoId) return;
         setLoading(true);
+        setError(null);
         try {
-            const { data } = await fvApi.get(`/clientes?proyectoId=${proyectoId}`);
-            setClientes(data);
+            const url = proyectoId 
+                ? `/clientes?proyectoId=${proyectoId}` 
+                : '/clientes';
+
+            const { data } = await fvApi.get(url);
+            setClientes(data.clientes || data);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error al cargar clientes');
         } finally {
             setLoading(false);
         }
     }, [proyectoId]);
 
-    // 2. CREAR: Registrar alta de nuevo servicio (Provisionamiento)
-    const crearCliente = async (datos) => {
-        // El backend usará el DNI y la cajaId para descontar el puerto en la transacción
-        const payload = {
-            ...datos,
-            proyectoId,
-            estadoServicio: datos.estadoServicio || "ACTIVO"
-        };
-        
-        const { data } = await fvApi.post('/clientes', payload);
-        setClientes((prev) => [data, ...prev]);
-        return data;
+    const crearCliente = async (data) => {
+        const res = await fvApi.post('/clientes', data);
+        setClientes(prev => [res.data.cliente || res.data, ...prev]);
+        return res.data;
     };
 
-    // 3. ACTUALIZAR: Cambiar plan, dirección o suspender servicio
-    const actualizarCliente = async (id, datosActualizados) => {
-        const { data } = await fvApi.put(`/clientes/${id}`, datosActualizados);
-        setClientes((prev) => 
-            prev.map((c) => (c.id === id ? data : c))
-        );
-        return data;
+    const actualizarCliente = async (id, data) => {
+        const res = await fvApi.put(`/clientes/${id}`, data);
+        setClientes(prev => prev.map(c => c.id === id ? res.data : c));
+        return res.data;
     };
 
-    // 4. ELIMINAR: Baja del servicio (Libera el puerto en la Caja NAP)
     const eliminarCliente = async (id) => {
         await fvApi.delete(`/clientes/${id}`);
-        setClientes((prev) => prev.filter((c) => c.id !== id));
+        setClientes(prev => prev.filter(c => c.id !== id));
     };
+
+    useEffect(() => {
+        fetchClientes();
+    }, [fetchClientes]);
 
     return {
         clientes,
         loading,
+        error,
         fetchClientes,
         crearCliente,
         actualizarCliente,

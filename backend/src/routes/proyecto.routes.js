@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const proyectoController = require('../controllers/proyecto.controller');
-const { verificarToken, esAdmin } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
 
 // --- RUTAS DE GESTIÓN DE PROYECTOS ---
-
+// En src/routes/caja.routes.js
+router.use(verifyToken); // 👈 Esto inyecta req.user
+router.use(checkTenant); // 👈 Esto valida la empresa
 // 1. Listar todos los proyectos (Útil para el selector del mapa)
 router.get('/', proyectoController.listarProyectos);
 

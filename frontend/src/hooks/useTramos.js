@@ -1,94 +1,126 @@
 import { useState, useCallback, useEffect } from 'react';
 import fvApi from '../api/fvApi';
 
-const useTramos = (proyectoId) => {
+const useTramos = (proyectoId = null) => {
     const [tramos, setTramos] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-    // 1. LISTAR: Carga segura de cables
+    // ====================== OBTENER TRAMOS ======================
     const fetchTramos = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
-            const url = proyectoId ? `/tramos?proyectoId=${proyectoId}` : '/tramos';
+            const url = proyectoId 
+                ? `/tramos?proyectoId=${proyectoId}` 
+                : '/tramos';
+
             const { data } = await fvApi.get(url);
-            
-            // 🛡️ FILTRO DE SEGURIDAD: Evita el Error 500 por datos mal formados
-            const tramosProcesados = data.map(t => {
-                let pathLimpio = [];
+
+            // Procesamiento seguro del campo 'path'
+            const tramosProcesados = (data.tramos || data).map(tramo => {
+                let pathArray = [];
                 try {
-                    // Si el path es un String de la DB, lo convertimos a Array
-                    if (typeof t.path === 'string') {
-                        pathLimpio = JSON.parse(t.path);
-                    } else if (Array.isArray(t.path)) {
-                        pathLimpio = t.path;
+                    if (typeof tramo.path === 'string') {
+                        pathArray = JSON.parse(tramo.path);
+                    } else if (Array.isArray(tramo.path)) {
+                        pathArray = tramo.path;
                     }
                 } catch (e) {
                     e
-                    console.error("Error en formato de path para tramo:", t.id);
-                    pathLimpio = []; // Fallback para no romper el mapa
+                    console.warn(`Error parseando path del tramo ${tramo.id}`);
+                    pathArray = [];
                 }
-                return { ...t, path: pathLimpio };
-            }).filter(t => t.path.length > 0); // Solo mostramos los que tienen puntos válidos
-            
+
+                return { ...tramo, path: pathArray };
+            });
+
             setTramos(tramosProcesados);
-            console.log("Cables (tramos) visualizados:", tramosProcesados.length);
         } catch (err) {
-            err
-            console.error("Error 500 detectado: El servidor tiene problemas con la tabla de tramos.");
+            const mensaje = err.response?.data?.message || 'Error al cargar los tramos';
+            setError(mensaje);
+            console.error("❌ Error en fetchTramos:", err);
         } finally {
             setLoading(false);
         }
     }, [proyectoId]);
 
-    // 🔥 EJECUCIÓN AUTOMÁTICA
-    useEffect(() => {
-        fetchTramos();
-    }, [fetchTramos]);
-
-    // 2. CREAR: Registro de cableado en Jicamarca
+    // ====================== CREAR TRAMO ======================
     const crearTramo = async (datos) => {
         try {
             const payload = {
-                nombre: datos.nombre || `Tramo-${Date.now()}`,
-                tipo: datos.tipo || "FIBRA_ADSS",
-                // CRÍTICO: MySQL necesita el path como STRING
-                path: JSON.stringify(datos.path || []),
+                nombre: datos.nombre || `Tramo-${Date.now().toString().slice(-6)}`,
+                tipoCable: datos.tipoCable || "FIBRA",
+                path: JSON.stringify(datos.path || []),   // Importante: enviar como string
                 proyectoId: proyectoId || datos.proyectoId,
-                estado: "OPERATIVO"
+                posteInicioId: datos.posteInicioId,
+                posteFinId: datos.posteFinId,
+                mufaOrigenId: datos.mufaOrigenId,
+                cajaDestinoId: datos.cajaDestinoId
             };
-            
+
             const { data } = await fvApi.post('/tramos', payload);
-            
-            // Parseamos la respuesta para que React lo dibuje al instante
-            const nuevoTramo = { 
-                ...data, 
-                path: typeof data.path === 'string' ? JSON.parse(data.path) : data.path 
+
+            // Parsear path para usarlo inmediatamente en el mapa
+            const nuevoTramo = {
+                ...data,
+                path: typeof data.path === 'string' ? JSON.parse(data.path) : data.path || []
             };
-            
-            setTramos((prev) => [nuevoTramo, ...prev]);
+
+            setTramos(prev => [nuevoTramo, ...prev]);
             return nuevoTramo;
         } catch (error) {
-            console.error("Error al guardar el nuevo cableado.");
+            console.error("❌ Error al crear tramo:", error);
             throw error;
         }
     };
 
-    // 3. ELIMINAR
+    // ====================== ACTUALIZAR TRAMO ======================
+    const actualizarTramo = async (id, datos) => {
+        try {
+            const payload = {
+                ...datos,
+                path: datos.path ? JSON.stringify(datos.path) : undefined
+            };
+
+            const { data } = await fvApi.put(`/tramos/${id}`, payload);
+
+            setTramos(prev => prev.map(t => 
+                t.id === id 
+                    ? { ...data, path: typeof data.path === 'string' ? JSON.parse(data.path) : data.path } 
+                    : t
+            ));
+
+            return data;
+        } catch (error) {
+            console.error("❌ Error al actualizar tramo:", error);
+            throw error;
+        }
+    };
+
+    // ====================== ELIMINAR TRAMO ======================
     const eliminarTramo = async (id) => {
         try {
             await fvApi.delete(`/tramos/${id}`);
-            setTramos((prev) => prev.filter((t) => t.id !== id));
+            setTramos(prev => prev.filter(t => t.id !== id));
         } catch (error) {
-            error
-            console.error("No se pudo eliminar el tramo seleccionado.");
+            console.error("❌ Error al eliminar tramo:", error);
+            throw error;
         }
     };
+
+    // Carga inicial
+    useEffect(() => {
+        fetchTramos();
+    }, [fetchTramos]);
 
     return {
         tramos,
         loading,
+        error,
         fetchTramos,
         crearTramo,
+        actualizarTramo,
         eliminarTramo
     };
 };
