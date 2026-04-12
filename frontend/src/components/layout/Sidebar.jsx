@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
     LayoutDashboard, Users, Map as MapIcon, LogOut, 
-    CheckCircle, PlusCircle, Settings, HardDrive 
+    CheckCircle, PlusCircle, Settings, HardDrive, BarChart3 
 } from 'lucide-react';
 import useProyectos from '../../hooks/useProyectos';
 import useAuth from '../../hooks/useAuth';
@@ -35,8 +36,9 @@ const Sidebar = () => {
             setProyectoSeleccionado(nuevo);
             localStorage.setItem('proyectoId', nuevo.id);
             setIsModalOpen(false);
-            alert(`✅ Sector "${nuevo.nombre}" creado y activado.`);
-        } catch (error) {
+            alert(`✅ Sector "${nuevo.nombre}" creado y activado.
+✅ Troncal inicial lista para instalar mufas.`);
+        } catch {
             alert("❌ Error al crear el proyecto en el servidor.");
         }
     };
@@ -101,6 +103,11 @@ const Sidebar = () => {
                         <button className="flex items-center gap-3 w-full p-3.5 rounded-2xl hover:bg-slate-800 transition-all font-bold text-xs uppercase tracking-widest text-slate-400 hover:text-white">
                             <Users size={18}/> Gestión de Clientes
                         </button>
+                        <Link to="/estadisticas">
+                            <button className="flex items-center gap-3 w-full p-3.5 rounded-2xl hover:bg-slate-800 transition-all font-bold text-xs uppercase tracking-widest text-slate-400 hover:text-white">
+                                <BarChart3 size={18}/> Estadísticas
+                            </button>
+                        </Link>
                         <button className="flex items-center gap-3 w-full p-3.5 rounded-2xl hover:bg-slate-800 transition-all font-bold text-xs uppercase tracking-widest text-slate-400 hover:text-white">
                             <LayoutDashboard size={18}/> Reportes Técnicos
                         </button>

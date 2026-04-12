@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Middlewares de seguridad
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 const clienteController = require('../controllers/cliente.controller');
 
 // ==================== APLICAR MIDDLEWARES GLOBALES ====================

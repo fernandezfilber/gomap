@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const proyectoController = require('../controllers/proyecto.controller');
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 
 // --- RUTAS DE GESTIÓN DE PROYECTOS ---
 // En src/routes/caja.routes.js

@@ -11,8 +11,8 @@ const useRed = (proyectoId) => {
         if (!proyectoId) return;
         setLoading(true);
         try {
-            // Esta ruta es la que definiste: /api/redes/mapa
-            const { data } = await fvApi.get(`/redes/mapa?proyectoId=${proyectoId}`);
+            // Esta ruta es la que definiste: /api/red/mapa
+            const { data } = await fvApi.get(`/red/mapa?proyectoId=${proyectoId}`);
             setMapaCompleto(data);
         } finally {
             setLoading(false);
@@ -23,7 +23,7 @@ const useRed = (proyectoId) => {
     const verificarCobertura = async (latitud, longitud) => {
         setLoading(true);
         try {
-            const { data } = await fvApi.post('/redes/factibilidad', {
+            const { data } = await fvApi.post('/red/factibilidad', {
                 latitud,
                 longitud,
                 proyectoId

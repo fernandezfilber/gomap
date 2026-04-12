@@ -1,10 +1,10 @@
 const router = require("express").Router();
 const posteController = require("../controllers/poste.controller");
 // const { verifyToken, isAdmin } = require("../middlewares/auth.middleware"); // Descomenta cuando actives JWT
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
-// En src/routes/caja.routes.js
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+
 // --- RUTAS DE POSTES ---
-// En src/routes/caja.routes.js
+
 router.use(verifyToken); // 👈 Esto inyecta req.user
 router.use(checkTenant); // 👈 Esto valida la empresa
 // 1. Obtener todos los postes (para cargar la capa en el mapa)

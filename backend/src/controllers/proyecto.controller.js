@@ -14,26 +14,44 @@ exports.crearProyecto = async (req, res) => {
             });
         }
 
-        const proyecto = await prisma.proyecto.create({
-            data: {
-                nombre,
-                descripcion,
-                estado: estado || "PLANIFICACION",
-                empresaId   // ← Seguridad: siempre asignado a la empresa del usuario
-            },
-            include: {
-                empresa: {
-                    select: { nombre: true }
+        const resultado = await prisma.$transaction(async (tx) => {
+            const proyectoCreado = await tx.proyecto.create({
+                data: {
+                    nombre,
+                    descripcion,
+                    estado: estado || "PLANIFICACION",
+                    empresaId   // ← Seguridad: siempre asignado a la empresa del usuario
+                },
+                include: {
+                    empresa: {
+                        select: { nombre: true }
+                    }
                 }
-            }
+            });
+
+            const troncalInicial = await tx.troncal.create({
+                data: {
+                    nombre: `Troncal Principal ${nombre} ${Date.now().toString().slice(-4)}`,
+                    bufferColor: '#3b82f6',
+                    cantHilos: 96,
+                    hilosLibres: 96,
+                    descripcion: `Troncal inicial del proyecto ${nombre}`,
+                    ruta: '',
+                    proyectoId: proyectoCreado.id
+                }
+            });
+
+            return { proyecto: proyectoCreado, troncal: troncalInicial };
         });
 
-        console.log(`✅ Proyecto creado: ${proyecto.nombre} (ID: ${proyecto.id})`);
+        console.log(`✅ Proyecto creado: ${resultado.proyecto.nombre} (ID: ${resultado.proyecto.id})`);
+        console.log(`✅ Troncal inicial creada: ${resultado.troncal.nombre} (ID: ${resultado.troncal.id})`);
 
         res.status(201).json({
             success: true,
             message: "Proyecto creado exitosamente",
-            proyecto
+            proyecto: resultado.proyecto,
+            troncal: resultado.troncal
         });
 
     } catch (error) {

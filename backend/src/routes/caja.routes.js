@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const cajaController = require('../controllers/caja.controller');
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+const mufaController = require('../controllers/mufa.controller');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 // En src/routes/caja.routes.js
 
 // --- RUTAS DE CAJAS NAP ---
@@ -11,7 +12,7 @@ const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
 router.get('/', verifyToken, cajaController.getCajas);
 
 // ✅ CORREGIDO: También protegemos la consulta de hilos
-router.get('/mufas/:mufaId/ocupados', verifyToken, cajaController.getHilosOcupados);
+router.get('/mufas/:mufaId/ocupados', verifyToken, mufaController.getHilosOcupados);
 
 // Crear caja (Protegido: Solo Admin)
 router.post('/', verifyToken, cajaController.createCaja);

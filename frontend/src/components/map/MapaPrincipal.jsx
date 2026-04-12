@@ -1,6 +1,15 @@
-import { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
-import { MapPin, Share2, Box, Database, Users, X, Ruler, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
+import 'leaflet-control-geocoder';
+import '../../styles/leaflet-plugins.css';
+import { MapPin, Share2, Box, Database, Users, X, Ruler, Trash2, Search, Target } from 'lucide-react';
+
+// Importar MarkerClusterGroup
+import 'leaflet.markercluster';
 
 import useProyectos from '../../hooks/useProyectos';
 import usePostes from '../../hooks/usePostes';
@@ -21,6 +30,13 @@ const MapaPrincipal = () => {
     const [formAbierto, setFormAbierto] = useState(false);
     const [formType, setFormType] = useState(null);
     const [formData, setFormData] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [selectedSearchItem, setSelectedSearchItem] = useState(null);
+    const [clienteLocation, setClienteLocation] = useState('');
+    const [cajasCercanas, setCajasCercanas] = useState([]);
+    const [showCajasCercanas, setShowCajasCercanas] = useState(false);
+    const mapRef = useRef(null);
 
     // Hooks
     const { proyectos, proyectoSeleccionado, setProyectoSeleccionado } = useProyectos();
@@ -44,14 +60,34 @@ const MapaPrincipal = () => {
     };
 
     // ==================== DETECTOR DE CLICS ====================
+    const crearPosteDirecto = async (coords) => {
+        if (!proyectoSeleccionado) {
+            alert('Selecciona primero un proyecto antes de crear postes.');
+            return;
+        }
+
+        const codigoGenerado = `P-${Date.now().toString().slice(-5)}`;
+        try {
+            await crearPoste({
+                codigo: codigoGenerado,
+                latitud: coords.latitud,
+                longitud: coords.longitud,
+                tipo: 'CONCRETO',
+                altura: '8m'
+            });
+            setModo('select');
+        } catch (error) {
+            console.error('Error creando poste directo:', error);
+            alert('No se pudo crear el poste. Revisa la consola.');
+        }
+    };
+
     const MapEvents = () => {
         useMapEvents({
             click(e) {
                 if (modo === 'poste') {
-                    abrirFormulario('poste', {
-                        isNew: true,
-                        coords: { latitud: e.latlng.lat, longitud: e.latlng.lng }
-                    });
+                    crearPosteDirecto({ latitud: e.latlng.lat, longitud: e.latlng.lng });
+                    return;
                 }
 
                 if (modo === 'tramo') {
@@ -86,6 +122,178 @@ const MapaPrincipal = () => {
         setFormData(datos);
         setFormAbierto(true);
         setModo('select');
+    };
+
+    const allElementos = [
+        ...postes.map(poste => ({
+            id: poste.id,
+            tipo: 'Poste',
+            codigo: poste.codigo,
+            position: [poste.latitud, poste.longitud],
+            data: poste
+        })),
+        ...mufas.map(mufa => ({
+            id: mufa.id,
+            tipo: 'Mufa',
+            codigo: mufa.codigo,
+            position: [mufa.latitud, mufa.longitud],
+            data: mufa
+        })),
+        ...cajas.map(caja => ({
+            id: caja.id,
+            tipo: 'Caja',
+            codigo: caja.codigo,
+            position: [caja.latitud, caja.longitud],
+            data: caja
+        }))
+    ];
+
+    const buscarElementos = (value) => {
+        setSearchTerm(value);
+        const term = value.trim().toLowerCase();
+        if (!term) {
+            setSearchResults([]);
+            return;
+        }
+
+        const resultados = allElementos.filter(item =>
+            item.codigo?.toLowerCase().includes(term) ||
+            item.tipo.toLowerCase().includes(term)
+        ).slice(0, 8);
+
+        setSearchResults(resultados);
+    };
+
+    const seleccionarElemento = (item) => {
+        setSelectedSearchItem(item);
+        setSearchTerm(item.codigo);
+        setSearchResults([]);
+    };
+
+    // Función para calcular distancia usando fórmula de Haversine
+    const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+        const R = 6371; // Radio de la Tierra en km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
+    // Función para geocodificar dirección del cliente
+    const geocodificarCliente = async (direccion) => {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccion)}&limit=1`);
+            const data = await response.json();
+            if (data.length > 0) {
+                return {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error geocodificando:', error);
+            return null;
+        }
+    };
+
+    // Función para buscar cajas cercanas
+    const buscarCajasCercanas = async () => {
+        if (!clienteLocation.trim()) {
+            alert('Ingresa una dirección o coordenadas del cliente');
+            return;
+        }
+
+        let clienteCoords = null;
+
+        // Verificar si es coordenadas (formato: lat,lng)
+        const coordsMatch = clienteLocation.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+        if (coordsMatch) {
+            clienteCoords = {
+                lat: parseFloat(coordsMatch[1]),
+                lng: parseFloat(coordsMatch[2])
+            };
+        } else {
+            // Geocodificar dirección
+            clienteCoords = await geocodificarCliente(clienteLocation);
+        }
+
+        if (!clienteCoords) {
+            alert('No se pudo encontrar la ubicación del cliente');
+            return;
+        }
+
+        // Calcular distancias a todas las cajas
+        const cajasConDistancia = cajas.map(caja => ({
+            ...caja,
+            distancia: calcularDistancia(clienteCoords.lat, clienteCoords.lng, caja.latitud, caja.longitud)
+        }));
+
+        // Ordenar por distancia y tomar las 5 más cercanas dentro de 5km
+        const cajasCercanasFiltradas = cajasConDistancia
+            .filter(caja => caja.distancia <= 5) // Máximo 5km
+            .sort((a, b) => a.distancia - b.distancia)
+            .slice(0, 5);
+
+        setCajasCercanas(cajasCercanasFiltradas);
+        setShowCajasCercanas(true);
+
+        // Centrar mapa en la ubicación del cliente
+        if (mapRef.current) {
+            mapRef.current.flyTo([clienteCoords.lat, clienteCoords.lng], 15);
+        }
+    };
+
+    useEffect(() => {
+        setSearchResults([]);
+        setSelectedSearchItem(null);
+        setSearchTerm('');
+    }, [proyectoSeleccionado]);
+
+    const MapCenterer = ({ position }) => {
+        const map = useMap();
+
+        useEffect(() => {
+            if (!position) return;
+            map.flyTo(position, 18, { duration: 0.7 });
+        }, [position, map]);
+
+        return null;
+    };
+
+    // Componente para inicializar plugins del mapa
+    const MapPlugins = () => {
+        const map = useMap();
+
+        useEffect(() => {
+            if (!map) return;
+
+            mapRef.current = map;
+
+            // Agregar control de geocoding
+            const geocoder = L.Control.geocoder({
+                defaultMarkGeocode: false,
+                position: 'topleft'
+            }).on('markgeocode', function(e) {
+                const bbox = e.geocode.bbox;
+                const poly = L.polygon([
+                    bbox.getSouthEast(),
+                    bbox.getNorthEast(),
+                    bbox.getNorthWest(),
+                    bbox.getSouthWest()
+                ]);
+                map.fitBounds(poly.getBounds());
+            }).addTo(map);
+
+            return () => {
+                map.removeControl(geocoder);
+            };
+        }, [map]);
+
+        return null;
     };
 
     return (
@@ -139,28 +347,86 @@ const MapaPrincipal = () => {
                 </select>
             </div>
 
+            {/* BUSCADOR DE MAPA */}
+            <div className="absolute top-28 right-6 z-[1001] w-80">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-3">
+                    <label className="block text-slate-700 text-sm font-semibold mb-2">Buscar en el mapa</label>
+                    <input
+                        className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:outline-none focus:border-blue-500"
+                        type="text"
+                        placeholder="Código de poste, mufa o caja"
+                        value={searchTerm}
+                        onChange={(e) => buscarElementos(e.target.value)}
+                    />
+
+                    {searchResults.length > 0 && (
+                        <div className="mt-3 max-h-56 overflow-y-auto space-y-2">
+                            {searchResults.map(item => (
+                                <button
+                                    key={`${item.tipo}-${item.id}`}
+                                    type="button"
+                                    onClick={() => seleccionarElemento(item)}
+                                    className="w-full text-left rounded-2xl border border-slate-200 px-3 py-3 hover:bg-slate-100"
+                                >
+                                    <div className="text-sm font-semibold">{item.codigo}</div>
+                                    <div className="text-[11px] text-slate-500">{item.tipo}</div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                </div>
+            </div>
+
+            {/* BUSCADOR DE CAJAS CERCANAS */}
+            <div className="absolute top-[420px] right-6 z-[1001] w-80">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-3">
+                    <label className="block text-slate-700 text-sm font-semibold mb-2 flex items-center gap-2">
+                        <Target size={16} />
+                        Buscar cajas cercanas al cliente
+                    </label>
+                    <div className="flex gap-2">
+                        <input
+                            className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 focus:outline-none focus:border-blue-500 text-sm"
+                            type="text"
+                            placeholder="Dirección o coordenadas (lat,lng)"
+                            value={clienteLocation}
+                            onChange={(e) => setClienteLocation(e.target.value)}
+                        />
+                        <button
+                            onClick={buscarCajasCercanas}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-2xl transition"
+                            title="Buscar cajas cercanas"
+                        >
+                            <Search size={18} />
+                        </button>
+                    </div>
+
+                    {showCajasCercanas && (
+                        <div className="mt-3 max-h-40 overflow-y-auto space-y-2">
+                            <div className="text-xs text-slate-600 mb-2">Cajas más cercanas (≤5km):</div>
+                            {cajasCercanas.length > 0 ? (
+                                cajasCercanas.map(caja => (
+                                    <div key={caja.id} className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-xs">
+                                        <div className="font-semibold text-blue-800">{caja.codigo}</div>
+                                        <div className="text-blue-600">{caja.distancia.toFixed(2)} km</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-xs text-slate-500">No se encontraron cajas cercanas</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
             <MapContainer center={[-11.92, -76.70]} zoom={16} className="h-full w-full">
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapEvents />
+                <MapPlugins />
+                {selectedSearchItem?.position && <MapCenterer position={selectedSearchItem.position} />}
 
-                {/* POSTES, MUFAS, CAJAS, TRAMOS... (mantengo tu lógica) */}
-                {postes.map(poste => (
-                    <Marker key={poste.id} position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
-                        <Popup>
-                            <div className="text-center">
-                                <p className="font-bold">Poste: {poste.codigo}</p>
-                                <div className="grid grid-cols-2 gap-2 mt-3">
-                                    <button onClick={() => abrirFormulario('mufa', { posteId: poste.id, coords: { latitud: poste.latitud, longitud: poste.longitud }, isNew: true })} className="bg-orange-600 text-white py-2 rounded-xl text-sm">+ Mufa</button>
-                                    <button onClick={() => abrirFormulario('caja', { posteId: poste.id, coords: { latitud: poste.latitud, longitud: poste.longitud }, isNew: true })} className="bg-emerald-600 text-white py-2 rounded-xl text-sm">+ Caja</button>
-                                </div>
-                            </div>
-                        </Popup>
-                    </Marker>
-                ))}
-
-                {mufas.map(m => <Marker key={m.id} position={[m.latitud, m.longitud]} icon={iconoMufa} />)}
-                {cajas.map(c => <Marker key={c.id} position={[c.latitud, c.longitud]} icon={iconoCaja} />)}
-
+                {/* TRAMOS */}
                 {tramos.map(tramo => (
                     <Polyline key={tramo.id} positions={tramo.path} pathOptions={{ color: '#a855f7', weight: 7 }} />
                 ))}
@@ -174,6 +440,19 @@ const MapaPrincipal = () => {
                 {puntosMedicion.length > 1 && (
                     <Polyline positions={puntosMedicion} pathOptions={{ color: '#eab308', weight: 5, dashArray: '10,8' }} />
                 )}
+
+                {/* Marcadores de cajas cercanas */}
+                {showCajasCercanas && cajasCercanas.map(caja => (
+                    <Marker key={`cercana-${caja.id}`} position={[caja.latitud, caja.longitud]} icon={iconoCaja}>
+                        <Popup>
+                            <div className="text-center">
+                                <p className="font-bold">Caja: {caja.codigo}</p>
+                                <p className="text-sm text-blue-600">Distancia: {caja.distancia.toFixed(2)} km</p>
+                                <p className="text-xs text-gray-600">Capacidad: {caja.capacidad || 'N/A'}</p>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
 
             {/* BARRA INFERIOR */}
@@ -188,6 +467,12 @@ const MapaPrincipal = () => {
                         <button onClick={finalizarTramo} className="ml-4 bg-violet-600 hover:bg-violet-700 px-6 py-2 rounded-xl text-sm font-medium">
                             Finalizar Tramo
                         </button>
+                    )}
+
+                    {modo === 'poste' && (
+                        <span className="ml-4 text-emerald-300 text-sm">
+                            Haz clic en el mapa para crear un poste directo sin formulario.
+                        </span>
                     )}
 
                     {modo === 'medir' && (

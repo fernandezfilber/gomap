@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const empresaController = require('../controllers/empresa.controller');
-// const { validateToken, checkRole } = require('../middleware/auth.middleware'); 
+// const { validateToken, checkRole } = require('../Middleware/auth.middleware'); 
 // ↑ Descomenta esto cuando quieras proteger la creación de empresas
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 // En src/routes/caja.routes.js
 // =============================================================
 // RUTAS PARA GESTIÓN DE EMPRESAS (TENANTS)

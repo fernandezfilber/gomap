@@ -38,6 +38,7 @@ loadRoute('/api/clientes', './routes/cliente.routes');
 loadRoute('/api/postes', './routes/postes.routes');
 loadRoute('/api/tramos', './routes/tramoCables.routes');   // ← Probable culpable
 loadRoute('/api/proyectos', './routes/proyecto.routes');
+loadRoute('/api/estadisticas', './routes/estadisticas.routes');
 
 app.get("/", (req, res) => {
     res.send("<h1>✅ API Running (Modo Debug)</h1>");

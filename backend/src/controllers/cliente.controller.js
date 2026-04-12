@@ -1,4 +1,4 @@
-const { prisma } = require('../db');
+const { prisma } = require('../config/db');
 
 // ====================== CREAR CLIENTE ======================
 exports.createCliente = async (req, res) => {

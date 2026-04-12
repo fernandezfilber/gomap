@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const troncalController = require('../controllers/troncal.controller');
-const { verifyToken, checkTenant } = require('../middleware/auth.middleware');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 // En src/routes/caja.routes.js
 router.use(verifyToken); // 👈 Esto inyecta req.user
 router.use(checkTenant); // 👈 Esto valida la empresa

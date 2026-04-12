@@ -3,6 +3,7 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
 import Empresa from '../pages/Empresa'; // 👈 Importamos tu nueva Landing de Marketing
+import Estadisticas from '../pages/Estadisticas';
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('token');
@@ -24,6 +25,12 @@ const AppRouter = () => {
             <Route 
                 path="/dashboard" 
                 element={<PrivateRoute><Dashboard /></PrivateRoute>} 
+            />
+
+            {/* 📈 ESTADÍSTICAS: Solo para logueados */}
+            <Route 
+                path="/estadisticas" 
+                element={<PrivateRoute><Estadisticas /></PrivateRoute>} 
             />
 
             {/* 🔑 ACCESO: Solo para no logueados */}

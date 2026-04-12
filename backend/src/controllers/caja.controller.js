@@ -1,4 +1,4 @@
-const { prisma } = require('../db');
+const { prisma } = require('../config/db');
 
 // ====================== OBTENER TODAS LAS CAJAS (Solo de su empresa) ======================
 exports.getCajas = async (req, res) => {

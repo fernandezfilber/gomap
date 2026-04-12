@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { prisma } = require('../db');
+const { prisma } = require('../config/db');
 
 // ====================== VERIFICAR TOKEN ======================
 const verifyToken = async (req, res, next) => {

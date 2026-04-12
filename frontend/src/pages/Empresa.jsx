@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { 
     ShieldCheck, Map, Zap, Users, CheckCircle2, 
     ChevronRight, Globe, Database, BarChart3, 
-    Smartphone, ArrowRight, MessageCircle, Award, Clock 
+    ArrowRight, MessageCircle, Award, Clock, Star, Shield, Sparkles 
 } from 'lucide-react';
 import fvApi from '../api/fvApi';
 
-const Landing = () => {
+const Empresa = () => {
     const [scrolled, setScrolled] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const [formData, setFormData] = useState({
         nombreEmpresa: '', ruc: '', direccion: '',
@@ -24,6 +25,7 @@ const Landing = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+        setErrorMessage('');
     };
 
     const handleSubmit = async (e) => {
@@ -36,7 +38,7 @@ const Landing = () => {
                 setTimeout(() => window.location.href = '/login', 2500);
             }
         } catch (err) {
-            alert(err.response?.data?.message || "Error al registrar");
+            setErrorMessage(err.response?.data?.message || err.message || 'Error al registrar');
         } finally {
             setLoading(false);
         }
@@ -165,8 +167,94 @@ const Landing = () => {
                         <p className="text-xl text-slate-400">14 días gratis • Sin tarjeta de crédito</p>
                     </div>
 
-                    {/* Formulario aquí (puedes mantener el tuyo o usar el anterior que te di) */}
-                    {/* ... (mantengo tu formulario actualizado) */}
+                    <div className="rounded-[2rem] border border-slate-800 bg-slate-950/90 p-8 shadow-xl shadow-slate-950/20">
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="text-sm text-slate-400">Nombre de la empresa</span>
+                                    <input
+                                        name="nombreEmpresa"
+                                        value={formData.nombreEmpresa}
+                                        onChange={handleChange}
+                                        className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                        placeholder="Ej. Network Perú"
+                                        required
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="text-sm text-slate-400">RUC</span>
+                                    <input
+                                        name="ruc"
+                                        value={formData.ruc}
+                                        onChange={handleChange}
+                                        className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                        placeholder="20456789012"
+                                    />
+                                </label>
+                            </div>
+
+                            <label className="block">
+                                <span className="text-sm text-slate-400">Dirección</span>
+                                <input
+                                    name="direccion"
+                                    value={formData.direccion}
+                                    onChange={handleChange}
+                                    className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                    placeholder="Av. La Marina 123, Lima"
+                                />
+                            </label>
+
+                            <label className="block">
+                                <span className="text-sm text-slate-400">Nombre del administrador</span>
+                                <input
+                                    name="nombreAdmin"
+                                    value={formData.nombreAdmin}
+                                    onChange={handleChange}
+                                    className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                    placeholder="Juan Pérez"
+                                    required
+                                />
+                            </label>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="text-sm text-slate-400">Email</span>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                        placeholder="admin@empresa.com"
+                                        required
+                                    />
+                                </label>
+                                <label className="block">
+                                    <span className="text-sm text-slate-400">Contraseña</span>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="mt-2 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-white focus:border-sky-500 outline-none"
+                                        placeholder="********"
+                                        required
+                                    />
+                                </label>
+                            </div>
+
+                            {errorMessage && <p className="text-sm text-rose-400">{errorMessage}</p>}
+                            {success && <p className="text-sm text-emerald-400">Registro exitoso. Redirigiendo a login...</p>}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full rounded-3xl bg-sky-500 py-4 text-base font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {loading ? 'Registrando...' : 'Crear cuenta empresarial'}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </section>
 
@@ -180,4 +268,4 @@ const Landing = () => {
     );
 };
 
-export default Landing;
+export default Empresa;
