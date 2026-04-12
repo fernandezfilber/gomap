@@ -25,14 +25,14 @@ exports.getPostes = async (req, res) => {
             include: {
                 _count: {
                     select: { 
-                        mufas: true, 
-                        cajas: true,
+                        mufa: true,
+                        caja: true,
                         tramosInicio: true,
                         tramosFin: true
                     }
                 },
-                mufas: { select: { id: true, codigo: true } },
-                cajas: { select: { id: true, codigo: true } }
+                mufa: { select: { id: true, codigo: true } },
+                caja: { select: { id: true, codigo: true } }
             },
             orderBy: { creadoEn: 'desc' }
         });
