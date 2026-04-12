@@ -50,7 +50,7 @@ const isAdmin = (req, res, next) => {
 const checkTenant = async (req, res, next) => {
     console.log("🔍 [DEBUG] Entrando a checkTenant");
     try {
-        const { empresaId } = req.user;
+        const empresaId = req.user?.empresaId;
         console.log("🆔 [DEBUG] Intentando validar empresaId:", empresaId);
 
         if (!empresaId) {

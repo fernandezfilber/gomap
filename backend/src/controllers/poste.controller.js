@@ -3,9 +3,10 @@ const { prisma } = require('../config/db');
 // ====================== OBTENER TODOS LOS POSTES (Solo de su empresa) ======================
 exports.getPostes = async (req, res) => {
     try {
-        const { empresaId } = req.user;
+        const empresaId = req.user?.empresaId;
 
         if (!empresaId) {
+            console.error("❌ getPostes: falta empresaId en req.user", req.user);
             return res.status(401).json({
                 success: false,
                 message: "Token inválido o sin empresaId"
