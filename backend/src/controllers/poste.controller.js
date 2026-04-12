@@ -23,13 +23,13 @@ exports.getPostes = async (req, res) => {
                 ]
             },
             include: {
-                mufas: {   // ← Cambiado a plural
+                mufa: {
                     select: { 
                         id: true, 
                         codigo: true 
                     }
                 },
-                cajas: {   // ← Cambiado a plural
+                caja: {
                     select: { 
                         id: true, 
                         codigo: true 
@@ -114,7 +114,7 @@ exports.getPosteWithEquipos = async (req, res) => {
         const poste = await prisma.poste.findUnique({
             where: { id },
             include: {
-                mufas: {
+                mufa: {
                     select: {
                         id: true,
                         codigo: true,
@@ -124,7 +124,7 @@ exports.getPosteWithEquipos = async (req, res) => {
                         bufferEntrada: true
                     }
                 },
-                cajas: {
+                caja: {
                     include: {
                         _count: { select: { clientes: true } },
                         clientes: { select: { id: true, nombre: true, dni: true } }
@@ -211,10 +211,10 @@ exports.deletePoste = async (req, res) => {
         const poste = await prisma.poste.findUnique({
             where: { id },
             include: {
+                mufa: true,
+                caja: true,
                 _count: {
                     select: {
-                        mufa: true,
-                        caja: true,
                         tramosInicio: true,
                         tramosFin: true
                     }
@@ -229,12 +229,14 @@ exports.deletePoste = async (req, res) => {
             });
         }
 
-        const { mufas, cajas, tramosInicio, tramosFin } = poste._count;
+        const { tramosInicio, tramosFin } = poste._count;
+        const hasMufa = !!poste.mufa;
+        const hasCaja = !!poste.caja;
 
-        if (mufas > 0 || cajas > 0 || tramosInicio > 0 || tramosFin > 0) {
+        if (hasMufa || hasCaja || tramosInicio > 0 || tramosFin > 0) {
             return res.status(400).json({
                 success: false,
-                message: `No se puede eliminar. El poste tiene ${mufas} mufa(s), ${cajas} caja(s) y ${tramosInicio + tramosFin} cable(s) conectados.`
+                message: `No se puede eliminar. El poste tiene ${hasMufa ? 1 : 0} mufa(s), ${hasCaja ? 1 : 0} caja(s) y ${tramosInicio + tramosFin} cable(s) conectados.`
             });
         }
 
