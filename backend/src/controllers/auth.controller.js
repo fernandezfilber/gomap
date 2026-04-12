@@ -144,3 +144,30 @@ exports.register = async (req, res) => {
         res.status(500).json({ message: "Error al registrar usuario" });
     }
 };
+exports.registroTotal = async (req, res) => {
+    const { nombreEmpresa, ruc, direccion, nombreAdmin, email, password } = req.body;
+    try {
+        const resultado = await prisma.$transaction(async (tx) => {
+            const empresa = await tx.empresa.create({
+                data: { nombre: nombreEmpresa, ruc, direccion, activo: true }
+            });
+
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            const usuario = await tx.usuario.create({
+                data: {
+                    nombre: nombreAdmin,
+                    email,
+                    password: hashedPassword,
+                    rol: 'ADMIN',
+                    empresaId: empresa.id
+                }
+            });
+            return { empresa, usuario };
+        });
+        res.status(201).json({ success: true, message: "ISP Creado" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error en el servidor o datos duplicados" });
+    }
+};

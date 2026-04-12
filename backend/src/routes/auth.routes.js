@@ -7,5 +7,6 @@ router.post('/login', authController.login);
 
 // Opcional: Ruta para crear el primer usuario (puedes borrarla luego de usarla)
 router.post('/register', authController.register); 
+router.post('/registro-total', authController.registroTotal);
 
 module.exports = router;
