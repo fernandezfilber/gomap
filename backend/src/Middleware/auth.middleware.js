@@ -6,6 +6,9 @@ const verifyToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+    console.log('🔐 verifyToken authHeader:', authHeader);
+    console.log('🔐 verifyToken token exists:', Boolean(token));
+
     if (!token) {
         return res.status(401).json({ 
             success: false,
@@ -15,6 +18,7 @@ const verifyToken = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key_gomap_2026');
+        console.log('🔐 verifyToken decoded:', decoded);
 
         // Adjuntamos información importante del usuario
         req.user = {
@@ -27,7 +31,7 @@ const verifyToken = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error("❌ Token inválido:", error.message);
+        console.error("❌ Token inválido:", error.message, error.stack);
         return res.status(401).json({ 
             success: false,
             message: "Token inválido o expirado" 

@@ -4,6 +4,7 @@ const { prisma } = require('../config/db');
 exports.getPostes = async (req, res) => {
     try {
         const empresaId = req.user?.empresaId;
+        console.log('📍 getPostes start req.user:', req.user);
 
         if (!empresaId) {
             console.error("❌ getPostes: falta empresaId en req.user", req.user);
@@ -43,7 +44,7 @@ exports.getPostes = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Error al obtener postes:", error);
+        console.error("❌ Error al obtener postes:", error.message, error.stack);
         res.status(500).json({
             success: false,
             message: "Error al obtener la lista de postes"
