@@ -1,7 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
-import Register from '../pages/Register'; // 👈 Importamos la nueva página
+import Register from '../pages/Register';
 import Dashboard from '../pages/Dashboard';
+import Empresa from '../pages/Empresa'; // 👈 Importamos tu nueva Landing de Marketing
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('token');
@@ -16,20 +17,29 @@ const PublicRoute = ({ children }) => {
 const AppRouter = () => {
     return (
         <Routes>
+            {/* 🏠 LA PUERTA DE ENTRADA: Landing Page de Marketing */}
+            <Route path="/" element={<Empresa />} />
+
+            {/* 📊 PANEL DE CONTROL: Solo para logueados */}
             <Route 
                 path="/dashboard" 
                 element={<PrivateRoute><Dashboard /></PrivateRoute>} 
             />
+
+            {/* 🔑 ACCESO: Solo para no logueados */}
             <Route 
                 path="/login" 
                 element={<PublicRoute><Login /></PublicRoute>} 
             />
-            {/* 🆕 NUEVA RUTA DE REGISTRO */}
+
+            {/* 🆕 REGISTRO DE TÉCNICOS: Solo para no logueados */}
             <Route 
                 path="/register" 
                 element={<PublicRoute><Register /></PublicRoute>} 
             />
-            <Route path="*" element={<Navigate to="/dashboard" />} />
+
+            {/* 🛡️ RUTA DE EMERGENCIA: Si se pierde, lo mandamos a la Landing o al Dashboard */}
+            <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
 };

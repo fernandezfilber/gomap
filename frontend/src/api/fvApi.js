@@ -2,9 +2,9 @@ import axios from 'axios';
 import { handleGlobalError } from '../utils/errorHandler';
 
 const fvApi = axios.create({
-    // Si estás en producción usará toq.life, si no, tu local
-    baseURL: import.meta.env.VITE_API_URL || 'https://toq.life/api',
-    withCredentials: true,
+    // Prioridad total a tu nueva IP del VPS configurada en el .env
+    baseURL: import.meta.env.VITE_API_URL, 
+    withCredentials: false, // Cambiado a false para evitar bloqueos por falta de HTTPS
     headers: {
         'Content-Type': 'application/json'
     }
@@ -22,7 +22,7 @@ fvApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// --- EMERGENCIA: Atrapa errores de Hostinger (500, 401, etc.) ---
+// --- MANEJO DE ERRORES: Ahora detectará errores de tu propio VPS ---
 fvApi.interceptors.response.use(
     (response) => response, 
     (error) => {
