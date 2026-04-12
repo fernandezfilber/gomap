@@ -80,7 +80,7 @@ const MapaPrincipal = () => {
             if (mapRef.current) {
                 mapRef.current.flyTo([coords.latitud, coords.longitud], 16);
             }
-            setModo('select');
+            // Mantener el modo 'poste' para poder agregar varios postes seguidos
         } catch (error) {
             console.error('Error creando poste directo:', error);
             alert('No se pudo crear el poste. Revisa la consola.');
@@ -124,9 +124,13 @@ const MapaPrincipal = () => {
 
     const abrirFormulario = (tipo, datos = {}) => {
         setFormType(tipo);
-        setFormData(datos);
+        setFormData({ ...datos, isNew: true });
         setFormAbierto(true);
         setModo('select');
+    };
+
+    const abrirInstalacion = (tipo, datos = {}) => {
+        abrirFormulario(tipo, datos);
     };
 
     const allElementos = [
@@ -454,6 +458,78 @@ const MapaPrincipal = () => {
                 {puntosMedicion.length > 1 && (
                     <Polyline positions={puntosMedicion} pathOptions={{ color: '#eab308', weight: 5, dashArray: '10,8' }} />
                 )}
+
+                {/* POSTES */}
+                {postes.map(poste => (
+                    <Marker key={`poste-${poste.id}`} position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
+                        <Popup>
+                            <div className="space-y-2">
+                                <div className="font-bold">Poste {poste.codigo}</div>
+                                <div className="text-sm text-slate-600">Tipo: {poste.tipo}</div>
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => abrirInstalacion('mufa', {
+                                            posteId: poste.id,
+                                            coords: { latitud: poste.latitud, longitud: poste.longitud },
+                                            ratioSplitteo: '1:16'
+                                        })}
+                                        className="rounded-2xl bg-orange-500 text-white px-3 py-2 text-xs font-semibold hover:bg-orange-600"
+                                    >
+                                        MUFA de Pase
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => abrirInstalacion('mufa', {
+                                            posteId: poste.id,
+                                            coords: { latitud: poste.latitud, longitud: poste.longitud },
+                                            ratioSplitteo: '1:32'
+                                        })}
+                                        className="rounded-2xl bg-purple-600 text-white px-3 py-2 text-xs font-semibold hover:bg-purple-700"
+                                    >
+                                        MUFA para Splitter
+                                    </button>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => abrirInstalacion('caja', {
+                                        posteId: poste.id,
+                                        coords: { latitud: poste.latitud, longitud: poste.longitud }
+                                    })}
+                                    className="w-full rounded-2xl bg-emerald-600 text-white px-3 py-2 text-xs font-semibold hover:bg-emerald-700"
+                                >
+                                    Instalar Caja
+                                </button>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {/* MUFAS */}
+                {mufas.map(mufa => (
+                    <Marker key={`mufa-${mufa.id}`} position={[mufa.latitud, mufa.longitud]} icon={iconoMufa}>
+                        <Popup>
+                            <div className="space-y-1 text-sm">
+                                <div className="font-bold">Mufa {mufa.codigo}</div>
+                                <div>Splitter: {mufa.ratioSplitteo}</div>
+                                <div>Hilos libres: {mufa.hilosDisponibles}</div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {/* CAJAS */}
+                {cajas.map(caja => (
+                    <Marker key={`caja-${caja.id}`} position={[caja.latitud, caja.longitud]} icon={iconoCaja}>
+                        <Popup>
+                            <div className="space-y-1 text-sm">
+                                <div className="font-bold">Caja {caja.codigo}</div>
+                                <div>Puertos libres: {caja.puertosLibres}</div>
+                                <div>Poste: {caja.posteId}</div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
 
                 {/* Marcadores de cajas cercanas */}
                 {showCajasCercanas && cajasCercanas.map(caja => (
