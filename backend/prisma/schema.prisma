@@ -165,14 +165,14 @@ model TramoCable {
   colorVisual String  @default("#8b5cf6")
 
   proyectoId    String
-  posteInicioId String
-  posteFinId    String
+  posteInicioId String?
+  posteFinId    String?
   mufaOrigenId  String?
   cajaDestinoId String?
 
   proyecto    Proyecto @relation(fields: [proyectoId], references: [id])
-  posteInicio Poste    @relation("InicioPoste", fields: [posteInicioId], references: [id])
-  posteFin    Poste    @relation("FinPoste", fields: [posteFinId], references: [id])
+  posteInicio Poste?   @relation("InicioPoste", fields: [posteInicioId], references: [id])
+  posteFin    Poste?   @relation("FinPoste", fields: [posteFinId], references: [id])
   mufaOrigen  Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
   cajaDestino Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
 
