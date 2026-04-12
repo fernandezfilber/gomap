@@ -1,14 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 const prisma = new PrismaClient();
+
+router.use(verifyToken);
+router.use(checkTenant);
 
 // GET /api/estadisticas - Obtener estadísticas generales del sistema
 router.get('/', async (req, res) => {
     try {
         // Obtener estadísticas de todos los modelos
         const [totalPostes, totalTramos, totalClientes, totalMufas, totalCajas, totalTroncales, totalEmpresas] = await Promise.all([
-            prisma.postes.count(),
+            prisma.poste.count(),
             prisma.tramoCable.count(),
             prisma.cliente.count(),
             prisma.mufa.count(),
@@ -18,7 +22,7 @@ router.get('/', async (req, res) => {
         ]);
 
         // Estadísticas por empresa (si hay empresa en el token)
-        const empresaId = req.empresaId; // Asumiendo que viene del middleware de auth
+        const empresaId = req.user?.empresaId;
         let statsFiltradas = {
             totalPostes,
             totalTramos,
@@ -38,7 +42,7 @@ router.get('/', async (req, res) => {
             const proyectoIds = proyectosEmpresa.map(p => p.id);
 
             const [postesEmpresa, tramosEmpresa, clientesEmpresa, mufasEmpresa, cajasEmpresa, troncalesEmpresa] = await Promise.all([
-                prisma.postes.count({
+                prisma.poste.count({
                     where: {
                         OR: [
                             { tramosInicio: { some: { proyectoId: { in: proyectoIds } } } },
@@ -91,7 +95,7 @@ router.get('/', async (req, res) => {
         });
 
         // Obtener distribución de postes por tipo
-        const postesPorTipo = await prisma.postes.groupBy({
+        const postesPorTipo = await prisma.poste.groupBy({
             by: ['tipo'],
             _count: { id: true }
         });
