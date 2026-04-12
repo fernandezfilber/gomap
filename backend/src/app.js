@@ -29,16 +29,23 @@ const loadRoute = (path, name) => {
 };
 
 // Carga una por una
-loadRoute('/api/empresas', './routes/empresa.routes');loadRoute('/api/auth', './routes/auth.routes');
+loadRoute('/api/empresas', './routes/empresa.routes');
+loadRoute('/api/auth', './routes/auth.routes');
 loadRoute('/api/red', './routes/red.routes');
 loadRoute('/api/troncales', './routes/troncal.routes');
 loadRoute('/api/mufas', './routes/mufa.routes');
 loadRoute('/api/cajas', './routes/caja.routes');
 loadRoute('/api/clientes', './routes/cliente.routes');
 loadRoute('/api/postes', './routes/postes.routes');
-loadRoute('/api/tramos', './routes/tramoCables.routes');   // ← Probable culpable
+loadRoute('/api/tramos', './routes/tramoCables.routes');
 loadRoute('/api/proyectos', './routes/proyecto.routes');
 loadRoute('/api/estadisticas', './routes/estadisticas.routes');
+loadRoute('/api/hilos', './routes/hiloFibra.routes');
+loadRoute('/api/splitters', './routes/splitter.routes');
+loadRoute('/api/olts', './routes/olt.routes');
+loadRoute('/api/averias', './routes/averia.routes');
+loadRoute('/api/circuitos', './routes/circuito.routes');
+loadRoute('/api/inventario', './routes/inventario.routes');
 
 app.get("/", (req, res) => {
     res.send("<h1>✅ API Running (Modo Debug)</h1>");

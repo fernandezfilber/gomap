@@ -5,17 +5,19 @@ const mufaController = require('../controllers/mufa.controller');
 const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 // En src/routes/caja.routes.js
 
+router.use(verifyToken);
+router.use(checkTenant);
+
 // --- RUTAS DE CAJAS NAP ---
 
 // Obtener todas las cajas (Lectura pública o protegida según prefieras)
-// ✅ CORREGIDO: Ahora inyecta req.user para que el controlador sepa qué empresa filtrar
-router.get('/', verifyToken, cajaController.getCajas);
+router.get('/', cajaController.getCajas);
 
-// ✅ CORREGIDO: También protegemos la consulta de hilos
-router.get('/mufas/:mufaId/ocupados', verifyToken, mufaController.getHilosOcupados);
+// Consulta de hilos ocupados en la mufa
+router.get('/mufas/:mufaId/ocupados', mufaController.getHilosOcupados);
 
 // Crear caja (Protegido: Solo Admin)
-router.post('/', verifyToken, cajaController.createCaja);
+router.post('/', cajaController.createCaja);
 
 // Actualizar caja (Protegido: Solo Admin)
 router.put('/:id', verifyToken, cajaController.actualizarCaja);

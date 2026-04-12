@@ -16,9 +16,16 @@ import usePostes from '../../hooks/usePostes';
 import useTramos from '../../hooks/useTramos';
 import useMufas from '../../hooks/useMufas';
 import useCajas from '../../hooks/useCajas';
+import useOlts from '../../hooks/useOlts';
+import useHilos from '../../hooks/useHilos';
+import useSplitters from '../../hooks/useSplitters';
+import useAverias from '../../hooks/useAverias';
+import useCircuitos from '../../hooks/useCircuitos';
+import useInventario from '../../hooks/useInventario';
 
-import { iconoPoste, iconoMufa, iconoCaja } from '../../utils/mapIcons';
+import { iconoPoste, iconoMufa, iconoCaja, iconoOLT, iconoSplitter } from '../../utils/mapIcons';
 
+import FiberManager from './FiberManager';
 import FormMufa from '../forms/FormMufa';
 import FormCaja from '../forms/FormCaja';
 import FormPoste from '../forms/FormPoste';
@@ -37,6 +44,17 @@ const MapaPrincipal = () => {
     const [cajasCercanas, setCajasCercanas] = useState([]);
     const [showCajasCercanas, setShowCajasCercanas] = useState(false);
     const [centerPosition, setCenterPosition] = useState([-11.92, -76.70]);
+    const [activeTramoId, setActiveTramoId] = useState(null);
+    const [origen, setOrigen] = useState('');
+    const [destino, setDestino] = useState('');
+    const [visibleLayers, setVisibleLayers] = useState({
+        postes: true,
+        mufas: true,
+        cajas: true,
+        tramos: true,
+        olts: true,
+        splitters: true
+    });
     const mapRef = useRef(null);
 
     // Hooks
@@ -45,6 +63,12 @@ const MapaPrincipal = () => {
     const { tramos, crearTramo } = useTramos(proyectoSeleccionado?.id);
     const { mufas, eliminarMufa, actualizarMufa } = useMufas(proyectoSeleccionado?.id);
     const { cajas, eliminarCaja, actualizarCaja } = useCajas(proyectoSeleccionado?.id);
+    const { olts } = useOlts(proyectoSeleccionado?.id);
+    const { splitters } = useSplitters();
+    const { hilos, stats: hiloStats } = useHilos();
+    const { averias, summary: averiasSummary } = useAverias();
+    const { circuitos } = useCircuitos();
+    const { items: inventarioItems, lowStockItems } = useInventario();
 
     // ==================== DETECTAR POSTES CERCANOS ====================
     const encontrarPostesCercanos = (lat, lng, radio = 0.001) => {
@@ -205,6 +229,20 @@ const MapaPrincipal = () => {
             codigo: caja.codigo,
             position: [caja.latitud, caja.longitud],
             data: caja
+        })),
+        ...olts.filter(olt => olt.latitud && olt.longitud).map(olt => ({
+            id: olt.id,
+            tipo: 'OLT',
+            codigo: olt.nombre,
+            position: [olt.latitud, olt.longitud],
+            data: olt
+        })),
+        ...splitters.filter(splitter => splitter.mufa?.latitud && splitter.mufa?.longitud).map(splitter => ({
+            id: splitter.id,
+            tipo: 'Splitter',
+            codigo: splitter.codigo,
+            position: [splitter.mufa.latitud, splitter.mufa.longitud],
+            data: splitter
         }))
     ];
 
@@ -516,6 +554,69 @@ const MapaPrincipal = () => {
                 </div>
             </div>
 
+            {/* PANEL DE ESTADO DE RED */}
+            <div className="absolute top-[650px] right-6 z-[1001] w-80">
+                <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <div>
+                            <p className="text-xs uppercase font-black tracking-[0.2em] text-slate-500">Estado de Infraestructura</p>
+                            <p className="text-sm font-semibold text-slate-900">Resumen general</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-900 text-white px-3 py-2 text-xs font-semibold">Live</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl bg-slate-950/5 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">OLTs</p>
+                            <p className="text-2xl font-bold text-teal-700">{olts.length}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-950/5 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Splitters</p>
+                            <p className="text-2xl font-bold text-violet-700">{splitters.length}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-950/5 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Hilos libres</p>
+                            <p className="text-2xl font-bold text-emerald-700">{hiloStats.libres}</p>
+                        </div>
+                        <div className="rounded-2xl bg-slate-950/5 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Averías</p>
+                            <p className="text-2xl font-bold text-rose-700">{averiasSummary.total}</p>
+                        </div>
+                    </div>
+                    <div className="rounded-3xl bg-slate-950/5 border border-slate-200 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-2">Inventario bajo stock</p>
+                        <p className="text-lg font-semibold text-slate-900">{lowStockItems.length} items</p>
+                        {lowStockItems.length > 0 && (
+                            <p className="text-xs text-slate-500">Revisar artículos con stock crítico.</p>
+                        )}
+                    </div>
+                    <div className="rounded-3xl bg-slate-950/5 border border-slate-200 p-3 text-xs text-slate-600">
+                        <p className="font-semibold text-slate-900">Circuitos activos:</p>
+                        <p>{circuitos.length}</p>
+                    </div>
+                </div>
+            </div>
+
+            <FiberManager
+                items={allElementos}
+                tramos={tramos}
+                circuitos={circuitos}
+                onSelectPath={(tramo) => {
+                    if (!tramo) return;
+                    setActiveTramoId(tramo.id);
+                    if (tramo.path?.length > 0 && mapRef.current) {
+                        mapRef.current.flyTo(tramo.path[0], 16);
+                    }
+                }}
+                activePathId={activeTramoId}
+                visibleLayers={visibleLayers}
+                setVisibleLayers={setVisibleLayers}
+                onReset={() => {
+                    setActiveTramoId(null);
+                    setOrigen('');
+                    setDestino('');
+                }}
+            />
+
             <MapContainer center={[-11.92, -76.70]} zoom={16} className="h-full w-full">
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <MapEvents />
@@ -524,15 +625,18 @@ const MapaPrincipal = () => {
                 <MapCenterer position={centerPosition} />
 
                 {/* TRAMOS */}
-                {tramos.map((tramo, idx) => {
+                {visibleLayers.tramos && tramos.map((tramo, idx) => {
                     const colores = ['#a855f7', '#ec4899', '#f97316', '#06b6d4', '#8b5cf6'];
-                    const color = colores[idx % colores.length];
-                    
+                    const isActive = tramo.id === activeTramoId;
+                    const color = isActive ? '#22d3ee' : colores[idx % colores.length];
+                    const weight = isActive ? 14 : 8;
+                    const opacity = isActive ? 0.95 : 0.8;
+
                     return (
                         <Polyline 
                             key={tramo.id} 
                             positions={tramo.path} 
-                            pathOptions={{ color, weight: 8, opacity: 0.8 }}
+                            pathOptions={{ color, weight, opacity }}
                         >
                             <Popup>
                                 <div className="space-y-1 text-sm">
@@ -545,6 +649,40 @@ const MapaPrincipal = () => {
                         </Polyline>
                     );
                 })}
+
+                {/* OLTS */}
+                {visibleLayers.olts && olts.filter(olt => olt.latitud && olt.longitud).map(olt => (
+                    <Marker key={`olt-${olt.id}`} position={[olt.latitud, olt.longitud]} icon={iconoOLT}>
+                        <Popup>
+                            <div className="space-y-2 text-sm">
+                                <div className="font-bold text-teal-700">OLT {olt.nombre}</div>
+                                <div>Marca: {olt.marca || 'N/A'}</div>
+                                <div>Modelo: {olt.modelo || 'N/A'}</div>
+                                <div>Puertos: {olt.puertos}</div>
+                                <div>Ubicación: {olt.ubicacion || 'No definida'}</div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {/* SPLITTERS */}
+                {visibleLayers.splitters && splitters.filter(splitter => splitter.mufa?.latitud && splitter.mufa?.longitud).map(splitter => (
+                    <Marker
+                        key={`splitter-${splitter.id}`}
+                        position={[splitter.mufa.latitud, splitter.mufa.longitud]}
+                        icon={iconoSplitter}
+                    >
+                        <Popup>
+                            <div className="space-y-2 text-sm">
+                                <div className="font-bold text-violet-700">Splitter {splitter.codigo}</div>
+                                <div>Mufa: {splitter.mufa.codigo}</div>
+                                <div>Ratio: {splitter.ratio}</div>
+                                <div>Estado: {splitter.activo ? 'Activo' : 'Inactivo'}</div>
+                                <div>Salidas ocupadas: {splitter.estadisticas?.ocupadas ?? splitter.salidas?.filter(s => s.estado === 'OCUPADO').length}</div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
 
                 {/* Línea temporal tramo */}
                 {puntosTemporales.length > 1 && (
@@ -562,11 +700,16 @@ const MapaPrincipal = () => {
                     const murasDelPoste = mufas.filter(m => m.posteId === poste.id);
                     const cajasDelPoste = cajas.filter(c => c.posteId === poste.id);
 
+                    if (!visibleLayers.postes && !visibleLayers.mufas && !visibleLayers.cajas) {
+                        return null;
+                    }
+
                     return (
                         <div key={`poste-group-${poste.id}`}>
                             {/* MARCADOR PRINCIPAL DEL POSTE */}
-                            <Marker position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
-                                <Popup>
+                            {visibleLayers.postes && (
+                                <Marker position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
+                                    <Popup>
                                     <div className="space-y-2">
                                         <div className="font-bold">Poste {poste.codigo}</div>
                                         <div className="text-sm text-slate-600">Tipo: {poste.tipo}</div>
@@ -609,7 +752,7 @@ const MapaPrincipal = () => {
                             </Marker>
 
                             {/* BURBUJAS FLOTANTES: MUFAS */}
-                            {murasDelPoste.map((mufa, idx) => {
+                            {visibleLayers.mufas && murasDelPoste.map((mufa, idx) => {
                                 const angle = (idx * 120) * (Math.PI / 180);
                                 const distance = 0.0003;
                                 const offsetLat = distance * Math.cos(angle);

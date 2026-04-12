@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const redCtrl = require('../controllers/red.controller'); 
+const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+
+router.use(verifyToken);
+router.use(checkTenant);
 
 // --- MÓDULO DE INTELIGENCIA DE RED ---
 

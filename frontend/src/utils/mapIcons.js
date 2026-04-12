@@ -64,6 +64,29 @@ export const iconoCaja = crearIconoPersonalizado(
     </svg>
 `);
 
+export const iconoOLT = crearIconoPersonalizado(
+    'linear-gradient(135deg, #0f766e, #14b8a6)',
+    `
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="6" width="14" height="10" rx="2"/>
+        <path d="M8 13h8"/>
+        <path d="M12 16v3"/>
+        <path d="M9 6v-2"/>
+        <path d="M15 6v-2"/>
+    </svg>
+`);
+
+export const iconoSplitter = crearIconoPersonalizado(
+    'linear-gradient(135deg, #7c3aed, #8b5cf6)',
+    `
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12h5"/>
+        <path d="M15 12h5"/>
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 9v6"/>
+    </svg>
+`);
+
 export const iconoCliente = crearIconoPersonalizado(
     'linear-gradient(135deg, #7c3aed, #a855f7)', 
     `
@@ -93,6 +116,8 @@ export default {
     iconoPoste,
     iconoMufa,
     iconoCaja,
+    iconoOLT,
+    iconoSplitter,
     iconoCliente,
     iconoPosteTemporal
 };
