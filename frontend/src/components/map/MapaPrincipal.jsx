@@ -36,6 +36,7 @@ const MapaPrincipal = () => {
     const [clienteLocation, setClienteLocation] = useState('');
     const [cajasCercanas, setCajasCercanas] = useState([]);
     const [showCajasCercanas, setShowCajasCercanas] = useState(false);
+    const [centerPosition, setCenterPosition] = useState([-11.92, -76.70]);
     const mapRef = useRef(null);
 
     // Hooks
@@ -75,6 +76,10 @@ const MapaPrincipal = () => {
                 tipo: 'CONCRETO',
                 altura: '8m'
             });
+            setCenterPosition([coords.latitud, coords.longitud]);
+            if (mapRef.current) {
+                mapRef.current.flyTo([coords.latitud, coords.longitud], 16);
+            }
             setModo('select');
         } catch (error) {
             console.error('Error creando poste directo:', error);
@@ -251,7 +256,15 @@ const MapaPrincipal = () => {
         setSearchResults([]);
         setSelectedSearchItem(null);
         setSearchTerm('');
-    }, [proyectoSeleccionado]);
+
+        if (!proyectoSeleccionado) return;
+
+        if (postes.length > 0) {
+            setCenterPosition([postes[0].latitud, postes[0].longitud]);
+        } else if (tramos.length > 0 && tramos[0].path?.length > 0) {
+            setCenterPosition(tramos[0].path[0]);
+        }
+    }, [proyectoSeleccionado, postes, tramos]);
 
     const MapCenterer = ({ position }) => {
         const map = useMap();
@@ -425,6 +438,7 @@ const MapaPrincipal = () => {
                 <MapEvents />
                 <MapPlugins />
                 {selectedSearchItem?.position && <MapCenterer position={selectedSearchItem.position} />}
+                <MapCenterer position={centerPosition} />
 
                 {/* TRAMOS */}
                 {tramos.map(tramo => (
