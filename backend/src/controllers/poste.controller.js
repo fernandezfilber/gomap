@@ -1,6 +1,7 @@
 const { prisma } = require('../config/db');
 
 // ====================== OBTENER TODOS LOS POSTES (Solo de su empresa) ======================
+// ====================== OBTENER TODOS LOS POSTES (Solo de su empresa) ======================
 exports.getPostes = async (req, res) => {
     try {
         const empresaId = req.user?.empresaId;
@@ -16,15 +17,24 @@ exports.getPostes = async (req, res) => {
 
         const postes = await prisma.poste.findMany({
             where: {
-                // Filtramos a través de los tramos que pertenecen a proyectos de su empresa
                 OR: [
                     { tramosInicio: { some: { proyecto: { empresaId } } } },
                     { tramosFin:    { some: { proyecto: { empresaId } } } }
                 ]
             },
             include: {
-                mufa: { select: { id: true, codigo: true } },
-                caja: { select: { id: true, codigo: true } }
+                mufas: {   // ← Cambiado a plural
+                    select: { 
+                        id: true, 
+                        codigo: true 
+                    }
+                },
+                cajas: {   // ← Cambiado a plural
+                    select: { 
+                        id: true, 
+                        codigo: true 
+                    }
+                }
             },
             orderBy: { creadoEn: 'desc' }
         });
@@ -36,7 +46,10 @@ exports.getPostes = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Error al obtener postes:", error.message, error.stack);
+        console.error("❌ Error al obtener postes:", error.message);
+        if (error.message.includes("Unknown field")) {
+            console.error("❌ Error de nombres de relación en Prisma. Revisa el schema.");
+        }
         res.status(500).json({
             success: false,
             message: "Error al obtener la lista de postes"

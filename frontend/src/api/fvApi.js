@@ -14,26 +14,18 @@ const fvApi = axios.create({
 fvApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        console.log('🌐 Request:', config.method, config.url, 'token present:', Boolean(token));
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    (error) => {
-        console.error('🌐 Request error:', error);
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
 // --- MANEJO DE ERRORES: Ahora detectará errores de tu propio VPS ---
 fvApi.interceptors.response.use(
-    (response) => {
-        console.log('🌐 Response:', response.config.url, response.status);
-        return response;
-    }, 
+    (response) => response, 
     (error) => {
-        console.error('🌐 Response error:', error.response?.status, error.response?.data, error.message);
         handleGlobalError(error); 
         return Promise.reject(error);
     }

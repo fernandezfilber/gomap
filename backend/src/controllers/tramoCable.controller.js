@@ -79,7 +79,7 @@ exports.createTramo = async (req, res) => {
                 nombre: nombre || `Tramo-${Date.now().toString().slice(-6)}`,
                 tipoCable: tipoCable || "FIBRA",
                 path: typeof path === 'string' ? path : JSON.stringify(path || []),
-                proyectoId,
+               
                 posteInicioId: posteInicioId || null,
                 posteFinId: posteFinId || null,
                 mufaOrigenId: mufaOrigenId || null,
