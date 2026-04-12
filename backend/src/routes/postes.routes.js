@@ -5,6 +5,11 @@ const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
 
 // --- RUTAS DE POSTES ---
 
+router.use((req, res, next) => {
+    console.log('📍 [postes.routes] request:', req.method, req.originalUrl, 'auth:', Boolean(req.headers.authorization));
+    next();
+});
+
 router.use(verifyToken); // 👈 Esto inyecta req.user
 router.use(checkTenant); // 👈 Esto valida la empresa
 // 1. Obtener todos los postes (para cargar la capa en el mapa)
