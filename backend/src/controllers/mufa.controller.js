@@ -1,4 +1,4 @@
-const { prisma } = require('../db');
+const { prisma } = require('../config/db'); // 👈 Verifica que la carpeta sea 'config'
 
 // ====================== OBTENER TODAS LAS MUFAS (Solo de su empresa) ======================
 exports.getMufas = async (req, res) => {
@@ -261,5 +261,19 @@ exports.eliminarMufa = async (req, res) => {
             success: false,
             message: error.message || "Error al eliminar mufa"
         });
+    }
+};
+// ====================== OBTENER HILOS OCUPADOS ======================
+exports.getHilosOcupados = async (req, res) => {
+    const { mufaId } = req.params;
+    try {
+        const cajas = await prisma.caja.findMany({
+            where: { mufaId },
+            select: { hiloEntradaMufa: true }
+        });
+        const ocupados = cajas.map(c => c.hiloEntradaMufa);
+        res.json({ success: true, hilosOcupados: ocupados });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error al obtener hilos" });
     }
 };

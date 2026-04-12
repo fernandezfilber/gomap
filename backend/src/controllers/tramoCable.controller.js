@@ -1,4 +1,4 @@
-const { prisma } = require('../db');
+const { prisma } = require('../config/db'); // 👈 Verifica que la carpeta sea 'config'
 
 // ====================== OBTENER TODOS LOS TRAMOS (Solo de su empresa) ======================
 exports.getTramos = async (req, res) => {

@@ -1,6 +1,5 @@
 
-const prisma = require('../config/db');
-
+const { prisma } = require('../config/db'); // 👈 Verifica que la carpeta sea 'config'
 // --- 1. UTILIDAD: EXTRACCIÓN DE COORDENADAS ---
 const extraerCoordenadas = (input) => {
     if (!input || typeof input !== "string") return null;

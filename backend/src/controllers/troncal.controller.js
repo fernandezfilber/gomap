@@ -1,5 +1,4 @@
-const { prisma } = require('../db');
-
+const { prisma } = require('../config/db'); // 👈 Verifica que la carpeta sea 'config'
 // ====================== CREAR TRONCAL ======================
 exports.createTroncal = async (req, res) => {
     try {
