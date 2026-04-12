@@ -65,6 +65,11 @@ export const ProyectosProvider = ({ children }) => {
     };
 
     useEffect(() => {
+        const token = window.localStorage.getItem('token');
+        if (!token) {
+            return;
+        }
+
         fetchProyectos();
     }, [fetchProyectos]);
 

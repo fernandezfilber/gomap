@@ -5,6 +5,13 @@ exports.getPostes = async (req, res) => {
     try {
         const { empresaId } = req.user;
 
+        if (!empresaId) {
+            return res.status(401).json({
+                success: false,
+                message: "Token inválido o sin empresaId"
+            });
+        }
+
         const postes = await prisma.poste.findMany({
             where: {
                 // Filtramos a través de los tramos que pertenecen a proyectos de su empresa

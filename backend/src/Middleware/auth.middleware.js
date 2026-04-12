@@ -53,6 +53,11 @@ const checkTenant = async (req, res, next) => {
         const { empresaId } = req.user;
         console.log("🆔 [DEBUG] Intentando validar empresaId:", empresaId);
 
+        if (!empresaId) {
+            console.error("❌ [DEBUG] empresaId no está definido en el token");
+            return res.status(401).json({ message: "Token inválido o sin empresaId" });
+        }
+
         const empresa = await prisma.empresa.findUnique({
             where: { id: empresaId },
             select: { id: true, activo: true }
