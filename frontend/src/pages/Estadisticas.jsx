@@ -28,39 +28,39 @@ const Estadisticas = () => {
                     fvApi.get('/troncales')
                 ]);
 
-                const postes = postesRes.data;
-                const tramos = tramosRes.data;
-                const clientes = clientesRes.data;
-                const mufas = mufasRes.data;
-                const cajas = cajasRes.data;
-                const troncales = troncalesRes.data;
+                const postes = postesRes.data?.postes || postesRes.data || [];
+                const tramos = tramosRes.data?.tramos || tramosRes.data || [];
+                const clientes = clientesRes.data?.clientes || clientesRes.data || [];
+                const mufas = mufasRes.data?.mufas || mufasRes.data || [];
+                const cajas = cajasRes.data?.cajas || cajasRes.data || [];
+                const troncales = troncalesRes.data?.troncales || troncalesRes.data || [];
 
                 // Procesar datos para gráficos
-                const postesPorTipo = postes.reduce((acc, poste) => {
+                const postesPorTipo = Array.isArray(postes) ? postes.reduce((acc, poste) => {
                     const tipo = poste.tipo || 'Desconocido';
                     acc[tipo] = (acc[tipo] || 0) + 1;
                     return acc;
-                }, {});
+                }, {}) : {};
 
-                const tramosPorEstado = tramos.reduce((acc, tramo) => {
+                const tramosPorEstado = Array.isArray(tramos) ? tramos.reduce((acc, tramo) => {
                     const estado = tramo.estado || 'Activo';
                     acc[estado] = (acc[estado] || 0) + 1;
                     return acc;
-                }, {});
+                }, {}) : {};
 
-                const clientesPorMes = clientes.reduce((acc, cliente) => {
-                    const mes = new Date(cliente.createdAt).getMonth();
+                const clientesPorMes = Array.isArray(clientes) ? clientes.reduce((acc, cliente) => {
+                    const mes = new Date(cliente.creadoEn || cliente.createdAt).getMonth();
                     acc[mes] = (acc[mes] || 0) + 1;
                     return acc;
-                }, Array(12).fill(0));
+                }, Array(12).fill(0)) : Array(12).fill(0);
 
                 setStats({
-                    totalPostes: postes.length,
-                    totalTramos: tramos.length,
-                    totalClientes: clientes.length,
-                    totalMufas: mufas.length,
-                    totalCajas: cajas.length,
-                    totalTroncales: troncales.length,
+                    totalPostes: Array.isArray(postes) ? postes.length : 0,
+                    totalTramos: Array.isArray(tramos) ? tramos.length : 0,
+                    totalClientes: Array.isArray(clientes) ? clientes.length : 0,
+                    totalMufas: Array.isArray(mufas) ? mufas.length : 0,
+                    totalCajas: Array.isArray(cajas) ? cajas.length : 0,
+                    totalTroncales: Array.isArray(troncales) ? troncales.length : 0,
                     clientesPorMes: clientesPorMes.map((count, index) => ({
                         mes: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][index],
                         clientes: count

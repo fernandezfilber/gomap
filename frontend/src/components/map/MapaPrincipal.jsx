@@ -6,7 +6,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
 import 'leaflet-control-geocoder';
 import '../../styles/leaflet-plugins.css';
-import { MapPin, Share2, Box, Database, Users, X, Ruler, Trash2, Search, Target } from 'lucide-react';
+import { MapPin, Share2, Box, Database, Users, X, Ruler, Trash2, Search, Target, Edit } from 'lucide-react';
 
 // Importar MarkerClusterGroup
 import 'leaflet.markercluster';
@@ -41,10 +41,10 @@ const MapaPrincipal = () => {
 
     // Hooks
     const { proyectos, proyectoSeleccionado, setProyectoSeleccionado } = useProyectos();
-    const { postes, crearPoste } = usePostes();
+    const { postes, crearPoste } = usePostes(proyectoSeleccionado?.id);
     const { tramos, crearTramo } = useTramos(proyectoSeleccionado?.id);
-    const { mufas } = useMufas(proyectoSeleccionado?.id);
-    const { cajas } = useCajas(proyectoSeleccionado?.id);
+    const { mufas, eliminarMufa, actualizarMufa } = useMufas(proyectoSeleccionado?.id);
+    const { cajas, eliminarCaja, actualizarCaja } = useCajas(proyectoSeleccionado?.id);
 
     // ==================== DETECTAR POSTES CERCANOS ====================
     const encontrarPostesCercanos = (lat, lng, radio = 0.001) => {
@@ -174,13 +174,14 @@ const MapaPrincipal = () => {
 
     const abrirFormulario = (tipo, datos = {}) => {
         setFormType(tipo);
-        setFormData({ ...datos, isNew: true });
+        // Envolver datos para edición
+        setFormData({ data: datos });
         setFormAbierto(true);
         setModo('select');
     };
 
     const abrirInstalacion = (tipo, datos = {}) => {
-        abrirFormulario(tipo, datos);
+        abrirFormulario(tipo, { ...datos, isNew: true });
     };
 
     const allElementos = [
@@ -556,50 +557,195 @@ const MapaPrincipal = () => {
                 )}
 
                 {/* POSTES */}
-                {postes.map(poste => (
-                    <Marker key={`poste-${poste.id}`} position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
-                        <Popup>
-                            <div className="space-y-2">
-                                <div className="font-bold">Poste {poste.codigo}</div>
-                                <div className="text-sm text-slate-600">Tipo: {poste.tipo}</div>
-                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => abrirInstalacion('mufa', {
-                                            posteId: poste.id,
-                                            coords: { latitud: poste.latitud, longitud: poste.longitud },
-                                            ratioSplitteo: '1:16'
+                {postes.map((poste, posteIndex) => {
+                    // Obtener mufas y cajas asociadas a este poste
+                    const murasDelPoste = mufas.filter(m => m.posteId === poste.id);
+                    const cajasDelPoste = cajas.filter(c => c.posteId === poste.id);
+
+                    return (
+                        <div key={`poste-group-${poste.id}`}>
+                            {/* MARCADOR PRINCIPAL DEL POSTE */}
+                            <Marker position={[poste.latitud, poste.longitud]} icon={iconoPoste}>
+                                <Popup>
+                                    <div className="space-y-2">
+                                        <div className="font-bold">Poste {poste.codigo}</div>
+                                        <div className="text-sm text-slate-600">Tipo: {poste.tipo}</div>
+                                        <div className="grid grid-cols-2 gap-2 mt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => abrirInstalacion('mufa', {
+                                                    posteId: poste.id,
+                                                    coords: { latitud: poste.latitud, longitud: poste.longitud },
+                                                    ratioSplitteo: '1:16'
+                                                })}
+                                                className="rounded-2xl bg-orange-500 text-white px-3 py-2 text-xs font-semibold hover:bg-orange-600"
+                                            >
+                                                MUFA de Pase
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => abrirInstalacion('mufa', {
+                                                    posteId: poste.id,
+                                                    coords: { latitud: poste.latitud, longitud: poste.longitud },
+                                                    ratioSplitteo: '1:32'
+                                                })}
+                                                className="rounded-2xl bg-purple-600 text-white px-3 py-2 text-xs font-semibold hover:bg-purple-700"
+                                            >
+                                                MUFA para Splitter
+                                            </button>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => abrirInstalacion('caja', {
+                                                posteId: poste.id,
+                                                coords: { latitud: poste.latitud, longitud: poste.longitud }
+                                            })}
+                                            className="w-full rounded-2xl bg-emerald-600 text-white px-3 py-2 text-xs font-semibold hover:bg-emerald-700"
+                                        >
+                                            Instalar Caja
+                                        </button>
+                                    </div>
+                                </Popup>
+                            </Marker>
+
+                            {/* BURBUJAS FLOTANTES: MUFAS */}
+                            {murasDelPoste.map((mufa, idx) => {
+                                const angle = (idx * 120) * (Math.PI / 180);
+                                const distance = 0.0003;
+                                const offsetLat = distance * Math.cos(angle);
+                                const offsetLng = distance * Math.sin(angle);
+                                return (
+                                    <Marker
+                                        key={`bubble-mufa-${mufa.id}`}
+                                        position={[poste.latitud + offsetLat, poste.longitud + offsetLng]}
+                                        icon={L.divIcon({
+                                            className: 'custom-bubble-icon',
+                                            html: `
+                                                <div style="
+                                                    background: linear-gradient(135deg, #c2410c, #f97316);
+                                                    width: 42px;
+                                                    height: 42px;
+                                                    border-radius: 50%;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.5);
+                                                    border: 3px solid white;
+                                                    cursor: pointer;
+                                                    font-size: 24px;
+                                                    font-weight: 900;
+                                                    color: white;
+                                                    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                                ">
+                                                    M
+                                                </div>
+                                            `,
+                                            iconSize: [42, 42],
+                                            iconAnchor: [21, 21],
+                                            popupAnchor: [0, -21]
                                         })}
-                                        className="rounded-2xl bg-orange-500 text-white px-3 py-2 text-xs font-semibold hover:bg-orange-600"
                                     >
-                                        MUFA de Pase
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => abrirInstalacion('mufa', {
-                                            posteId: poste.id,
-                                            coords: { latitud: poste.latitud, longitud: poste.longitud },
-                                            ratioSplitteo: '1:32'
+                                        <Popup>
+                                            <div className="text-sm space-y-2">
+                                                <div className="font-bold text-orange-600">Mufa {mufa.codigo}</div>
+                                                <div className="text-xs">Splitter: {mufa.ratioSplitteo}</div>
+                                                <div className="text-xs">Hilos: {mufa.hilosDisponibles}</div>
+                                                <div className="flex gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => abrirFormulario('mufa', mufa)}
+                                                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                                    >
+                                                        <Edit size={14} />
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('¿Eliminar esta Mufa?')) {
+                                                                eliminarMufa(mufa.id);
+                                                            }
+                                                        }}
+                                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                );
+                            })}
+
+                            {/* BURBUJAS FLOTANTES: CAJAS */}
+                            {cajasDelPoste.map((caja, idx) => {
+                                const angle = (idx * 120 + 60) * (Math.PI / 180);
+                                const distance = 0.0003;
+                                const offsetLat = distance * Math.cos(angle);
+                                const offsetLng = distance * Math.sin(angle);
+                                return (
+                                    <Marker
+                                        key={`bubble-caja-${caja.id}`}
+                                        position={[poste.latitud + offsetLat, poste.longitud + offsetLng]}
+                                        icon={L.divIcon({
+                                            className: 'custom-bubble-icon',
+                                            html: `
+                                                <div style="
+                                                    background: linear-gradient(135deg, #166534, #4ade80);
+                                                    width: 42px;
+                                                    height: 42px;
+                                                    border-radius: 50%;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.5);
+                                                    border: 3px solid white;
+                                                    cursor: pointer;
+                                                    font-size: 24px;
+                                                    font-weight: 900;
+                                                    color: white;
+                                                    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                                ">
+                                                    C
+                                                </div>
+                                            `,
+                                            iconSize: [42, 42],
+                                            iconAnchor: [21, 21],
+                                            popupAnchor: [0, -21]
                                         })}
-                                        className="rounded-2xl bg-purple-600 text-white px-3 py-2 text-xs font-semibold hover:bg-purple-700"
                                     >
-                                        MUFA para Splitter
-                                    </button>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => abrirInstalacion('caja', {
-                                        posteId: poste.id,
-                                        coords: { latitud: poste.latitud, longitud: poste.longitud }
-                                    })}
-                                    className="w-full rounded-2xl bg-emerald-600 text-white px-3 py-2 text-xs font-semibold hover:bg-emerald-700"
-                                >
-                                    Instalar Caja
-                                </button>
-                            </div>
-                        </Popup>
-                    </Marker>
-                ))}
+                                        <Popup>
+                                            <div className="text-sm space-y-2">
+                                                <div className="font-bold text-emerald-600">Caja {caja.codigo}</div>
+                                                <div className="text-xs">Puertos: {caja.puertosLibres}</div>
+                                                <div className="text-xs">Color: {caja.colorHiloCaja}</div>
+                                                <div className="flex gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => abrirFormulario('caja', caja)}
+                                                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                                    >
+                                                        <Edit size={14} />
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm('¿Eliminar esta Caja?')) {
+                                                                eliminarCaja(caja.id);
+                                                            }
+                                                        }}
+                                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
 
                 {/* MUFAS */}
                 {mufas.map(mufa => (
@@ -609,6 +755,26 @@ const MapaPrincipal = () => {
                                 <div className="font-bold">Mufa {mufa.codigo}</div>
                                 <div>Splitter: {mufa.ratioSplitteo}</div>
                                 <div>Hilos libres: {mufa.hilosDisponibles}</div>
+                                <div className="flex gap-2 mt-2">
+                                    <button
+                                        onClick={() => abrirFormulario('mufa', mufa)}
+                                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                    >
+                                        <Edit size={14} />
+                                        Editar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (window.confirm('¿Eliminar esta Mufa?')) {
+                                                eliminarMufa(mufa.id);
+                                            }
+                                        }}
+                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                    >
+                                        <Trash2 size={14} />
+                                        Eliminar
+                                    </button>
+                                </div>
                             </div>
                         </Popup>
                     </Marker>
@@ -622,6 +788,26 @@ const MapaPrincipal = () => {
                                 <div className="font-bold">Caja {caja.codigo}</div>
                                 <div>Puertos libres: {caja.puertosLibres}</div>
                                 <div>Poste: {caja.posteId}</div>
+                                <div className="flex gap-2 mt-2">
+                                    <button
+                                        onClick={() => abrirFormulario('caja', caja)}
+                                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                    >
+                                        <Edit size={14} />
+                                        Editar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (window.confirm('¿Eliminar esta Caja?')) {
+                                                eliminarCaja(caja.id);
+                                            }
+                                        }}
+                                        className="flex-1 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                    >
+                                        <Trash2 size={14} />
+                                        Eliminar
+                                    </button>
+                                </div>
                             </div>
                         </Popup>
                     </Marker>
@@ -680,7 +866,7 @@ const MapaPrincipal = () => {
 
             {/* FORMULARIOS */}
             {formAbierto && formType === 'mufa' && <FormMufa data={formData} onCancel={() => setFormAbierto(false)} />}
-            {formAbierto && formType === 'caja' && <FormCaja data={formData} onCancel={() => setFormAbierto(false)} />}
+            {formAbierto && formType === 'caja' && <FormCaja data={formData} mufas={mufas} onCancel={() => setFormAbierto(false)} />}
             {formAbierto && formType === 'poste' && <FormPoste data={formData} onCancel={() => setFormAbierto(false)} />}
         </div>
     );

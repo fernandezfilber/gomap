@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import fvApi from '../api/fvApi';
 
-const usePostes = () => {
+const usePostes = (proyectoId = null) => {
     const [postes, setPostes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -9,14 +9,17 @@ const usePostes = () => {
     const fetchPostes = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await fvApi.get('/postes');
+            const url = proyectoId 
+                ? `/postes?proyectoId=${proyectoId}` 
+                : '/postes';
+            const { data } = await fvApi.get(url);
             setPostes(data.postes || data);
         } catch (err) {
             setError(err.response?.data?.message || 'Error al cargar postes');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [proyectoId]);
 
     const crearPoste = async (data) => {
         const res = await fvApi.post('/postes', data);
