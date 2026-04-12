@@ -23,14 +23,6 @@ exports.getPostes = async (req, res) => {
                 ]
             },
             include: {
-                _count: {
-                    select: { 
-                        mufa: true,
-                        caja: true,
-                        tramosInicio: true,
-                        tramosFin: true
-                    }
-                },
                 mufa: { select: { id: true, codigo: true } },
                 caja: { select: { id: true, codigo: true } }
             },
@@ -208,8 +200,8 @@ exports.deletePoste = async (req, res) => {
             include: {
                 _count: {
                     select: {
-                        mufas: true,
-                        cajas: true,
+                        mufa: true,
+                        caja: true,
                         tramosInicio: true,
                         tramosFin: true
                     }
