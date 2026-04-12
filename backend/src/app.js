@@ -7,7 +7,7 @@ const app = express();
 
 app.use(morgan('dev'));
 app.use(cors({
-    origin: '*',
+    origin: 'https://demostracion.toq.life', // Tu URL de Hostinger
     credentials: true
 }));
 app.use(express.json());
