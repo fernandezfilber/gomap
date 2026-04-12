@@ -201,19 +201,36 @@ exports.deleteCaja = async (req, res) => {
 
     try {
         await prisma.$transaction(async (tx) => {
-            // Verificar acceso
+            // Verificar que la caja existe y pertenece a la empresa
             const caja = await tx.caja.findUnique({
                 where: { id },
-                include: { mufa: { select: { troncal: { select: { proyecto: { empresaId: true } } } } } }
+                include: { 
+                    mufa: { 
+                        include: { 
+                            troncal: { 
+                                include: { proyecto: true }
+                            }
+                        }
+                    }
+                }
             });
 
-            if (!caja || caja.mufa.troncal.proyecto.empresaId !== empresaId) {
-                throw new Error("Caja no encontrada o sin acceso");
+            if (!caja) {
+                throw new Error("Caja no encontrada");
+            }
+
+            if (!caja.mufa || caja.mufa.troncal.proyecto.empresaId !== empresaId) {
+                throw new Error("No tienes acceso a esta caja");
             }
 
             // Eliminar tramos que terminan en esta caja
             await tx.tramoCable.deleteMany({
                 where: { cajaDestinoId: id }
+            });
+
+            // Eliminar clientes asociados (opcional, depende de tu lógica)
+            await tx.cliente.deleteMany({
+                where: { cajaId: id }
             });
 
             // Eliminar caja
