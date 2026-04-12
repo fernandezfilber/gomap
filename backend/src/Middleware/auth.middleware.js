@@ -48,39 +48,26 @@ const isAdmin = (req, res, next) => {
 
 // ====================== MIDDLEWARE DE TENANT (Multi-Empresa) ======================
 const checkTenant = async (req, res, next) => {
+    console.log("🔍 [DEBUG] Entrando a checkTenant");
     try {
         const { empresaId } = req.user;
+        console.log("🆔 [DEBUG] Intentando validar empresaId:", empresaId);
 
-        // Verificar que la empresa siga activa
         const empresa = await prisma.empresa.findUnique({
             where: { id: empresaId },
-            select: { id: true, nombre: true, activo: true }
+            select: { id: true, activo: true }
         });
 
         if (!empresa) {
-            return res.status(403).json({
-                success: false,
-                message: "Empresa no encontrada"
-            });
+            console.error("❌ [DEBUG] Empresa no existe en DB");
+            return res.status(403).json({ message: "Empresa no encontrada" });
         }
 
-        if (!empresa.activo) {
-            return res.status(403).json({
-                success: false,
-                message: "La empresa está desactivada"
-            });
-        }
-
-        // Adjuntamos la empresa al request para usarla fácilmente
-        req.empresa = empresa;
+        console.log("✅ [DEBUG] Empresa validada correctamente");
         next();
-
     } catch (error) {
-        console.error("❌ Error en checkTenant:", error);
-        res.status(500).json({ 
-            success: false,
-            message: "Error interno al validar empresa" 
-        });
+        console.error("🔥 [DEBUG] CRASH en checkTenant:", error.message);
+        res.status(500).json({ error: error.message });
     }
 };
 
