@@ -46,6 +46,15 @@ const MapaPrincipal = () => {
     const { mufas } = useMufas(proyectoSeleccionado?.id);
     const { cajas } = useCajas(proyectoSeleccionado?.id);
 
+    // ==================== DETECTAR POSTES CERCANOS ====================
+    const encontrarPostesCercanos = (lat, lng, radio = 0.001) => {
+        return postes.filter(poste => {
+            const distLat = Math.abs(poste.latitud - lat);
+            const distLng = Math.abs(poste.longitud - lng);
+            return distLat <= radio && distLng <= radio;
+        });
+    };
+
     // ==================== CALCULAR DISTANCIA ====================
     const calcularDistanciaTotal = () => {
         if (puntosMedicion.length < 2) return 0;
@@ -107,14 +116,55 @@ const MapaPrincipal = () => {
         return null;
     };
 
-    const finalizarTramo = () => {
-        if (puntosTemporales.length >= 2) {
-            crearTramo({
+    const finalizarTramo = async () => {
+        if (puntosTemporales.length < 2) {
+            alert('Necesitas al menos 2 puntos para crear un tramo');
+            return;
+        }
+
+        try {
+            const inicioTramo = puntosTemporales[0];
+            const finTramo = puntosTemporales[puntosTemporales.length - 1];
+
+            // Buscar postes cercanos a los extremos
+            const postesCercanoInicio = encontrarPostesCercanos(inicioTramo[0], inicioTramo[1]);
+            const postesCercanoFin = encontrarPostesCercanos(finTramo[0], finTramo[1]);
+
+            let posteInicioId = null;
+            let posteFinId = null;
+
+            // Si encuentra exactamente un poste cercano en cada extremo, usarlos automáticamente
+            if (postesCercanoInicio.length === 1) {
+                posteInicioId = postesCercanoInicio[0].id;
+            } else if (postesCercanoInicio.length > 1) {
+                const seleccionado = window.confirm(
+                    `Se encontraron ${postesCercanoInicio.length} postes cercanos al inicio. ¿Usar el primero?`
+                );
+                if (seleccionado) posteInicioId = postesCercanoInicio[0].id;
+            }
+
+            if (postesCercanoFin.length === 1) {
+                posteFinId = postesCercanoFin[0].id;
+            } else if (postesCercanoFin.length > 1) {
+                const seleccionado = window.confirm(
+                    `Se encontraron ${postesCercanoFin.length} postes cercanos al fin. ¿Usar el primero?`
+                );
+                if (seleccionado) posteFinId = postesCercanoFin[0].id;
+            }
+
+            await crearTramo({
                 path: puntosTemporales,
                 proyectoId: proyectoSeleccionado?.id,
+                posteInicioId,
+                posteFinId
             });
+
             setPuntosTemporales([]);
             setModo('select');
+            alert('✅ Tramo creado correctamente');
+        } catch (error) {
+            console.error('Error al crear tramo:', error);
+            alert('❌ Error al crear el tramo. Revisa la consola.');
         }
     };
 
@@ -326,7 +376,15 @@ const MapaPrincipal = () => {
                         { id: 'mufa', icon: <Database size={22} />, label: 'Instalar Mufa' },
                         { id: 'caja', icon: <Box size={22} />, label: 'Instalar Caja' },
                         { id: 'medir', icon: <Ruler size={22} />, label: 'Medir Distancia' },
-                    ].map(tool => (
+                    ]
+                    .filter(tool => {
+                        // Si estás en modo 'tramo', solo muestra opciones relacionadas a tramos
+                        if (modo === 'tramo') {
+                            return tool.id === 'tramo' || tool.id === 'select';
+                        }
+                        return true;
+                    })
+                    .map(tool => (
                         <button
                             key={tool.id}
                             onClick={() => {
@@ -363,6 +421,26 @@ const MapaPrincipal = () => {
                     ))}
                 </select>
             </div>
+
+            {/* BOTÓN CENTRAR EN ÚLTIMO POSTE */}
+            {postes.length > 0 && (
+                <div className="absolute top-6 right-[22rem] z-[1001]">
+                    <button
+                        onClick={() => {
+                            const ultimoPoste = postes[0];
+                            setCenterPosition([ultimoPoste.latitud, ultimoPoste.longitud]);
+                            if (mapRef.current) {
+                                mapRef.current.flyTo([ultimoPoste.latitud, ultimoPoste.longitud], 18);
+                            }
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-2xl font-semibold flex items-center gap-2 transition shadow-lg"
+                        title="Centrar en el último poste creado"
+                    >
+                        <Target size={18} />
+                        <span>{postes[0]?.codigo || 'Ir a Poste'}</span>
+                    </button>
+                </div>
+            )}
 
             {/* BUSCADOR DE MAPA */}
             <div className="absolute top-28 right-6 z-[1001] w-80">
@@ -445,9 +523,27 @@ const MapaPrincipal = () => {
                 <MapCenterer position={centerPosition} />
 
                 {/* TRAMOS */}
-                {tramos.map(tramo => (
-                    <Polyline key={tramo.id} positions={tramo.path} pathOptions={{ color: '#a855f7', weight: 7 }} />
-                ))}
+                {tramos.map((tramo, idx) => {
+                    const colores = ['#a855f7', '#ec4899', '#f97316', '#06b6d4', '#8b5cf6'];
+                    const color = colores[idx % colores.length];
+                    
+                    return (
+                        <Polyline 
+                            key={tramo.id} 
+                            positions={tramo.path} 
+                            pathOptions={{ color, weight: 8, opacity: 0.8 }}
+                        >
+                            <Popup>
+                                <div className="space-y-1 text-sm">
+                                    <div className="font-bold">{tramo.nombre}</div>
+                                    <div>Tipo: {tramo.tipoCable}</div>
+                                    {tramo.posteInicio && <div>Inicio: {tramo.posteInicio.codigo}</div>}
+                                    {tramo.posteFin && <div>Fin: {tramo.posteFin.codigo}</div>}
+                                </div>
+                            </Popup>
+                        </Polyline>
+                    );
+                })}
 
                 {/* Línea temporal tramo */}
                 {puntosTemporales.length > 1 && (
