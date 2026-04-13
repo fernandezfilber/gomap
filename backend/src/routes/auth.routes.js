@@ -5,6 +5,9 @@ const authController = require('../controllers/auth.controller'); // Ajusta la r
 // Ruta: POST /api/auth/login
 router.post('/login', authController.login);
 
+// Ruta: POST /api/auth/logout
+router.post('/logout', authController.logout);
+
 // Opcional: Ruta para crear el primer usuario (puedes borrarla luego de usarla)
 router.post('/register', authController.register); 
 router.post('/registro-total', authController.registroTotal);

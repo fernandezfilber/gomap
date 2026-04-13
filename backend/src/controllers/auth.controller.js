@@ -84,6 +84,13 @@ exports.login = async (req, res) => {
     }
 };
 
+// ====================== LOGOUT ======================
+exports.logout = async (req, res) => {
+    // Logout es principalmente una acción del cliente (remover del localStorage)
+    // pero aquí podemos invalidar el token si es necesario
+    res.json({ success: true, message: 'Sesión cerrada correctamente' });
+};
+
 // ====================== REGISTER ======================
 exports.register = async (req, res) => {
     const { nombre, email, password, rol, empresaId } = req.body;
