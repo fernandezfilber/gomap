@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
 import 'leaflet-control-geocoder';
 import '../../styles/leaflet-plugins.css';
-import { MapPin, Share2, X, Ruler, Trash2, Search, Target, Edit } from 'lucide-react';
+import { MapPin, Share2, X, Ruler, Trash2, Search, Target, Edit, BarChart3, LocateFixed, Menu, ChevronDown } from 'lucide-react';
 
 import useProyectos from '../../hooks/useProyectos';
 import usePostes from '../../hooks/usePostes';
@@ -29,6 +29,11 @@ const MapaPrincipal = () => {
     const [searchResults, setSearchResults] = useState([]);
     const [selectedSearchItem, setSelectedSearchItem] = useState(null);
     const [centerPosition, setCenterPosition] = useState([-11.92, -76.70]);
+    const [sidebarAbierto, setSidebarAbierto] = useState(true);
+    const [mostrarEstadisticas, setMostrarEstadisticas] = useState(true);
+    const [cajasCercanas, setCajasCercanas] = useState([]);
+    const [radioProximidad, setRadioProximidad] = useState(0.005);
+    const [ubicacionBusqueda, setUbicacionBusqueda] = useState(null);
     const mapRef = useRef(null);
 
     // Hooks básicos
@@ -45,6 +50,20 @@ const MapaPrincipal = () => {
             const distLng = Math.abs(poste.longitud - lng);
             return distLat <= radio && distLng <= radio;
         });
+    };
+
+    // Buscar cajas cercanas a una ubicación
+    const buscarCajasCercanas = (lat, lng, radio = 0.005) => {
+        const cercanas = cajas.filter(caja => {
+            const distLat = Math.abs(caja.latitud - lat);
+            const distLng = Math.abs(caja.longitud - lng);
+            return distLat <= radio && distLng <= radio;
+        });
+        setCajasCercanas(cercanas);
+        setUbicacionBusqueda({ lat, lng });
+        if (cercanas.length > 0) {
+            setCenterPosition([lat, lng]);
+        }
     };
 
     // Calcular distancia
@@ -89,7 +108,15 @@ const MapaPrincipal = () => {
                     setPuntosTemporales(prev => [...prev, [e.latlng.lat, e.latlng.lng]]);
                 } else if (modo === 'medir') {
                     setPuntosMedicion(prev => [...prev, [e.latlng.lat, e.latlng.lng]]);
+                } else if (modo === 'select') {
+                    // En modo selección, buscar cajas cercanas
+                    buscarCajasCercanas(e.latlng.lat, e.latlng.lng, radioProximidad);
                 }
+            },
+            contextmenu(e) {
+                // Click derecho para buscar cajas cercanas en cualquier modo
+                e.originalEvent.preventDefault();
+                buscarCajasCercanas(e.latlng.lat, e.latlng.lng, radioProximidad);
             }
         });
         return null;
@@ -201,9 +228,130 @@ const MapaPrincipal = () => {
     };
 
     return (
-        <div className="relative h-screen w-full bg-slate-950">
+        <div className="relative h-screen w-full bg-slate-950 flex">
+            {/* SIDEBAR */}
+            <div className={`absolute left-0 top-0 h-full z-[1002] transition-all duration-300 ${sidebarAbierto ? 'w-80' : 'w-0'} bg-slate-900 border-r border-slate-700 overflow-hidden shadow-2xl`}>
+                <div className="p-4 h-full overflow-y-auto">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-white font-bold text-lg">Forward Vision</h2>
+                        <button onClick={() => setSidebarAbierto(false)} className="text-slate-400 hover:text-white">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    {/* Selector de Proyecto */}
+                    <div className="mb-6">
+                        <label className="block text-slate-300 text-xs font-semibold mb-2 uppercase">Proyecto</label>
+                        <select
+                            className="w-full bg-slate-800 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                            value={proyectoSeleccionado?.id || ''}
+                            onChange={(e) => {
+                                const proj = proyectos.find(p => p.id === e.target.value);
+                                setProyectoSeleccionado(proj);
+                            }}
+                        >
+                            <option value="">Sin proyecto</option>
+                            {proyectos.map(p => (
+                                <option key={p.id} value={p.id}>{p.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Estadísticas */}
+                    {proyectoSeleccionado && (
+                        <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-slate-700">
+                            <div className="flex items-center gap-2 mb-3">
+                                <BarChart3 size={16} className="text-blue-400" />
+                                <h3 className="text-white font-semibold text-sm">Estadísticas</h3>
+                            </div>
+                            <div className="space-y-2 text-xs text-slate-300">
+                                <div className="flex justify-between">
+                                    <span>Postes:</span>
+                                    <span className="font-bold text-blue-300">{postes.length}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Tramos:</span>
+                                    <span className="font-bold text-purple-300">{tramos.length}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Mufas:</span>
+                                    <span className="font-bold text-orange-300">{mufas.length}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Cajas:</span>
+                                    <span className="font-bold text-emerald-300">{cajas.length}</span>
+                                </div>
+                                <div className="border-t border-slate-600 pt-2 mt-2">
+                                    <span className="text-slate-400">Total elementos: </span>
+                                    <span className="font-bold text-white">{postes.length + tramos.length + mufas.length + cajas.length}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Búsqueda de Cajas Cercanas */}
+                    <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
+                        <div className="flex items-center gap-2 mb-3">
+                            <LocateFixed size={16} className="text-emerald-400" />
+                            <h3 className="text-white font-semibold text-sm">Cajas Cercanas</h3>
+                        </div>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs text-slate-400 mb-1">Radio de búsqueda (km)</label>
+                                <input
+                                    type="range"
+                                    min="0.1"
+                                    max="1"
+                                    step="0.1"
+                                    value={radioProximidad}
+                                    onChange={(e) => setRadioProximidad(parseFloat(e.target.value))}
+                                    className="w-full"
+                                />
+                                <span className="text-xs text-slate-500 mt-1 block">{(radioProximidad * 111).toFixed(2)} km</span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    if (ubicacionBusqueda) {
+                                        buscarCajasCercanas(ubicacionBusqueda.lat, ubicacionBusqueda.lng, radioProximidad);
+                                    } else {
+                                        alert('Selecciona un punto en el mapa primero');
+                                    }
+                                }}
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition"
+                            >
+                                Buscar desde ubicación
+                            </button>
+                            {cajasCercanas.length > 0 && (
+                                <div className="mt-3 bg-slate-900 rounded p-3 border border-emerald-500/30">
+                                    <p className="text-xs text-emerald-400 font-semibold mb-2">{cajasCercanas.length} caja(s) encontrada(s)</p>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                        {cajasCercanas.map(caja => (
+                                            <div key={caja.id} className="text-xs text-slate-300 bg-slate-800 p-2 rounded cursor-pointer hover:bg-slate-700" onClick={() => { setCenterPosition([caja.latitud, caja.longitud]); }}>
+                                                <div className="font-semibold">{caja.codigo}</div>
+                                                <div className="text-slate-500">Puertos: {caja.puertosLibres}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Botón para abrir/cerrar Sidebar */}
+            {!sidebarAbierto && (
+                <button
+                    onClick={() => setSidebarAbierto(true)}
+                    className="absolute top-6 left-6 z-[1001] bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-2xl shadow-lg transition"
+                    title="Abrir panel"
+                >
+                    <Menu size={24} />
+                </button>
+            )}
+
             {/* TOOLBOX */}
-            <div className="absolute top-6 left-6 z-[1001]">
+            <div className={`absolute top-6 transition-all duration-300 z-[1001] ${sidebarAbierto ? 'left-96' : 'left-6'}`}>
                 <div className="bg-white/95 backdrop-blur-md border border-slate-200 shadow-2xl rounded-3xl p-3 flex flex-col gap-2">
                     {[
                         { id: 'select', icon: <MapPin size={22} />, label: 'Navegar' },
@@ -229,23 +377,6 @@ const MapaPrincipal = () => {
                         </button>
                     ))}
                 </div>
-            </div>
-
-            {/* SELECTOR DE PROYECTO */}
-            <div className="absolute top-6 right-6 z-[1001]">
-                <select
-                    className="bg-slate-900 border border-slate-700 text-white rounded-2xl px-5 py-3 w-80 focus:outline-none focus:border-blue-500"
-                    value={proyectoSeleccionado?.id || ''}
-                    onChange={(e) => {
-                        const proj = proyectos.find(p => p.id === e.target.value);
-                        setProyectoSeleccionado(proj);
-                    }}
-                >
-                    <option value="">Seleccionar Proyecto</option>
-                    {proyectos.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}</option>
-                    ))}
-                </select>
             </div>
 
             {/* BOTÓN CENTRAR EN ÚLTIMO POSTE */}
@@ -455,6 +586,20 @@ const MapaPrincipal = () => {
                         </Popup>
                     </Marker>
                 ))}
+
+                {/* Marcador de ubicación de búsqueda */}
+                {ubicacionBusqueda && (
+                    <Marker
+                        position={[ubicacionBusqueda.lat, ubicacionBusqueda.lng]}
+                        icon={L.icon({
+                            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI2IiBmaWxsPSIjMTBiOTgxIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        })}
+                    >
+                        <Popup>Ubicacion de búsqueda</Popup>
+                    </Marker>
+                )}
 
                 {/* Línea temporal de tramo */}
                 {puntosTemporales.length > 1 && (
