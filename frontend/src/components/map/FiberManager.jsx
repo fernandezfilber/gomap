@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, Layers, RefreshCcw, ArrowRight, Zap } from 'lucide-react';
+import { Search, Layers, RefreshCcw, ArrowRight, Zap, Router } from 'lucide-react';
 
 const FiberManager = ({
     items = [],
@@ -14,6 +14,7 @@ const FiberManager = ({
     const [origen, setOrigen] = useState('');
     const [destino, setDestino] = useState('');
     const [searchMessage, setSearchMessage] = useState('');
+    const [selectedPaths, setSelectedPaths] = useState([]);
 
     const opciones = useMemo(() => {
         return items.map(item => `${item.tipo} / ${item.codigo}`);
