@@ -29,7 +29,7 @@ export const ProyectosProvider = ({ children }) => {
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Error al cargar proyectos');
-            console.error('❌ Error al cargar proyectos:', err);
+            console.error('Error al cargar proyectos:', err);
         } finally {
             setLoading(false);
         }
@@ -44,8 +44,8 @@ export const ProyectosProvider = ({ children }) => {
         return proyectoCreado;
     };
 
-    const actualizarProyecto = async (id, datosActualizados) => {
-        const { data } = await fvApi.put(`/proyectos/${id}`, datosActualizados);
+    const actualizarProyecto = async (id, datos) => {
+        const { data } = await fvApi.put(`/proyectos/${id}`, datos);
         const proyectoActualizado = data.proyecto || data;
         setProyectos(prev => prev.map(p => p.id === id ? proyectoActualizado : p));
         if (proyectoSeleccionado?.id === id) {
@@ -66,10 +66,7 @@ export const ProyectosProvider = ({ children }) => {
 
     useEffect(() => {
         const token = window.localStorage.getItem('token');
-        if (!token) {
-            return;
-        }
-
+        if (!token) return;
         fetchProyectos();
     }, [fetchProyectos]);
 

@@ -1,7 +1,5 @@
 generator client {
-  provider      = "prisma-client-js"
-  // Esto le dice a Prisma que prepare motores para tu PC (native)
-  // y para los servidores de Hostinger (debian)
+  provider = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
@@ -10,7 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ====================== EMPRESA (Tenant) ======================
+// ====================== EMPRESA ======================
 model Empresa {
   id          String   @id @default(uuid())
   nombre      String
@@ -23,9 +21,6 @@ model Empresa {
 
   usuarios    Usuario[]
   proyectos   Proyecto[]
-  averias     Averia[]
-  inventarioItems InventarioItem[]
-
   @@map("empresas")
 }
 
@@ -43,12 +38,6 @@ model Usuario {
   ultimoLogin DateTime?
 
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-
-  // Relaciones con nuevos modelos
-  averiasAsignadas  Averia[]
-  historialCambios  HiloHistorial[]
-  notasAverias      AveriaNota[]
-  circuitoHistorial CircuitoHistorial[]
 
   @@index([empresaId])
   @@map("usuarios")
@@ -71,36 +60,10 @@ model Proyecto {
   empresaId String
   empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
 
-  troncales Troncal[]
   tramos    TramoCable[]
-  olts      OLT[]
 
   @@index([empresaId])
   @@map("proyectos")
-}
-
-// ====================== OLT (Optical Line Terminal) ======================
-model OLT {
-  id          String   @id @default(uuid())
-  nombre      String
-  marca       String?
-  modelo      String?
-  ipGestion   String?
-  ubicacion   String?
-  puertos     Int      @default(16)
-  latitud     Float?
-  longitud    Float?
-  activo      Boolean  @default(true)
-
-  proyectoId  String
-  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-
-  troncales   Troncal[]
-  creadoEn    DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@index([proyectoId])
-  @@map("olts")
 }
 
 // ====================== POSTE ======================
@@ -119,223 +82,30 @@ model Poste {
   tramosInicio TramoCable[] @relation("InicioPoste")
   tramosFin    TramoCable[] @relation("FinPoste")
 
-  // Ubicación física
   direccion    String?
   referencia   String?
 
   @@map("postes")
 }
 
-// ====================== TRONCAL ======================
-model Troncal {
-  id          String  @id @default(uuid())
-  nombre      String  @unique
-  bufferColor String
-  cantHilos   Int     @default(96)
-  hilosLibres Int
-  descripcion String?
-  ruta        String? @db.LongText
-  proyectoId  String
+// ====================== MUFA ======================
+model Mufa {
+  id            String @id @default(uuid())
+  codigo        String @unique
+  latitud       Float
+  longitud      Float
+  ratioSplitteo String @default("1:16")
+  hilosDisponibles Int @default(16)
 
-  proyecto Proyecto @relation(fields: [proyectoId], references: [id])
-  mufas    Mufa[]
-
-  // Nuevo: Relación con OLT
-  oltId       String?
-  olt         OLT?    @relation(fields: [oltId], references: [id])
-
-  // Nuevo: Hilos individuales
-  hilos       HiloFibra[]
-
-  creadoEn DateTime @default(now())
-
-  @@index([proyectoId])
-  @@index([oltId])
-  @@map("troncales")
-}
-
-// ====================== HILO FIBRA (Strand-level tracking) ======================
-model HiloFibra {
-  id              String    @id @default(uuid())
-  numero          Int       // Número de fibra (1-96)
-
-  troncalId       String
-  troncal         Troncal   @relation(fields: [troncalId], references: [id], onDelete: Cascade)
-
-  // Estado del hilo
-  estado          EstadoHilo @default(LIBRE)
-
-  // Metadatos
-  color           String    // Color del hilo según estándar TIA-598
-  bufferColor     String    // Color del buffer (AZUL, NARANJA, VERDE, etc.)
-  longitudTotal   Float?    // Metros totales
-  atenuacion      Float?    // dB medidos
-  observaciones   String?   @db.Text
-
-  // Conexiones (solo una de estas debe estar activa)
-  mufaOrigenId    String?   // Si el hilo termina en una mufa
-  mufaOrigen      Mufa?     @relation("HilosEntrada", fields: [mufaOrigenId], references: [id])
-
-  splitterEntradaId String? @unique // Si el hilo entra directo a un splitter
-
-  // Historial de cambios
-  historial       HiloHistorial[]
-
-  // Circuito al que pertenece
-  circuitos       CircuitoElemento[]
-
-  // Relación inversa para splitters y cajas
-  splitterComoEntrada Splitter?
-  cajaComoDestino     Caja?
-
-  creadoEn        DateTime  @default(now())
-  actualizadoEn   DateTime  @updatedAt
-
-  @@unique([troncalId, numero])
-  @@index([troncalId])
-  @@index([estado])
-  @@index([mufaOrigenId])
-  @@map("hilos_fibra")
-}
-
-enum EstadoHilo {
-  LIBRE
-  RESERVADO
-  OCUPADO
-  AVERIADO
-  MANTENIMIENTO
-}
-
-// ====================== HILO HISTORIAL (Auditoría) ======================
-model HiloHistorial {
-  id          String   @id @default(uuid())
-
-  hiloId      String
-  hilo        HiloFibra @relation(fields: [hiloId], references: [id], onDelete: Cascade)
-
-  accion      TipoAccion
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-
-  // Estado anterior y nuevo
-  estadoAnterior EstadoHilo?
-  estadoNuevo  EstadoHilo
-
-  // Metadatos
-  detalle     String?
-  ipAddress   String?
+  posteId   String @unique
+  poste     Poste  @relation("PosteMufa", fields: [posteId], references: [id])
+  tramosOrigen TramoCable[] @relation("CableDesdeMufa")
+  cajas       Caja[]
 
   creadoEn    DateTime @default(now())
 
-  @@index([hiloId])
-  @@index([usuarioId])
-  @@map("hilo_historial")
-}
-
-enum TipoAccion {
-  CREAR
-  MODIFICAR
-  ELIMINAR
-  CONECTAR
-  DESCONECTAR
-  RESERVAR
-  LIBERAR
-  AVERIAR
-  REPARAR
-}
-
-// ====================== MUFA ======================
-model Mufa {
-  id               String @id @default(uuid())
-  codigo           String @unique
-  latitud          Float
-  longitud         Float
-  bufferEntrada    String
-  hiloEntrada      Int
-  ratioSplitteo    String @default("1:16")
-  hilosDisponibles Int    @default(16)
-
-  posteId   String @unique
-  troncalId String
-
-  poste        Poste        @relation("PosteMufa", fields: [posteId], references: [id])
-  troncal      Troncal      @relation(fields: [troncalId], references: [id], onDelete: Cascade)
-  tramosOrigen TramoCable[] @relation("CableDesdeMufa")
-
-  // Nuevo: Hilos de entrada
-  hilosEntrada HiloFibra[] @relation("HilosEntrada")
-
-  // Nuevo: Splitters dentro de la mufa
-  splitters    Splitter[]
-
-  cajas        Caja[]
-
-  creadoEn     DateTime @default(now())
-
-  @@index([troncalId])
+  @@index([posteId])
   @@map("mufas")
-}
-
-// ====================== SPLITTER (Detallado) ======================
-model Splitter {
-  id              String   @id @default(uuid())
-  codigo          String   @unique
-  tipo            TipoSplitter   // PLC o FBT
-  ratio           String         // 1:2, 1:4, 1:8, 1:16, 1:32, 1:64
-
-  // Entrada: puede venir de un hilo directo
-  entradaHiloId   String? @unique
-  entradaHilo     HiloFibra? @relation(fields: [entradaHiloId], references: [splitterEntradaId])
-
-  // Ubicación
-  mufaId          String
-  mufa            Mufa     @relation(fields: [mufaId], references: [id], onDelete: Cascade)
-
-  // Puertos de salida
-  salidas         SplitterSalida[]
-
-  // Estado
-  activo          Boolean  @default(true)
-  atenuacion      Float?   // dB típicos del splitter
-
-  creadoEn        DateTime @default(now())
-
-  @@index([mufaId])
-  @@index([entradaHiloId])
-  @@map("splitters")
-}
-
-model SplitterSalida {
-  id          String   @id @default(uuid())
-
-  splitterId  String
-  splitter    Splitter @relation(fields: [splitterId], references: [id], onDelete: Cascade)
-
-  numero      Int      // Puerto 1, 2, 3...
-  estado      EstadoPuerto @default(LIBRE)
-
-  // Conexión a caja
-  cajaId      String?
-  caja        Caja?    @relation(fields: [cajaId], references: [id])
-
-  // Historial
-  fechaConexion DateTime?
-
-  @@unique([splitterId, numero])
-  @@index([cajaId])
-  @@map("splitter_salidas")
-}
-
-enum TipoSplitter {
-  PLC
-  FBT
-}
-
-enum EstadoPuerto {
-  LIBRE
-  OCUPADO
-  RESERVADO
-  AVERIADO
 }
 
 // ====================== CAJA ======================
@@ -344,9 +114,7 @@ model Caja {
   codigo        String  @unique
   latitud       Float
   longitud      Float
-  colorHiloCaja String?
   puertosLibres Int     @default(16)
-  capacidadTotal Int    @default(16) // Nuevo: capacidad máxima
 
   posteId String  @unique
   mufaId  String?
@@ -356,13 +124,6 @@ model Caja {
 
   clientes      Cliente[]
   tramosDestino TramoCable[] @relation("CableHaciaCaja")
-
-  // Nuevo: Splitters conectados a esta caja (para casos de cascada)
-  splitterSalida SplitterSalida[]
-
-  // Nuevo: Hilo de fibra que llega directo (sin splitter)
-  hiloFibraId   String? @unique
-  hiloFibra     HiloFibra? @relation(fields: [hiloFibraId], references: [id])
 
   creadoEn DateTime @default(now())
 
@@ -374,7 +135,7 @@ model Caja {
 model TramoCable {
   id          String  @id @default(uuid())
   nombre      String?
-  tipoCable   String
+  tipoCable   String  @default("FIBRA")
   path        String  @db.LongText
   colorVisual String  @default("#8b5cf6")
 
@@ -390,15 +151,9 @@ model TramoCable {
   mufaOrigen  Mufa?    @relation("CableDesdeMufa", fields: [mufaOrigenId], references: [id])
   cajaDestino Caja?    @relation("CableHaciaCaja", fields: [cajaDestinoId], references: [id])
 
-  // Nuevo: Metadatos
-  longitudMetros Float?
-  atenuacion     Float?
-
   creadoEn DateTime @default(now())
 
   @@index([proyectoId])
-  @@index([posteInicioId])
-  @@index([posteFinId])
   @@map("tramo_cables")
 }
 
@@ -409,9 +164,6 @@ model Cliente {
   dni            String  @unique
   telefono       String?
   direccion      String?
-  snMac          String?
-  latitud        Float?
-  longitud       Float?
   estadoServicio String  @default("ACTIVO")
 
   cajaId String
@@ -419,264 +171,5 @@ model Cliente {
 
   creadoEn DateTime @default(now())
 
-  // Nuevo: Circuito asignado
-  circuito Circuito?
-
   @@map("clientes")
-}
-
-// ====================== CIRCUITO (Ruta completa) ======================
-model Circuito {
-  id              String   @id @default(uuid())
-  nombre          String   // Nombre/código del circuito
-  codigo          String   @unique
-
-  // Ruta completa
-  clienteId       String   @unique
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-
-  // Elementos del circuito (ordenados)
-  elementos       CircuitoElemento[]
-
-  // Métricas calculadas
-  longitudTotal   Float?   // Metros
-  atenuacionTotal Float?   // dB calculados
-
-  // Estado
-  estado          EstadoCircuito @default(ACTIVO)
-
-  // Historial de cambios
-  historial       CircuitoHistorial[]
-
-  creadoEn        DateTime @default(now())
-  actualizadoEn   DateTime @updatedAt
-
-  @@map("circuitos")
-}
-
-model CircuitoElemento {
-  id          String   @id @default(uuid())
-
-  circuitoId  String
-  circuito    Circuito @relation(fields: [circuitoId], references: [id], onDelete: Cascade)
-
-  orden       Int      // Orden en la ruta (1, 2, 3...)
-  tipo        TipoElementoCircuito
-
-  // Referencias polimórficas (solo una debe tener valor)
-  troncalId   String?
-  hiloId      String?
-  splitterId  String?
-  splitterSalidaId String?
-  cajaId      String?
-  mufaId      String?
-
-  // Metadatos
-  conexion    String?  // Detalle de la conexión física
-  atenuacion  Float?   // dB en este segmento
-  longitud    Float?   // Metros de este segmento
-
-  // Relaciones
-  hilo        HiloFibra? @relation(fields: [hiloId], references: [id])
-
-  @@index([circuitoId])
-  @@index([orden])
-  @@map("circuito_elementos")
-}
-
-enum TipoElementoCircuito {
-  OLT
-  TRONCAL
-  HILO
-  MUFA
-  SPLITTER_ENTRADA
-  SPLITTER_SALIDA
-  CAJA
-  DROP_CABLE
-}
-
-enum EstadoCircuito {
-  ACTIVO
-  INACTIVO
-  AVERIADO
-  MANTENIMIENTO
-}
-
-model CircuitoHistorial {
-  id          String   @id @default(uuid())
-
-  circuitoId  String
-  circuito    Circuito @relation(fields: [circuitoId], references: [id], onDelete: Cascade)
-
-  accion      String   // CREAR, MODIFICAR, ELIMINAR, AVERIAR, REPARAR
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-
-  detalle     String?
-
-  creadoEn    DateTime @default(now())
-
-  @@map("circuito_historial")
-}
-
-// ====================== AVERÍA (Incidencias) ======================
-model Averia {
-  id          String   @id @default(uuid())
-  codigo      String   @unique
-  tipo        TipoAveria
-  descripcion String   @db.Text
-
-  // Ubicación
-  latitud     Float?
-  longitud    Float?
-
-  // Elementos afectados (puede afectar a uno o varios)
-  troncalId   String?
-  hiloId      String?
-  mufaId      String?
-  cajaId      String?
-  clienteId   String?
-
-  // Estado
-  estado      EstadoAveria @default(REPORTADA)
-  prioridad   PrioridadAveria @default(MEDIA)
-
-  // Asignación
-  tecnicoId   String?
-  tecnico     Usuario? @relation(fields: [tecnicoId], references: [id])
-
-  // Fechas
-  reportadoEn DateTime @default(now())
-  resueltoEn  DateTime?
-
-  // Notas
-  notas       AveriaNota[]
-
-  empresaId   String
-  empresa     Empresa  @relation(fields: [empresaId], references: [id])
-
-  creadoEn    DateTime @default(now())
-
-  @@index([empresaId])
-  @@index([estado])
-  @@index([prioridad])
-  @@index([tecnicoId])
-  @@map("averias")
-}
-
-model AveriaNota {
-  id          String   @id @default(uuid())
-
-  averiaId    String
-  averia      Averia   @relation(fields: [averiaId], references: [id], onDelete: Cascade)
-
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-
-  contenido   String   @db.Text
-  creadoEn    DateTime @default(now())
-
-  @@index([averiaId])
-  @@map("averia_notas")
-}
-
-enum TipoAveria {
-  CORTE_FIBRA
-  ATENUACION_ALTA
-  CONEXION_DEFECTUOSA
-  EQUIPO_DAÑADO
-  POSTE_CAIDO
-  ROBO_VANDALISMO
-  OTRO
-}
-
-enum EstadoAveria {
-  REPORTADA
-  ASIGNADA
-  EN_REPARACION
-  RESUELTA
-  CANCELADA
-}
-
-enum PrioridadAveria {
-  BAJA
-  MEDIA
-  ALTA
-  CRITICA
-}
-
-// ====================== INVENTARIO (Equipos) ======================
-model InventarioItem {
-  id          String   @id @default(uuid())
-  tipo        TipoItemInventario
-  codigo      String   @unique
-  descripcion String?
-
-  // Cantidades
-  stockTotal  Int      @default(0)
-  stockMinimo Int      @default(5)
-  stockReservado Int   @default(0)
-
-  // Ubicación
-  ubicacion   String?
-  almacen     String?
-
-  // Asignaciones
-  asignaciones InventarioAsignacion[]
-
-  // Proveedor y costos
-  proveedor   String?
-  costoUnitario Float?
-  moneda      String   @default("PEN")
-
-  empresaId   String
-  empresa     Empresa  @relation(fields: [empresaId], references: [id])
-
-  creadoEn    DateTime @default(now())
-  actualizadoEn DateTime @updatedAt
-
-  @@index([empresaId])
-  @@index([tipo])
-  @@map("inventario_items")
-}
-
-model InventarioAsignacion {
-  id          String   @id @default(uuid())
-
-  itemId      String
-  item        InventarioItem @relation(fields: [itemId], references: [id])
-
-  // Elemento de red donde se instaló
-  tipoDestino TipoDestinoAsignacion
-  destinoId   String
-
-  cantidad    Int
-  fechaInstalacion DateTime @default(now())
-  instaladoPor String?
-
-  // Opcional: Serial/número de parte específico
-  serialNumber String?
-
-  @@index([itemId])
-  @@map("inventario_asignaciones")
-}
-
-enum TipoItemInventario {
-  SPLITTER
-  CAJA_NAP
-  CONECTOR
-  FIBRA_DROP
-  POSTE
-  ANCLAJE
-  HERRAMIENTA
-  OLT_EQUIPAMENT
-  OTRO
-}
-
-enum TipoDestinoAsignacion {
-  POSTE
-  MUFA
-  CAJA
-  PROYECTO
-  OLT
 }
