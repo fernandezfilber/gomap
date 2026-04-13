@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -17,10 +17,10 @@ import FormMufa from '../forms/FormMufa';
 import FormCaja from '../forms/FormCaja';
 import FormPoste from '../forms/FormPoste';
 
-// Importamos los componentes de layout
 import Sidebar from '../layout/Sidebar';
 import Toolbox from '../layout/Toolbox';
 
+// Icono personalizado para mufas
 const createMufaIcon = () => L.divIcon({
     className: 'custom-mufa-icon',
     html: `<div class="bg-orange-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[10px] font-bold text-white">M</div>`,
@@ -29,7 +29,6 @@ const createMufaIcon = () => L.divIcon({
 });
 
 const MapaPrincipal = () => {
-    // Estados principales
     const [modo, setModo] = useState('select');
     const [puntosTemporales, setPuntosTemporales] = useState([]);
     const [puntosMedicion, setPuntosMedicion] = useState([]);
@@ -75,7 +74,6 @@ const MapaPrincipal = () => {
         return (total / 1000).toFixed(3);
     };
 
-    // Crear poste al click
     const crearPosteDirecto = async (coords) => {
         if (!proyectoSeleccionado) return alert('Selecciona un proyecto primero');
 
@@ -93,7 +91,10 @@ const MapaPrincipal = () => {
     };
 
     const finalizarTramo = async () => {
-        if (puntosTemporales.length < 2) return alert('Mínimo 2 puntos para un tramo');
+        if (puntosTemporales.length < 2) {
+            alert('Mínimo 2 puntos para crear un tramo');
+            return;
+        }
 
         const inicio = puntosTemporales[0];
         const fin = puntosTemporales[puntosTemporales.length - 1];
@@ -146,17 +147,17 @@ const MapaPrincipal = () => {
         return null;
     };
 
+    // Centrar mapa
     const MapCenterer = () => {
         const map = useMap();
         useEffect(() => {
-            map.flyTo([-11.92, -76.70], 16);
+            map.flyTo([-11.92, -76.70], 16, { duration: 1 });
         }, [map]);
         return null;
     };
 
     return (
         <div className="relative h-screen w-full bg-slate-950 flex overflow-hidden">
-            {/* Sidebar reutilizable */}
             <Sidebar 
                 proyectos={proyectos}
                 proyectoSeleccionado={proyectoSeleccionado}
@@ -171,9 +172,7 @@ const MapaPrincipal = () => {
                 logout={logout}
             />
 
-            {/* Área del mapa */}
             <div className="flex-1 relative">
-                {/* Toolbox reutilizable */}
                 <Toolbox modo={modo} setModo={setModo} />
 
                 <MapContainer
@@ -195,7 +194,7 @@ const MapaPrincipal = () => {
                         />
                     ))}
 
-                    {/* Postes */}
+                    {/* Postes y elementos */}
                     {postes.map(p => {
                         const mufasP = mufas.filter(m => m.posteId === p.id);
                         const cajasP = cajas.filter(c => c.posteId === p.id);
@@ -229,8 +228,8 @@ const MapaPrincipal = () => {
                                     <Marker
                                         key={m.id}
                                         position={[
-                                            p.latitud + 0.00012 * Math.cos(i * 1.5),
-                                            p.longitud + 0.00012 * Math.sin(i * 1.5)
+                                            p.latitud + 0.00012 * Math.cos(i),
+                                            p.longitud + 0.00012 * Math.sin(i)
                                         ]}
                                         icon={createMufaIcon()}
                                     />
@@ -259,12 +258,15 @@ const MapaPrincipal = () => {
                 {modo !== 'select' && (
                     <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[1001] bg-slate-900 border border-slate-700 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6">
                         <div>
-                            <span className="text-[10px] text-slate-500">MODO</span>
-                            <p className="text-blue-400 font-bold text-lg">{modo.toUpperCase()}</p>
+                            <span className="text-xs text-slate-500">MODO ACTIVO</span>
+                            <p className="text-blue-400 font-bold text-xl tracking-wider">{modo.toUpperCase()}</p>
                         </div>
 
                         {modo === 'tramo' && (
-                            <button onClick={finalizarTramo} className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-2xl font-bold">
+                            <button 
+                                onClick={finalizarTramo}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-bold"
+                            >
                                 GUARDAR TRAMO
                             </button>
                         )}
@@ -276,18 +278,22 @@ const MapaPrincipal = () => {
                         )}
 
                         <button 
-                            onClick={() => { setModo('select'); setPuntosTemporales([]); setPuntosMedicion([]); }}
-                            className="text-slate-400 hover:text-white p-2"
+                            onClick={() => {
+                                setModo('select');
+                                setPuntosTemporales([]);
+                                setPuntosMedicion([]);
+                            }}
+                            className="p-3 text-slate-400 hover:text-white"
                         >
-                            <X size={26} />
+                            <X size={28} />
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* Modal de formularios */}
+            {/* Modal Formularios */}
             {formAbierto && (
-                <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur flex items-center justify-center p-4">
                     <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-md">
                         {formType === 'mufa' && <FormMufa data={formData} onCancel={() => setFormAbierto(false)} />}
                         {formType === 'caja' && <FormCaja data={formData} mufas={mufas} onCancel={() => setFormAbierto(false)} />}

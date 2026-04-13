@@ -1,32 +1,35 @@
 import axios from 'axios';
 import { handleGlobalError } from '../utils/errorHandler';
 
+const rawUrl = import.meta.env.VITE_API_URL || 'https://api-demostracion.toq.life';
+
 const fvApi = axios.create({
-    // Prioridad total a tu nueva IP del VPS configurada en el .env
-    baseURL: import.meta.env.VITE_API_URL, 
-    withCredentials: false, // Cambiado a false para evitar bloqueos por falta de HTTPS
+    baseURL: rawUrl.endsWith('/api') ? rawUrl : `${rawUrl}/api`,
+    timeout: 30000,           // Aumentado a 30 segundos
+    withCredentials: false,
     headers: {
         'Content-Type': 'application/json'
     }
 });
 
-// --- SEGURIDAD: Inyecta el Token en cada llamada ---
+// Token
 fvApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
+        if (token) config.headers.Authorization = `Bearer ${token}`;
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-// --- MANEJO DE ERRORES: Ahora detectará errores de tu propio VPS ---
+// Mejor manejo de errores
 fvApi.interceptors.response.use(
-    (response) => response, 
+    (response) => response,
     (error) => {
-        handleGlobalError(error); 
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            console.error('⏱️ Timeout - El backend no responde');
+        }
+        handleGlobalError(error);
         return Promise.reject(error);
     }
 );
