@@ -1,12 +1,9 @@
-// src/db.js (Versión mejorada)
 const { PrismaClient } = require('@prisma/client');
 
-let prisma;
+const prisma = global.prisma || new PrismaClient({
+    log: ['query', 'info', 'warn', 'error'],
+});
 
-if (!prisma) {
-    prisma = new PrismaClient({
-        log: ['query', 'info', 'warn', 'error'], // útil para debug
-    });
-}
+if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 module.exports = { prisma };

@@ -1,40 +1,16 @@
-const { prisma } = require('../config/db'); // 👈 Verifica que la carpeta sea 'config'
+const tramoCableService = require('../services/tramoCable.service');
 
-// ====================== OBTENER TODOS LOS TRAMOS (Solo de su empresa) ======================
+// ====================== OBTENER TODOS LOS TRAMOS ======================
 exports.getTramos = async (req, res) => {
     try {
         const { empresaId } = req.user;
         const { proyectoId } = req.query;
-
-        const tramos = await prisma.tramoCable.findMany({
-            where: {
-                proyecto: { empresaId },           // Seguridad multi-empresa
-                ...(proyectoId && { proyectoId })  // Filtro opcional por proyecto
-            },
-            include: {
-                proyecto: { select: { nombre: true, estado: true } },
-                posteInicio: { select: { codigo: true, latitud: true, longitud: true } },
-                posteFin:    { select: { codigo: true, latitud: true, longitud: true } },
-                mufaOrigen:  { select: { codigo: true } },
-                cajaDestino: { select: { codigo: true } }
-            },
-            orderBy: { creadoEn: 'desc' }
-        });
-
-        // Convertir path de string a array para el mapa
-        const tramosFormateados = tramos.map(tramo => ({
-            ...tramo,
-            path: typeof tramo.path === 'string' 
-                ? JSON.parse(tramo.path || '[]') 
-                : (tramo.path || [])
-        }));
-
+        const tramos = await tramoCableService.getTramos(empresaId, proyectoId);
         res.json({
             success: true,
-            count: tramosFormateados.length,
-            tramos: tramosFormateados
+            count: tramos.length,
+            tramos
         });
-
     } catch (error) {
         console.error("❌ Error al obtener tramos:", error);
         res.status(500).json({
@@ -47,61 +23,18 @@ exports.getTramos = async (req, res) => {
 // ====================== CREAR TRAMO ======================
 exports.createTramo = async (req, res) => {
     try {
-        const { 
-            nombre, tipoCable, path, 
-            proyectoId, posteInicioId, posteFinId, 
-            mufaOrigenId, cajaDestinoId 
-        } = req.body;
-
         const { empresaId } = req.user;
-
-        if (!proyectoId) {
-            return res.status(400).json({
-                success: false,
-                message: "El ID del proyecto es obligatorio"
-            });
-        }
-
-        // Verificar que el proyecto pertenezca a la empresa
-        const proyecto = await prisma.proyecto.findUnique({
-            where: { id: proyectoId }
-        });
-
-        if (!proyecto || proyecto.empresaId !== empresaId) {
-            return res.status(403).json({
-                success: false,
-                message: "No tienes acceso a este proyecto"
-            });
-        }
-
-        const nuevoTramo = await prisma.tramoCable.create({
-            data: {
-                nombre: nombre || `Tramo-${Date.now().toString().slice(-6)}`,
-                tipoCable: tipoCable || "FIBRA",
-                path: typeof path === 'string' ? path : JSON.stringify(path || []),
-                proyectoId: proyectoId,
-                posteInicioId: posteInicioId || null,
-                posteFinId: posteFinId || null,
-                mufaOrigenId: mufaOrigenId || null,
-                cajaDestinoId: cajaDestinoId || null
-            },
-            include: {
-                posteInicio: true,
-                posteFin: true
-            }
-        });
-
+        const tramo = await tramoCableService.createTramo(empresaId, req.body);
         res.status(201).json({
             success: true,
             message: "Tramo de fibra creado correctamente",
-            tramo: nuevoTramo
+            tramo
         });
-
     } catch (error) {
         console.error("❌ Error al crear tramo:", error);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
-            message: "Error al crear el tramo de fibra"
+            message: error.message || "Error al crear el tramo de fibra"
         });
     }
 };
@@ -110,47 +43,17 @@ exports.createTramo = async (req, res) => {
 exports.getTramoById = async (req, res) => {
     const { id } = req.params;
     const { empresaId } = req.user;
-
     try {
-        const tramo = await prisma.tramoCable.findUnique({
-            where: { 
-                id,
-                proyecto: { empresaId }   // Seguridad
-            },
-            include: {
-                proyecto: true,
-                posteInicio: true,
-                posteFin: true,
-                mufaOrigen: true,
-                cajaDestino: true
-            }
-        });
-
-        if (!tramo) {
-            return res.status(404).json({
-                success: false,
-                message: "Tramo no encontrado o sin acceso"
-            });
-        }
-
-        // Formatear path para frontend
-        const tramoFormateado = {
-            ...tramo,
-            path: typeof tramo.path === 'string' 
-                ? JSON.parse(tramo.path || '[]') 
-                : (tramo.path || [])
-        };
-
+        const tramo = await tramoCableService.getTramoById(id, empresaId);
         res.json({
             success: true,
-            tramo: tramoFormateado
+            tramo
         });
-
     } catch (error) {
         console.error("❌ Error al obtener tramo:", error);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
-            message: "Error al obtener el tramo"
+            message: error.message || "Error al obtener el tramo"
         });
     }
 };
@@ -158,43 +61,20 @@ exports.getTramoById = async (req, res) => {
 // ====================== ACTUALIZAR TRAMO ======================
 exports.updateTramo = async (req, res) => {
     const { id } = req.params;
-    const { nombre, tipoCable, path, posteInicioId, posteFinId, mufaOrigenId, cajaDestinoId } = req.body;
     const { empresaId } = req.user;
-
     try {
-        const tramoActualizado = await prisma.tramoCable.update({
-            where: { 
-                id,
-                proyecto: { empresaId }   // Seguridad
-            },
-            data: {
-                nombre,
-                tipoCable,
-                path: path ? (typeof path === 'string' ? path : JSON.stringify(path)) : undefined,
-                posteInicioId,
-                posteFinId,
-                mufaOrigenId,
-                cajaDestinoId
-            }
-        });
-
+        const tramoActualizado = await tramoCableService.updateTramo(id, empresaId, req.body);
         res.json({
             success: true,
             message: "Tramo actualizado correctamente",
             tramo: tramoActualizado
         });
-
     } catch (error) {
         if (error.code === 'P2025') {
-            return res.status(404).json({
-                success: false,
-                message: "Tramo no encontrado o sin acceso"
-            });
+            return res.status(404).json({ success: false, message: "Tramo no encontrado o sin acceso" });
         }
-        res.status(500).json({
-            success: false,
-            message: "Error al actualizar el tramo"
-        });
+        console.error("❌ Error al actualizar tramo:", error);
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al actualizar el tramo" });
     }
 };
 
@@ -202,31 +82,18 @@ exports.updateTramo = async (req, res) => {
 exports.deleteTramo = async (req, res) => {
     const { id } = req.params;
     const { empresaId } = req.user;
-
     try {
-        await prisma.tramoCable.delete({
-            where: { 
-                id,
-                proyecto: { empresaId }
-            }
-        });
-
+        await tramoCableService.deleteTramo(id, empresaId);
         res.json({
             success: true,
             message: "Tramo eliminado correctamente"
         });
-
     } catch (error) {
         if (error.code === 'P2025') {
-            return res.status(404).json({
-                success: false,
-                message: "Tramo no encontrado o sin acceso"
-            });
+            return res.status(404).json({ success: false, message: "Tramo no encontrado o sin acceso" });
         }
         console.error("❌ Error al eliminar tramo:", error);
-        res.status(500).json({
-            success: false,
-            message: "Error al eliminar el tramo"
-        });
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al eliminar el tramo" });
     }
+
 };

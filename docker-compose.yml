@@ -1,45 +1,119 @@
-version: '3.8'
-
 services:
-  # REDIS: Optimiza la carga del mapa de Chosica evitando consultas repetitivas
   redis:
     image: redis:alpine
     container_name: fv_redis
-    restart: always
+    restart: unless-stopped
     networks:
       - fv_network
 
-  # BACKEND: API que habla con Hostinger y procesa los datos GIS
+  db:
+    image: mysql:8.0
+    container_name: fv_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: CambiaEstaPasswordFuerte123!
+      MYSQL_DATABASE: fv_proyecto
+      MYSQL_USER: fv_user
+      MYSQL_PASSWORD: CambiaEstaPasswordUsuario456!
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - fv_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pCambiaEstaPasswordFuerte123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
     container_name: fv_backend
-    restart: always
-    ports:
-      - "5000:5000"
     env_file:
       - ./backend/.env
     environment:
-      - PORT=5000
-      - REDIS_HOST=fv_redis
-   
+      PORT: 5000
+      REDIS_HOST: redis
+      DB_HOST: db
+      CORS_ALLOWED_ORIGINS: "http://localhost,http://gomap.digital,https://gomap.digital,https://www.gomap.digital,http://localhost:5173,http://192.168.18.2,http://192.168.18.2:5173"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-proxy
+      - traefik.http.routers.backend.rule=(Host(`gomap.digital`) || Host(`www.gomap.digital`)) && PathPrefix(`/api`)
+      - traefik.http.routers.backend.entrypoints=websecure
+      - traefik.http.routers.backend.tls.certresolver=letsencrypt
+      - traefik.http.routers.backend.priority=100
+      - traefik.http.services.backend.loadbalancer.server.port=5000
+      
+    restart: unless-stopped
     depends_on:
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - fv_network
+      - traefik-proxy
 
-  # FRONTEND: Servidor para la aplicación de React/Vite
   frontend:
     build: ./frontend
     container_name: fv_frontend
-    restart: always
-    ports:
-      - "80:80"
-  
-    depends_on:
-      - backend
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-proxy
+      - traefik.http.routers.frontend.rule=Host(`gomap.digital`) || Host(`www.gomap.digital`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls.certresolver=letsencrypt
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+      - traefik.http.routers.frontend.priority=50
+    restart: unless-stopped
     networks:
       - fv_network
+      - traefik-proxy
+
+  mobile:
+    build:
+      context: ./mobile
+      args:
+        VITE_API_URL: https://gomap.digital
+    container_name: fv_mobile
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-proxy
+      - traefik.http.routers.mobile.rule=Host(`m.gomap.digital`)
+      - traefik.http.routers.mobile.entrypoints=websecure
+      - traefik.http.routers.mobile.tls.certresolver=letsencrypt
+      - traefik.http.services.mobile.loadbalancer.server.port=80
+    restart: unless-stopped
+    networks:
+      - fv_network
+      - traefik-proxy
+
+  traefik:
+    image: traefik:v3
+    container_name: fv_traefik
+    labels:
+      - traefik.http.routers.dashboard.rule=Host(`traefik.gomap.digital`)
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=admin:TuHashAqui
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/acme.json:/acme.json
+    networks:
+      - traefik-proxy
 
 networks:
   fv_network:
     driver: bridge
+  traefik-proxy:
+    external: true
+
+volumes:
+  mysql-data:

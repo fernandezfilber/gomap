@@ -1,0 +1,254 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@theme {
+  --lum-white: #ffffff;
+  --lum-cian: #00e5ff;
+  --lum-orange: #ff4500;
+  --lum-dark: #0f172a;
+  --lum-gray: #f8fafc;
+  
+  /* Safe areas para notch y Dynamic Island */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ==================== BASE MOBILE ==================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Elimina flash al tocar en iOS */
+}
+
+html {
+  height: 100%;
+  /* Previene el bounce scroll en iOS */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  background-color: var(--lum-dark);
+  color: var(--lum-dark);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Previene selección accidental de texto en UI */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Permite scroll en el contenido */
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Scroll suave nativo en iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Permitir selección de texto en inputs y áreas de contenido */
+input, textarea, [contenteditable], p, span, h1, h2, h3, h4, h5, h6 {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+::selection {
+  background: var(--lum-cian);
+  color: var(--lum-dark);
+}
+
+/* ==================== SCROLLBAR (Desktop) ==================== */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  background: var(--lum-cian); 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--lum-orange); }
+
+/* ==================== TOUCH IMPROVEMENTS ==================== */
+
+/* Botones más fáciles de tocar */
+button, a, [role="button"] {
+  cursor: pointer;
+  touch-action: manipulation; /* Previene delay de 300ms en iOS */
+  min-height: 44px; /* Apple HIG: mínimo 44pt para touch targets */
+}
+
+/* Inputs con altura cómoda en móvil */
+input, select, textarea {
+  font-size: 16px; /* Previene zoom automático en iOS al enfocar */
+  touch-action: manipulation;
+}
+
+/* ==================== SAFE AREA UTILITIES ==================== */
+
+/* Padding top para barra de estado (notch) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Padding bottom para gesture bar de iPhone */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Combinado */
+.inset-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Altura completa respetando safe areas */
+.h-screen-safe {
+  height: 100vh;
+  height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* ==================== MOBILE NAVIGATION BAR ==================== */
+
+.mobile-nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 1002;
+}
+
+/* ==================== ANIMATIONS ==================== */
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-slide-down { animation: slideDown 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-fade-in { animation: fadeIn 0.25s ease-out; }
+.animate-scale-in { animation: scaleIn 0.25s cubic-bezier(0.32, 0.72, 0, 1); }
+
+/* ==================== LEAFLET MOBILE FIX ==================== */
+
+/* Evita que los popups de Leaflet queden cortados */
+.leaflet-popup-content {
+  max-width: calc(100vw - 48px) !important;
+  font-size: 14px;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 16px !important;
+}
+
+/* Controles de zoom más grandes en móvil */
+@media (max-width: 1024px) {
+  .leaflet-control-zoom a {
+    width: 44px !important;
+    height: 44px !important;
+    line-height: 44px !important;
+    font-size: 20px !important;
+  }
+}
+
+/* ==================== MODAL MOBILE ==================== */
+
+/* Modales como bottom sheets en móvil */
+@media (max-width: 768px) {
+  .mobile-modal {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 24px 24px 0 0 !important;
+    animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
+/* ==================== RECHARTS RESPONSIVE ==================== */
+
+/* Fuerza que los gráficos sean responsivos */
+.recharts-wrapper {
+  width: 100% !important;
+}
+
+/* ==================== CUSTOM SCROLLBAR MOBILE ==================== */
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 229, 255, 0.3) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 10px;
+}
+
+/* ==================== PRINT STYLES ==================== */
+@media print {
+  nav, aside, .lg\:hidden, button, .leaflet-control-zoom, .leaflet-control-layers, .z-\[1001\], .z-\[1002\] {
+    display: none !important;
+  }
+
+  .flex-1 {
+    width: 100% !important;
+    height: 100vh !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body, html {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

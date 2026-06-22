@@ -1,0 +1,38 @@
+2026-04-20T01:59:18.044420 Project directory: /root/forward-vision
+2026-04-20T01:59:18.044716 Pulling project images
+2026-04-20T01:59:18.045649 ------------------------------
+2026-04-20T01:59:18.167581  backend Skipped No image to be pulled
+2026-04-20T01:59:18.167648  frontend Skipped No image to be pulled
+2026-04-20T01:59:18.167684  Image traefik:v3 Pulling 
+2026-04-20T01:59:18.167950  Image redis:alpine Pulling 
+2026-04-20T01:59:18.168279  Image mysql:8.0 Pulling 
+2026-04-20T01:59:18.511260  Image traefik:v3 Pulled 
+2026-04-20T01:59:18.540334  Image mysql:8.0 Pulled 
+2026-04-20T01:59:18.546830  Image redis:alpine Pulled 
+2026-04-20T01:59:18.591600 ------------------------------
+2026-04-20T01:59:18.591696 Deploying project
+2026-04-20T01:59:18.592672 ------------------------------
+2026-04-20T01:59:18.741546  Container fv_mysql Recreate 
+2026-04-20T01:59:18.742174  Container fv_frontend Recreate 
+2026-04-20T01:59:18.742460  Container fv_traefik Recreate 
+2026-04-20T01:59:18.744343  Container fv_redis Recreate 
+2026-04-20T01:59:19.084907  Container fv_frontend Recreated 
+2026-04-20T01:59:19.161392  Container fv_redis Recreated 
+2026-04-20T01:59:21.329832  Container fv_traefik Recreated 
+2026-04-20T01:59:21.657701  Container fv_mysql Recreated 
+2026-04-20T01:59:21.657752  Container fv_backend Recreate 
+2026-04-20T01:59:22.353816  Container fv_backend Recreated 
+2026-04-20T01:59:22.380467  Container fv_mysql Starting 
+2026-04-20T01:59:22.380513  Container fv_frontend Starting 
+2026-04-20T01:59:22.380521  Container fv_traefik Starting 
+2026-04-20T01:59:22.380527  Container fv_redis Starting 
+2026-04-20T01:59:22.903425  Container fv_mysql Started 
+2026-04-20T01:59:23.065116  Container fv_traefik Started 
+2026-04-20T01:59:23.106660  Container fv_frontend Started 
+2026-04-20T01:59:23.111731  Container fv_redis Started 
+2026-04-20T01:59:23.111759  Container fv_mysql Waiting 
+2026-04-20T01:59:33.112777  Container fv_mysql Healthy 
+2026-04-20T01:59:33.112875  Container fv_backend Starting 
+2026-04-20T01:59:33.281495  Container fv_backend Started 
+2026-04-20T01:59:33.294151 ------------------------------
+2026-04-20T01:59:33.294187 Project deployed successfully

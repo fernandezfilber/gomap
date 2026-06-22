@@ -1,180 +1,119 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { prisma } = require('../config/db'); // 👈 Esta es la ruta correcta según tu app.js
+const authService = require('../services/auth.service');
+
 // ====================== LOGIN ======================
 exports.login = async (req, res) => {
     const { email, password } = req.body;
-
     try {
-        // 1. Buscar usuario con su empresa
-        const usuario = await prisma.usuario.findUnique({
-            where: { email },
-            include: {
-                empresa: {
-                    select: { id: true, nombre: true, razonSocial: true, activo: true }
-                }
-            }
-        });
-
-        if (!usuario) {
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
-
-        // 2. Verificar que la empresa y el usuario estén activos
-        if (!usuario.empresa.activo) {
-            return res.status(403).json({ message: "La empresa está desactivada" });
-        }
-        if (!usuario.activo) {
-            return res.status(403).json({ message: "Cuenta de usuario desactivada" });
-        }
-
-        // 3. Verificar contraseña
-        const isMatch = await bcrypt.compare(password, usuario.password);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Contraseña incorrecta" });
-        }
-
-        // 4. Generar Token JWT con información importante
-        const token = jwt.sign(
-            {
-                id: usuario.id,
-                email: usuario.email,
-                rol: usuario.rol,
-                empresaId: usuario.empresaId,
-                nombre: usuario.nombre
-            },
-            process.env.JWT_SECRET || 'secret_key_gomap_2026',
-            { expiresIn: '12h' }   // Puedes cambiar a 8h o 24h
-        );
-
-        // 5. Obtener proyectos de la empresa (para frontend)
-        const proyectos = await prisma.proyecto.findMany({
-            where: { empresaId: usuario.empresaId },
-            select: {
-                id: true,
-                nombre: true,
-                descripcion: true,
-                estado: true,
-                creadoEn: true
-            },
-            orderBy: { creadoEn: 'desc' }
-        });
-
-        res.json({
-            success: true,
-            token,
-            user: {
-                id: usuario.id,
-                nombre: usuario.nombre,
-                email: usuario.email,
-                rol: usuario.rol,
-                empresaId: usuario.empresaId,
-                empresaNombre: usuario.empresa.nombre
-            },
-            empresa: {
-                id: usuario.empresa.id,
-                nombre: usuario.empresa.nombre
-            },
-            proyectos   // ← Muy importante para el frontend
-        });
-
+        const result = await authService.login(email, password);
+        res.json({ success: true, ...result });
     } catch (error) {
         console.error("❌ Error en Login:", error);
-        res.status(500).json({ message: "Error interno del servidor" });
+        res.status(error.status || 500).json({ 
+            success: false, 
+            message: error.message || "Error interno del servidor",
+            empresaId: error.empresaId
+        });
+    }
+};
+
+// ====================== REGISTER ======================
+exports.register = async (req, res) => {
+    try {
+        const result = await authService.register(req.body);
+        res.status(201).json({
+            success: true,
+            message: "Usuario registrado exitosamente",
+            user: result
+        });
+    } catch (error) {
+        console.error("❌ Error en Register:", error);
+        res.status(error.status || 500).json({ 
+            success: false, 
+            message: error.message || "Error al registrar usuario" 
+        });
+    }
+};
+
+// ====================== REGISTRO TOTAL ======================
+exports.registroTotal = async (req, res) => {
+    try {
+        const result = await authService.registroTotal(req.body);
+        res.status(201).json({
+            success: true,
+            message: "¡Empresa e Administrador creados exitosamente!",
+            empresaId: result.empresaId
+        });
+    } catch (error) {
+        console.error("❌ Error en registroTotal:", error);
+        if (error.code === 'P2002') {
+            return res.status(400).json({
+                success: false,
+                message: "El RUC o el correo ya están registrados"
+            });
+        }
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.message || "Error al crear la empresa y administrador"
+        });
+    }
+};
+
+// ====================== VERIFY EMAIL ======================
+exports.verifyEmail = async (req, res) => {
+    const { email, token, code } = { ...req.query, ...req.body };
+    const finalToken = token || code;
+    try {
+        const result = await authService.verifyEmail(email, finalToken);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error("❌ Error en verifyEmail:", error);
+        res.status(error.status || 500).json({
+            success: false,
+            message: error.message || "Error al verificar el correo"
+        });
+    }
+};
+
+// ====================== RESEND CODE ======================
+exports.resendCode = async (req, res) => {
+    const { email } = req.body;
+    try {
+        const result = await authService.resendCode(email);
+        res.json({ success: true, ...result });
+    } catch (error) {
+        console.error("❌ Error en resendCode:", error);
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al reenviar el código" });
     }
 };
 
 // ====================== LOGOUT ======================
 exports.logout = async (req, res) => {
-    // Logout es principalmente una acción del cliente (remover del localStorage)
-    // pero aquí podemos invalidar el token si es necesario
-    res.json({ success: true, message: 'Sesión cerrada correctamente' });
+    res.json({ 
+        success: true, 
+        message: 'Sesión cerrada correctamente' 
+    });
 };
 
-// ====================== REGISTER ======================
-exports.register = async (req, res) => {
-    const { nombre, email, password, rol, empresaId } = req.body;
-
+// ====================== FORGOT PASSWORD ======================
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
     try {
-        // Validaciones básicas
-        if (!nombre || !email || !password || !empresaId) {
-            return res.status(400).json({ message: "Faltan campos obligatorios (empresaId es requerido)" });
-        }
-
-        // Verificar si el email ya existe
-        const existeUsuario = await prisma.usuario.findUnique({ where: { email } });
-        if (existeUsuario) {
-            return res.status(400).json({ message: "El correo ya está registrado" });
-        }
-
-        // Verificar que la empresa exista
-        const empresaExiste = await prisma.empresa.findUnique({ where: { id: empresaId } });
-        if (!empresaExiste) {
-            return res.status(404).json({ message: "Empresa no encontrada" });
-        }
-
-        // Encriptar contraseña
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Crear usuario
-        const nuevoUsuario = await prisma.usuario.create({
-            data: {
-                nombre,
-                email,
-                password: hashedPassword,
-                rol: rol || 'TECNICO',
-                activo: true,
-                empresaId
-            },
-            include: {
-                empresa: {
-                    select: { nombre: true }
-                }
-            }
-        });
-
-        res.status(201).json({
-            success: true,
-            message: "Usuario registrado exitosamente",
-            user: {
-                id: nuevoUsuario.id,
-                nombre: nuevoUsuario.nombre,
-                email: nuevoUsuario.email,
-                rol: nuevoUsuario.rol,
-                empresaNombre: nuevoUsuario.empresa.nombre
-            }
-        });
-
+        const result = await authService.forgotPassword(email);
+        res.json({ success: true, ...result });
     } catch (error) {
-        console.error("❌ Error en Register:", error);
-        res.status(500).json({ message: "Error al registrar usuario" });
+        console.error("Error en forgotPassword:", error);
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al procesar la solicitud." });
     }
 };
-exports.registroTotal = async (req, res) => {
-    const { nombreEmpresa, ruc, direccion, nombreAdmin, email, password } = req.body;
+
+// ====================== RESET PASSWORD ======================
+exports.resetPassword = async (req, res) => {
+    const { email, code, newPassword } = req.body;
     try {
-        const resultado = await prisma.$transaction(async (tx) => {
-            const empresa = await tx.empresa.create({
-                data: { nombre: nombreEmpresa, ruc, direccion, activo: true }
-            });
-
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            const usuario = await tx.usuario.create({
-                data: {
-                    nombre: nombreAdmin,
-                    email,
-                    password: hashedPassword,
-                    rol: 'ADMIN',
-                    empresaId: empresa.id
-                }
-            });
-            return { empresa, usuario };
-        });
-        res.status(201).json({ success: true, message: "ISP Creado" });
+        const result = await authService.resetPassword(email, code, newPassword);
+        res.json({ success: true, ...result });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Error en el servidor o datos duplicados" });
+        console.error("Error en resetPassword:", error);
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al cambiar la contraseña." });
     }
 };

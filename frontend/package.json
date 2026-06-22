@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^9.2.0",
     "@react-google-maps/api": "^2.20.8",
     "@tailwindcss/postcss": "^4.1.18",
     "@vis.gl/react-google-maps": "^1.7.1",
     "axios": "^1.14.0",
     "leaflet": "^1.9.4",
-    "leaflet.markercluster": "^1.5.3",
     "leaflet-control-geocoder": "^2.4.0",
+    "leaflet-polylineoffset": "^1.1.1",
+    "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

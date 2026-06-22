@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { handleGlobalError } from '../utils/errorHandler';
 
-const rawUrl = import.meta.env.VITE_API_URL || 'https://api-demostracion.toq.life';
+const rawUrl = import.meta.env.VITE_API_URL || '/api';
 
 const fvApi = axios.create({
     baseURL: rawUrl.endsWith('/api') ? rawUrl : `${rawUrl}/api`,
