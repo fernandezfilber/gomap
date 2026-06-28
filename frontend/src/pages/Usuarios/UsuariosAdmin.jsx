@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import fvApi from '../../api/fvApi';
-import { Users, UserPlus, Mail, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { Users, UserPlus, Mail, Shield, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -66,11 +66,18 @@ export default function UsuariosAdmin() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
         <div>
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-bold mb-4 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            Volver al Mapa
+          </button>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Users className="h-6 w-6 text-indigo-600" />
             Mi Equipo
@@ -81,7 +88,7 @@ export default function UsuariosAdmin() {
         </div>
         <button 
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 md:py-2 rounded-lg transition-colors shadow-sm w-full md:w-auto font-bold"
         >
           <UserPlus size={18} />
           {showForm ? 'Cancelar' : 'Añadir Técnico'}

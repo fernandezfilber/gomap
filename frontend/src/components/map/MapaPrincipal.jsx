@@ -309,7 +309,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
             </MapContainer>
 
             {puntosTemporales.length > 0 && (
-                <div className="absolute bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white px-4 py-3 lg:px-8 lg:py-5 shadow-2xl flex flex-wrap lg:flex-nowrap items-center justify-center gap-3 lg:gap-5 z-[1001] rounded-2xl lg:rounded-[2rem] w-[90%] max-w-[320px] lg:max-w-max">
+                <div className="absolute bottom-36 lg:bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white px-4 py-3 lg:px-8 lg:py-5 shadow-2xl flex flex-wrap lg:flex-nowrap items-center justify-center gap-3 lg:gap-5 z-[1001] rounded-2xl lg:rounded-[2rem] w-[90%] max-w-[320px] lg:max-w-max">
                     <span className="font-bold uppercase tracking-widest text-[10px] lg:text-xs text-slate-400 w-full lg:w-auto text-center">TRAMO EN PROGRESO</span>
                     <input type="color" value={colorTramoTemporal} onChange={(e) => setColorTramoTemporal(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
                     <button onClick={() => { 
