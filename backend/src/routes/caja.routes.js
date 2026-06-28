@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const cajaController = require('../controllers/caja.controller');
 const mufaController = require('../controllers/mufa.controller');
-const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant, isAdmin } = require('../Middleware/auth.middleware');
 
 // 🔍 DEPURACIÓN: Esto imprimirá en el log de Docker qué funciones cargaron
 console.log("🛠️ Funciones Caja:", Object.keys(cajaController));
@@ -22,10 +22,10 @@ const safeHandler = (handler, name) => {
 
 // --- RUTAS DE CAJAS NAP ---
 router.get('/', safeHandler(cajaController.getCajas, 'getCajas'));
-router.post('/', safeHandler(cajaController.createCaja, 'createCaja'));
+router.post('/', isAdmin, safeHandler(cajaController.createCaja, 'createCaja'));
 router.get('/:id', safeHandler(cajaController.getCajaById, 'getCajaById'));
-router.put('/:id', safeHandler(cajaController.updateCaja, 'updateCaja'));
-router.delete('/:id', safeHandler(cajaController.deleteCaja, 'deleteCaja'));
+router.put('/:id', isAdmin, safeHandler(cajaController.updateCaja, 'updateCaja'));
+router.delete('/:id', isAdmin, safeHandler(cajaController.deleteCaja, 'deleteCaja'));
 
 // Rutas adicionales
 if (cajaController.getCajasCercanas) {

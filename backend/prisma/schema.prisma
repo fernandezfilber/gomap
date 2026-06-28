@@ -31,6 +31,7 @@ model Empresa {
   proyectos     Proyecto[]
   averias       Averia[]
   inventario    InventarioItem[]
+  croquis       Croquis[]
 
   @@map("empresas")
 }
@@ -63,6 +64,7 @@ model Usuario {
 
   averiasAsignadas Averia[] @relation("tecnicoAsignado")
   notasAveria      AveriaNota[]
+  croquisCreados   Croquis[] @relation("CroquisCreados")
 
   @@index([empresaId])
   @@index([email])
@@ -70,6 +72,7 @@ model Usuario {
 }
 
 enum Rol {
+  SUPERADMIN
   ADMIN
   TECNICO
   VIEWER
@@ -316,6 +319,28 @@ model Cliente {
 
   @@index([cajaId])
   @@map("clientes")
+}
+
+// ====================== CROQUIS (BLOC DE NOTAS) ======================
+model Croquis {
+  id            String   @id @default(uuid())
+  nombre        String
+  destinatario  String?
+  lugar         String?
+  datosGraficos Json?    // Almacena cajas, mufas y tramos en formato libre
+  
+  empresaId     String
+  empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  creadoPorId      String?
+  creadoPor        Usuario? @relation("CroquisCreados", fields: [creadoPorId], references: [id])
+  actualizadoPorId String?
+
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  @@index([empresaId])
+  @@map("croquis")
 }
 
 // ====================== AVERÍAS ======================

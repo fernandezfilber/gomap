@@ -10,7 +10,7 @@ const Blocked = () => {
     const navigate = useNavigate();
     const [paid, setPaid] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState('NORMAL');
+    const [selectedPlan, setSelectedPlan] = useState('MENSUAL');
 
     const motivo = localStorage.getItem('motivoBloqueo') || 'Falta de pago o incumplimiento de términos.';
     const empresaId = localStorage.getItem('empresaIdBloqueada');
@@ -78,18 +78,20 @@ const Blocked = () => {
                     {/* SELECTOR DE PLANES */}
                     <div className="grid grid-cols-2 gap-4 mb-8">
                         <button 
-                            onClick={() => setSelectedPlan('NORMAL')}
-                            className={`p-6 rounded-[2rem] border transition-all ${selectedPlan === 'NORMAL' ? 'bg-white/10 border-[#00E5FF] shadow-lg shadow-[#00E5FF]/10' : 'bg-transparent border-white/5 opacity-50'}`}
+                            onClick={() => setSelectedPlan('MENSUAL')}
+                            className={`p-6 rounded-[2rem] border transition-all ${selectedPlan === 'MENSUAL' ? 'bg-white/10 border-[#00E5FF] shadow-lg shadow-[#00E5FF]/10' : 'bg-transparent border-white/5 opacity-50'}`}
                         >
-                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-2">Plan Normal</p>
-                            <p className="text-white font-black text-2xl">S/ 25</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-2">Plan Mensual</p>
+                            <p className="text-white font-black text-2xl">$6.99</p>
+                            <p className="text-[10px] text-slate-400 mt-1">30 días de acceso</p>
                         </button>
                         <button 
-                            onClick={() => setSelectedPlan('PREMIUM')}
-                            className={`p-6 rounded-[2rem] border transition-all ${selectedPlan === 'PREMIUM' ? 'bg-white/10 border-[#00E5FF] shadow-lg shadow-[#00E5FF]/10' : 'bg-transparent border-white/5 opacity-50'}`}
+                            onClick={() => setSelectedPlan('ANUAL')}
+                            className={`p-6 rounded-[2rem] border transition-all ${selectedPlan === 'ANUAL' ? 'bg-white/10 border-[#00E5FF] shadow-lg shadow-[#00E5FF]/10' : 'bg-transparent border-white/5 opacity-50'}`}
                         >
-                            <p className="text-[8px] font-black uppercase tracking-widest text-amber-500 mb-2">Sin Límites</p>
-                            <p className="text-white font-black text-2xl">S/ 35</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest text-amber-500 mb-2">Plan Anual</p>
+                            <p className="text-white font-black text-2xl">$9.99</p>
+                            <p className="text-[10px] text-slate-400 mt-1">365 días de acceso</p>
                         </button>
                     </div>
 

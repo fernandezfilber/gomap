@@ -5,10 +5,10 @@ const { prisma } = require('../config/db');
  * Servicio de Pagos (PayPal)
  */
 
-// Configuración de PayPal (En producción usar .env)
-const PAYPAL_CLIENT_ID = 'AfUnH02UYtkQA37IHjbAXahkAscIgR9NGwCQyCR__3ooakMQwXeJJyOU7ehF1WPflTbt_1HNgyNEzlFU';
-const PAYPAL_SECRET = 'EHvNbLd5jr3wdQsPcf0Cza4lsxk0OJpYbxGwiQ0JO7wy0AcYYDRO434KMhGDT5VUcDNhfOI42UiH6e64';
-const PAYPAL_API = 'https://api-m.paypal.com'; // MODO PRODUCCIÓN ACTIVADO
+// Configuración de PayPal (desde variables de entorno)
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
+const PAYPAL_SECRET    = process.env.PAYPAL_SECRET;
+const PAYPAL_API       = process.env.PAYPAL_API || 'https://api-m.paypal.com';
 
 // Obtener Token de Acceso
 const getAccessToken = async () => {
@@ -27,13 +27,13 @@ const getAccessToken = async () => {
 exports.createOrder = async (data) => {
     const { planId } = data;
     
-    // Precios exactos en SOLES (PEN)
+    // Precios en USD
     const prices = {
-        'NORMAL': '25.00',
-        'PREMIUM': '35.00'
+        'MENSUAL': '6.99',   // ~25 soles
+        'ANUAL':   '9.99'    // ~35 soles
     };
 
-    const price = prices[planId] || '25.00';
+    const price = prices[planId] || '6.99';
     const accessToken = await getAccessToken();
 
     const response = await axios({
@@ -46,10 +46,10 @@ exports.createOrder = async (data) => {
             intent: 'CAPTURE',
             purchase_units: [{
                 amount: {
-                    currency_code: 'PEN', // SOLES
+                    currency_code: 'USD',
                     value: price,
                 },
-                description: `Suscripción GoMap - Plan ${planId}`
+                description: `GoMap Suscripción - Plan ${planId}`
             }],
         },
     });
@@ -71,22 +71,27 @@ exports.captureOrder = async (data) => {
 
     if (response.data.status === 'COMPLETED') {
         // ¡PAGO EXITOSO! -> Automatizar desbloqueo
+        const { planId } = data;
+
         const fechaFin = new Date();
-        fechaFin.setDate(fechaFin.getDate() + 30); // Añadir 30 días
+        // MENSUAL = 30 días, ANUAL = 365 días
+        const dias = planId === 'ANUAL' ? 365 : 30;
+        fechaFin.setDate(fechaFin.getDate() + dias);
 
         await prisma.empresa.update({
             where: { id: empresaId },
             data: {
-                bloqueado: false,
+                bloqueado:     false,
                 motivoBloqueo: null,
-                activo: true,
+                activo:        true,
+                plan:          planId === 'ANUAL' ? 'ANUAL' : 'MENSUAL',
                 finSuscripcion: fechaFin
             }
         });
 
         return { 
             success: true, 
-            message: 'Pago completado y cuenta activada con éxito.' 
+            message: `Pago completado. Suscripción ${planId} activada hasta ${fechaFin.toLocaleDateString('es-PE')}.` 
         };
     }
 

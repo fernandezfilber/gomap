@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const tramoController = require("../controllers/tramoCable.controller"); // Asegúrate del punto: .controller
-const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant, isAdmin } = require('../Middleware/auth.middleware');
 // En src/routes/caja.routes.js
 router.use(verifyToken); // 👈 Esto inyecta req.user
 router.use(checkTenant); // 👈 Esto valida la empresa
@@ -8,15 +8,15 @@ router.use(checkTenant); // 👈 Esto valida la empresa
 router.get("/", tramoController.getTramos);
 
 // 2. Crear tramo
-router.post("/", tramoController.createTramo);
+router.post("/", isAdmin, tramoController.createTramo);
 
 // 3. Obtener por ID (Si esta línea falla, es porque en el controller no se llama getTramoById)
 router.get("/:id", tramoController.getTramoById); 
 
 // 4. Actualizar
-router.put("/:id", tramoController.updateTramo);
+router.put("/:id", isAdmin, tramoController.updateTramo);
 
 // 5. Eliminar
-router.delete("/:id", tramoController.deleteTramo);
+router.delete("/:id", isAdmin, tramoController.deleteTramo);
 
 module.exports = router;

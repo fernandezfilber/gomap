@@ -8,6 +8,11 @@ router.post('/login', authController.login);
 // Ruta: POST /api/auth/logout
 router.post('/logout', authController.logout);
 
+const { verifyToken, isAdmin } = require('../Middleware/auth.middleware');
+// Ruta para registrar técnico (solo Admin)
+router.post('/register-tecnico', verifyToken, isAdmin, authController.registerTecnico);
+router.get('/team', verifyToken, isAdmin, authController.getTeam);
+
 // Opcional: Ruta para crear el primer usuario (puedes borrarla luego de usarla)
 router.post('/register', authController.register); 
 router.post('/registro-total', authController.registroTotal);

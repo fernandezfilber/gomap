@@ -12,9 +12,11 @@ import FormCajaRapida from '../forms/FormCajaRapida';
 import SearchCajaCercana from '../modals/SearchCajaCercana';
 import toast from 'react-hot-toast';
 import { MapPin, Circle as CircleIcon, Search, Plus, Trash2 } from 'lucide-react';
+import useAuth from '../../hooks/useAuth';
 
 const MapaDashboard = () => {
   const mapRef = useRef(null);
+  const { user } = useAuth();
   const { proyectos, proyectoSeleccionado, setProyectoSeleccionado } = useProyectos();
   const { postes, crearPoste, eliminarPoste } = usePostes(proyectoSeleccionado?.id);
   const { mufas } = useMufas(proyectoSeleccionado?.id);
@@ -146,45 +148,49 @@ const MapaDashboard = () => {
       </div>
 
       {/* Controles Laterales */}
-      <div className="absolute top-20 left-4 z-[500] bg-white rounded-lg shadow-lg p-2 space-y-2">
-        <button
-          onClick={() => setModo(modo === 'poste' ? null : 'poste')}
-          className={`w-12 h-12 rounded flex items-center justify-center transition ${
-            modo === 'poste' ? 'bg-blue-500 text-white' : 'bg-gray-200'
-          }`}
-          title="Crear Poste"
-        >
-          <MapPin size={20} />
-        </button>
+      {user?.rol === 'ADMIN' && (
+        <div className="absolute top-20 left-4 z-[500] bg-white rounded-lg shadow-lg p-2 space-y-2">
+          <button
+            onClick={() => setModo(modo === 'poste' ? null : 'poste')}
+            className={`w-12 h-12 rounded flex items-center justify-center transition ${
+              modo === 'poste' ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }`}
+            title="Crear Poste"
+          >
+            <MapPin size={20} />
+          </button>
 
-        <button
-          onClick={() => setModo(modo === 'mufa' ? null : 'mufa')}
-          className={`w-12 h-12 rounded flex items-center justify-center transition ${
-            modo === 'mufa' ? 'bg-purple-500 text-white' : 'bg-gray-200'
-          }`}
-          title="Crear Mufa"
-        >
-          <CircleIcon size={20} />
-        </button>
+          <button
+            onClick={() => setModo(modo === 'mufa' ? null : 'mufa')}
+            className={`w-12 h-12 rounded flex items-center justify-center transition ${
+              modo === 'mufa' ? 'bg-purple-500 text-white' : 'bg-gray-200'
+            }`}
+            title="Crear Mufa"
+          >
+            <CircleIcon size={20} />
+          </button>
 
-        <button
-          onClick={() => setModo(modo === 'caja' ? null : 'caja')}
-          className={`w-12 h-12 rounded flex items-center justify-center transition ${
-            modo === 'caja' ? 'bg-green-500 text-white' : 'bg-gray-200'
-          }`}
-          title="Crear Caja"
-        >
-          <Plus size={20} />
-        </button>
+          <button
+            onClick={() => setModo(modo === 'caja' ? null : 'caja')}
+            className={`w-12 h-12 rounded flex items-center justify-center transition ${
+              modo === 'caja' ? 'bg-green-500 text-white' : 'bg-gray-200'
+            }`}
+            title="Crear Caja"
+          >
+            <Plus size={20} />
+          </button>
 
-        <button
-          onClick={() => setMostrarBusqueda(true)}
-          className="w-12 h-12 rounded bg-orange-500 text-white flex items-center justify-center hover:bg-orange-600"
-          title="Buscar Cajas Cercanas"
-        >
-          <Search size={20} />
-        </button>
-      </div>
+          <button
+            onClick={() => setMostrarBusqueda(true)}
+            className="w-12 h-12 rounded bg-orange-500 text-white flex items-center justify-center hover:bg-orange-600"
+            title="Buscar Cajas Cercanas"
+          >
+            <Search size={20} />
+          </button>
+        </div>
+      )}
+
+
 
       {/* Mapa */}
       <div className="flex-1 relative">
@@ -216,12 +222,14 @@ const MapaDashboard = () => {
                   <b>Poste: {poste.codigo}</b>
                   <p>Lat: {poste.latitud.toFixed(5)}</p>
                   <p>Lng: {poste.longitud.toFixed(5)}</p>
-                  <button
-                    onClick={() => eliminarPoste(poste.id)}
-                    className="mt-2 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {user?.rol === 'ADMIN' && (
+                    <button
+                      onClick={() => eliminarPoste(poste.id)}
+                      className="mt-2 text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </Popup>
             </Marker>

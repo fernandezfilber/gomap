@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const posteController = require("../controllers/poste.controller");
 // const { verifyToken, isAdmin } = require("../middlewares/auth.middleware"); // Descomenta cuando actives JWT
-const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant, isAdmin } = require('../Middleware/auth.middleware');
 
 // --- RUTAS DE POSTES ---
 
@@ -16,15 +16,15 @@ router.use(checkTenant); // 👈 Esto valida la empresa
 router.get("/", posteController.getPostes);
 
 // 2. Crear un nuevo poste (al hacer clic en un área vacía del mapa)
-router.post("/", posteController.createPoste);
+router.post("/", isAdmin, posteController.createPoste);
 
 // 3. Obtener un poste específico con sus mufas y cajas (al hacer clic en un icono de poste)
 router.get("/:id", posteController.getPosteWithEquipos);
 
 // 4. Actualizar datos de un poste (mover ubicación o cambiar tipo/altura)
-router.put("/:id", posteController.updatePoste);
+router.put("/:id", isAdmin, posteController.updatePoste);
 
 // 5. Eliminar poste (Solo Admin - Cuidado: revisa si tiene equipos antes)
-router.delete("/:id", posteController.deletePoste);
+router.delete("/:id", isAdmin, posteController.deletePoste);
 
 module.exports = router;

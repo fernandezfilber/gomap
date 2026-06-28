@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
     LayoutDashboard, Users, Map as MapIcon, LogOut, 
     CheckCircle, PlusCircle, Settings, BarChart3,
-    Search, Target, X, ShieldAlert, Navigation
+    Search, Target, X, ShieldAlert, Navigation, PenTool
 } from 'lucide-react';
 
 import useProyectos from '../../hooks/useProyectos';
@@ -277,19 +277,35 @@ const Sidebar = ({ isOpen, onClose }) => {
                             <MapIcon size={18} className="text-[#00E5FF]"/> Visor GIS
                         </button>
 
-                        <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
-                            <Users size={18} className="text-slate-300"/> Clientes
-                        </button>
+                        {['ADMIN', 'SUPERADMIN'].includes(JSON.parse(localStorage.getItem('user'))?.rol) && (
+                            <>
+                                <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                    <Users size={18} className="text-slate-300"/> Clientes
+                                </button>
 
-                        <Link to="/estadisticas" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
-                            <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
-                                <BarChart3 size={18} className="text-slate-300"/> Inteligencia
+                                <Link to="/estadisticas" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                                    <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                        <BarChart3 size={18} className="text-slate-300"/> Inteligencia
+                                    </button>
+                                </Link>
+
+                                <Link to="/dashboard/usuarios" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                                    <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                        <Users size={18} className="text-indigo-400"/> Mi Equipo
+                                    </button>
+                                </Link>
+                            </>
+                        )}
+                        
+                        <Link to="/dashboard/croquis" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                            <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-violet-50 transition-all font-bold text-[10px] uppercase tracking-widest text-violet-500 hover:text-violet-600 bg-violet-50/50">
+                                <PenTool size={18} className="text-violet-400"/> Bloc Notas
                             </button>
                         </Link>
                     </div>
 
                     <div className="space-y-2 pt-6 border-t border-slate-50">
-                        {JSON.parse(localStorage.getItem('user'))?.rol === 'ADMIN' && (
+                        {JSON.parse(localStorage.getItem('user'))?.rol === 'SUPERADMIN' && (
                             <Link to="/admin" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
                                 <button className="flex items-center gap-3 w-full p-4 rounded-2xl bg-[#FF4500]/5 text-[#FF4500] hover:bg-[#FF4500] hover:text-white transition-all font-black text-[10px] uppercase tracking-widest mb-2 border border-[#FF4500]/10">
                                     <ShieldAlert size={18}/> Panel Maestro

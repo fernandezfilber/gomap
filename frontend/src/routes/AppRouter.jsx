@@ -8,6 +8,9 @@ import MapInteractivo from '../pages/MapInteractivo';
 import VerifyEmail from '../pages/VerifyEmail';
 import AdminPanel from '../pages/AdminPanel';
 import Blocked from '../pages/Blocked';
+import CroquisList from '../pages/Croquis/CroquisList';
+import CroquisEditor from '../pages/Croquis/CroquisEditor';
+import UsuariosAdmin from '../pages/Usuarios/UsuariosAdmin';
 
 const getStoredUser = () => {
     try {
@@ -29,7 +32,13 @@ const PrivateRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
     const user = getStoredUser();
     const token = getStoredToken();
-    return (token && user?.rol === 'ADMIN') ? children : <Navigate to="/dashboard" />;
+    return (token && (user?.rol === 'ADMIN' || user?.rol === 'SUPERADMIN')) ? children : <Navigate to="/dashboard" />;
+};
+
+const SuperAdminRoute = ({ children }) => {
+    const user = getStoredUser();
+    const token = getStoredToken();
+    return (token && user?.rol === 'SUPERADMIN') ? children : <Navigate to="/dashboard" />;
 };
 
 const PublicRoute = ({ children }) => {
@@ -43,9 +52,12 @@ const AppRouter = () => {
             
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
             <Route path="/mapa" element={<PrivateRoute><MapInteractivo /></PrivateRoute>} />
-            <Route path="/estadisticas" element={<PrivateRoute><Estadisticas /></PrivateRoute>} />
+            <Route path="/estadisticas" element={<AdminRoute><Estadisticas /></AdminRoute>} />
+            <Route path="/dashboard/croquis" element={<PrivateRoute><CroquisList /></PrivateRoute>} />
+            <Route path="/dashboard/croquis/:id" element={<PrivateRoute><CroquisEditor /></PrivateRoute>} />
             
-            <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+            <Route path="/dashboard/usuarios" element={<AdminRoute><UsuariosAdmin /></AdminRoute>} />
+            <Route path="/admin" element={<SuperAdminRoute><AdminPanel /></SuperAdminRoute>} />
             
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

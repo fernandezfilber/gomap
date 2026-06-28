@@ -60,10 +60,28 @@ const Register = () => {
 
                 <div className="bg-white border border-slate-100 rounded-[2.5rem] p-10 md:p-14 shadow-2xl shadow-slate-200/50">
                     {success ? (
-                        <div className="text-center py-16">
-                            <ShieldCheck size={60} className="text-[#00E5FF] mx-auto mb-6" />
-                            <h2 className="text-2xl font-black text-slate-900 mb-3 uppercase tracking-tighter">¡Registro Exitoso!</h2>
-                            <p className="text-slate-400 text-sm font-medium uppercase tracking-widest">Empresa creada correctamente.<br />Redirigiendo...</p>
+                        <div className="text-center py-10 space-y-6">
+                            <ShieldCheck size={60} className="text-[#00E5FF] mx-auto" />
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">¡Empresa Registrada!</h2>
+                                <p className="text-slate-400 text-xs font-medium">Hemos enviado un correo de verificación a tu email.</p>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-left space-y-3">
+                                <p className="text-amber-700 font-black text-[11px] uppercase tracking-widest mb-3">📋 Próximos pasos:</p>
+                                <div className="flex items-start gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                                    <p className="text-amber-700 text-xs font-medium">Revisa tu correo y <strong>verifica tu cuenta</strong> con el código que te enviamos.</p>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                                    <p className="text-amber-700 text-xs font-medium">Inicia sesión — serás redirigido a la <strong>página de pago</strong>.</p>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-white font-black text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                                    <p className="text-amber-700 text-xs font-medium">Completa tu <strong>suscripción con PayPal</strong> y accede al sistema completo.</p>
+                                </div>
+                            </div>
+                            <p className="text-slate-300 text-[10px] uppercase tracking-widest">Redirigiendo a login...</p>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-8">

@@ -48,12 +48,23 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
-// ====================== VERIFICAR ROL ADMIN ======================
+// ====================== VERIFICAR ROL ADMIN O SUPERADMIN ======================
 const isAdmin = (req, res, next) => {
-    if (!req.user || req.user.rol !== 'ADMIN') {
+    if (!req.user || (req.user.rol !== 'ADMIN' && req.user.rol !== 'SUPERADMIN')) {
         return res.status(403).json({
             success: false,
-            message: "Acceso denegado: Se requiere rol de Administrador"
+            message: "Acceso denegado: Se requiere rol de Administrador o SuperAdmin"
+        });
+    }
+    next();
+};
+
+// ====================== VERIFICAR ROL SUPERADMIN ======================
+const isSuperAdmin = (req, res, next) => {
+    if (!req.user || req.user.rol !== 'SUPERADMIN') {
+        return res.status(403).json({
+            success: false,
+            message: "Acceso denegado: Se requiere rol de Super Administrador"
         });
     }
     next();
@@ -61,7 +72,7 @@ const isAdmin = (req, res, next) => {
 
 // ====================== VERIFICAR ROL TÉCNICO O SUPERIOR ======================
 const isTecnicoOrHigher = (req, res, next) => {
-    if (!req.user || (req.user.rol !== 'ADMIN' && req.user.rol !== 'TECNICO')) {
+    if (!req.user || (req.user.rol !== 'ADMIN' && req.user.rol !== 'TECNICO' && req.user.rol !== 'SUPERADMIN')) {
         return res.status(403).json({
             success: false,
             message: "Acceso denegado: Se requiere rol de Técnico o Administrador"
@@ -141,6 +152,7 @@ const protect = (req, res, next) => {
 module.exports = {
     verifyToken,
     isAdmin,
+    isSuperAdmin,
     isTecnicoOrHigher,
     checkTenant,
     protect   // ← Este es el más útil

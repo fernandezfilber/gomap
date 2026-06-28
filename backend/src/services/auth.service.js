@@ -28,7 +28,16 @@ exports.login = async (email, password) => {
         throw { status: 401, message: "Credenciales incorrectas" };
     }
 
-    // Verificar estado de empresa y usuario
+    // 1. Verificar correo primero (sin esto no tiene sentido pagar)
+    if (!usuario.emailVerified) {
+        throw { status: 403, message: "Por favor, verifica tu correo electrónico antes de continuar." };
+    }
+
+    if (!usuario.activo) {
+        throw { status: 403, message: "Tu cuenta está desactivada" };
+    }
+
+    // 2. Verificar estado de empresa (bloqueada = pendiente de pago)
     if (!usuario.empresa.activo || usuario.empresa.bloqueado) {
         throw { 
             status: 403, 
@@ -37,14 +46,6 @@ exports.login = async (email, password) => {
                 ? `Tu acceso ha sido bloqueado: ${usuario.empresa.motivoBloqueo || 'Contáctanos al 930860641'}`
                 : "La empresa está desactivada" 
         };
-    }
-
-    if (!usuario.activo) {
-        throw { status: 403, message: "Tu cuenta está desactivada" };
-    }
-
-    if (!usuario.emailVerified) {
-        throw { status: 403, message: "Por favor, verifica tu correo electrónico para ingresar." };
     }
 
     // Verificar contraseña
@@ -140,20 +141,47 @@ exports.register = async ({ nombre, email, password, rol, empresaId }) => {
     };
 };
 
+// ====================== REGISTRAR TECNICO (SOLO ADMIN) ======================
+exports.registerTecnico = async ({ nombre, email, password, empresaId }) => {
+    // Validar si ya existe
+    const exists = await prisma.usuario.findUnique({ where: { email } });
+    if (exists) {
+        throw { status: 400, message: "El correo ya está registrado" };
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const nuevoTecnico = await prisma.usuario.create({
+        data: {
+            nombre,
+            email,
+            password: hashedPassword,
+            rol: 'TECNICO',
+            empresaId,
+            emailVerified: true
+        }
+    });
+
+    const { password: _, ...userWithoutPassword } = nuevoTecnico;
+    return userWithoutPassword;
+};
+
 exports.registroTotal = async ({ nombreEmpresa, ruc, direccion, nombreAdmin, email, password }) => {
     const resultado = await prisma.$transaction(async (tx) => {
-        // Crear Empresa
+        // Crear Empresa (bloqueada hasta que pague o el SuperAdmin la active)
         const empresa = await tx.empresa.create({
             data: {
                 nombre: nombreEmpresa.trim(),
                 razonSocial: nombreEmpresa.trim(),
                 ruc: ruc.trim(),
                 direccion: direccion ? direccion.trim() : null,
-                activo: true
+                activo: true,
+                bloqueado: true,
+                motivoBloqueo: 'Pendiente de activación — Por favor realiza el pago de tu suscripción para acceder al sistema.'
             }
         });
 
-        // Crear Usuario Admin
+        // Crear Usuario ADMIN de la empresa (no TECNICO)
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -163,7 +191,7 @@ exports.registroTotal = async ({ nombreEmpresa, ruc, direccion, nombreAdmin, ema
                 nombre: nombreAdmin.trim(),
                 email: email.toLowerCase().trim(),
                 password: hashedPassword,
-                rol: 'TECNICO',
+                rol: 'ADMIN',           // ← Admin de su propia empresa
                 activo: true,
                 emailVerified: false,
                 verificationToken,

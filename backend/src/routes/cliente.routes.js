@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Middlewares de seguridad
-const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+const { verifyToken, checkTenant, isAdmin } = require('../Middleware/auth.middleware');
 const clienteController = require('../controllers/cliente.controller');
 
 // ==================== APLICAR MIDDLEWARES GLOBALES ====================
@@ -13,16 +13,16 @@ router.use(checkTenant);
 // ====================== RUTAS ======================
 
 // Crear cliente
-router.post('/', clienteController.createCliente);
+router.post('/', isAdmin, clienteController.createCliente);
 
 // Obtener todos los clientes (de su empresa)
 router.get('/', clienteController.getClientes);
 
 // Actualizar cliente (opcional, puedes activarlo)
-router.put('/:id', clienteController.updateCliente);
+router.put('/:id', isAdmin, clienteController.updateCliente);
 
 // Eliminar cliente (libera puerto)
-router.delete('/:id', clienteController.deleteCliente);
+router.delete('/:id', isAdmin, clienteController.deleteCliente);
 
 // Opcional: Obtener un cliente específico
 // router.get('/:id', clienteController.getClienteById);

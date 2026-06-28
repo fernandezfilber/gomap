@@ -59,6 +59,7 @@ loadRoute('/api/redes', './routes/red.routes');
 loadRoute('/api/admin', './routes/admin.routes');
 loadRoute('/api/payments', './routes/payment.routes');
 loadRoute('/api/fusiones', './routes/fusion.routes');
+loadRoute('/api/croquis', './routes/croquis.routes');
 
 app.get("/", (req, res) => {
     res.send(`

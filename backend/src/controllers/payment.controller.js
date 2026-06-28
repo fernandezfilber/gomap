@@ -6,11 +6,12 @@ exports.createOrder = async (req, res) => {
         const order = await paymentService.createOrder(req.body);
         res.json(order);
     } catch (error) {
-        console.error('❌ ERROR PAYPAL DETALLADO:', error.message);
+        const paypalError = error.response?.data;
+        console.error('❌ ERROR PAYPAL DETALLADO:', JSON.stringify(paypalError || error.message, null, 2));
         res.status(500).json({ 
             success: false, 
             message: 'Error en el servidor de pagos',
-            debug: error.response?.data?.message || error.message
+            debug: paypalError || error.message
         });
     }
 };

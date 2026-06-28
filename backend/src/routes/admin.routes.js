@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/admin.controller');
-const { verifyToken, isAdmin } = require('../Middleware/auth.middleware');
+const { verifyToken, isSuperAdmin } = require('../Middleware/auth.middleware');
 
-// Todas las rutas de administración requieren Token y ser ADMIN
+// Todas las rutas de administración requieren Token y ser SUPERADMIN
 router.use(verifyToken);
-router.use(isAdmin);
+router.use(isSuperAdmin);
 
 router.get('/empresas', adminController.listarEmpresas);
 router.patch('/empresas/:id/bloqueo', adminController.toggleBloqueoEmpresa);

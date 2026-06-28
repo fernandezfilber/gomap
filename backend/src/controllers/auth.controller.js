@@ -34,6 +34,53 @@ exports.register = async (req, res) => {
     }
 };
 
+// ====================== REGISTRAR TECNICO (SOLO ADMIN) ======================
+exports.registerTecnico = async (req, res) => {
+    try {
+        const { nombre, email, password } = req.body;
+        // El empresaId viene del token del Admin (req.user)
+        const empresaId = req.user.empresaId;
+        
+        const result = await authService.registerTecnico({ nombre, email, password, empresaId });
+        res.status(201).json({
+            success: true,
+            message: "Técnico registrado exitosamente",
+            user: result
+        });
+    } catch (error) {
+        console.error("❌ Error en Register Técnico:", error);
+        res.status(error.status || 500).json({ 
+            success: false, 
+            message: error.message || "Error al registrar técnico" 
+        });
+    }
+};
+
+// ====================== OBTENER EQUIPO (SOLO ADMIN) ======================
+exports.getTeam = async (req, res) => {
+    try {
+        const empresaId = req.user.empresaId;
+        const { prisma } = require('../config/db');
+        const team = await prisma.usuario.findMany({
+            where: { empresaId },
+            select: {
+                id: true,
+                nombre: true,
+                email: true,
+                rol: true,
+                activo: true,
+                ultimoLogin: true,
+                creadoEn: true
+            },
+            orderBy: { creadoEn: 'desc' }
+        });
+        res.status(200).json({ success: true, team });
+    } catch (error) {
+        console.error("❌ Error en getTeam:", error);
+        res.status(500).json({ success: false, message: "Error al obtener equipo" });
+    }
+};
+
 // ====================== REGISTRO TOTAL ======================
 exports.registroTotal = async (req, res) => {
     try {
