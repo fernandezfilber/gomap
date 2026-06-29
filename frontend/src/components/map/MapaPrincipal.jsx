@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl
 import { X, Trash2, Ruler, Navigation } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet-polylineoffset';
+import toast from 'react-hot-toast';
 
 import useProyectos from '../../hooks/useProyectos';
 import usePostes from '../../hooks/usePostes';
@@ -114,12 +115,37 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
         const handleAbrirBusqueda = () => setModal({ show: true, type: 'search', data: null });
 
         const handleBuscarPorCodigo = (e) => {
-            const query = e.detail?.toLowerCase().trim();
+            const query = e.detail?.trim();
             if (!query) return;
-            const target = postes.find(p => p.codigo?.toLowerCase().includes(query)) || 
-                           cajas.find(c => c.codigo?.toLowerCase().includes(query)) || 
-                           mufas.find(m => m.codigo?.toLowerCase().includes(query)) || 
-                           clientes.find(cl => cl.nombre?.toLowerCase().includes(query) || cl.dni?.includes(query));
+
+            // 1. Check if it's a coordinate or Google Maps link
+            // Extracts two floats separated by space, comma, or %2C
+            const decodedQuery = decodeURIComponent(query);
+            const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
+            const match = decodedQuery.match(coordRegex);
+
+            if (match && match[1] && match[2]) {
+                const lat = parseFloat(match[1]);
+                const lng = parseFloat(match[2]);
+                if (esCoordenadaValida(lat, lng) && mapRef.current) {
+                    mapRef.current.flyTo([lat, lng], 20, { animate: true });
+                    toast.success('Ubicación encontrada');
+                    // Add a temporary marker for 5 seconds
+                    const tempId = 'temp-' + Date.now();
+                    const marker = L.marker([lat, lng]).addTo(mapRef.current);
+                    marker.bindPopup("<b>Coordenada Buscada</b>").openPopup();
+                    setTimeout(() => mapRef.current.removeLayer(marker), 5000);
+                    return; // Exit after flying to coords
+                }
+            }
+
+            // 2. Normal text search
+            const q = query.toLowerCase();
+            const target = postes.find(p => p.codigo?.toLowerCase().includes(q)) || 
+                           cajas.find(c => c.codigo?.toLowerCase().includes(q)) || 
+                           mufas.find(m => m.codigo?.toLowerCase().includes(q)) || 
+                           clientes.find(cl => cl.nombre?.toLowerCase().includes(q) || cl.dni?.includes(q));
+            
             if (target) {
                 const lat = target.latitud || target.lat;
                 const lng = target.longitud || target.lng;
@@ -132,6 +158,8 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                         }, 1200);
                     }
                 }
+            } else {
+                toast.error('No se encontró el código ni la coordenada');
             }
         };
 
@@ -275,7 +303,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                     
                     <LayersControl.Overlay checked name="Mufas"><LayerGroup>{mufas.filter(m => esCoordenadaValida(m.latitud, m.longitud)).map(m => (
                         <Marker key={m.id} position={[parseFloat(m.latitud), parseFloat(m.longitud)]} icon={iconoMufa} ref={el => el ? markerRefs.current.set(m.id, el) : markerRefs.current.delete(m.id)}>
-                            <Popup><div className="text-center p-3"><p className="font-bold text-orange-400 text-xl mb-1">🌀 Mufa: {m.codigo}</p><p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Tipo: {m.tipo || 'N/A'}</p><div className="flex gap-2 mt-4"><button onClick={() => setModal({ show: true, type: 'mufa', data: m })} className="flex-1 bg-orange-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Editar</button><button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: m.id, tipoNodo: 'MUFA' } })} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-1 rounded-xl text-xs font-bold transition-colors">Empalmes</button><button onClick={() => eliminarMufa(m.id)} className="flex-1 bg-red-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Borrar</button></div></div></Popup>
+                            <Popup><div className="text-center p-3"><p className="font-bold text-orange-400 text-xl mb-1">🌀 Mufa: {m.codigo}</p><p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Splitter: {m.ratioSplitteo || 'N/A'}</p>{(() => { const cap = parseInt((m.ratioSplitteo || '1:16').split(':')[1]) || 16; const ocu = (cajas || []).filter(c => c.mufaId === m.id).length; const libre = cap - ocu; return <p className={`text-xs font-black mb-2 ${libre <= 0 ? 'text-red-400' : libre <= 2 ? 'text-yellow-400' : 'text-emerald-400'}`}>Hilos: {ocu}/{cap} usados ({libre} libres)</p>; })()}<div className="flex gap-2 mt-4"><button onClick={() => setModal({ show: true, type: 'mufa', data: m })} className="flex-1 bg-orange-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Editar</button><button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: m.id, tipoNodo: 'MUFA' } })} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-1 rounded-xl text-xs font-bold transition-colors">Empalmes</button><button onClick={() => eliminarMufa(m.id)} className="flex-1 bg-red-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Borrar</button></div></div></Popup>
                         </Marker>
                     ))}</LayerGroup></LayersControl.Overlay>
 
@@ -326,8 +354,8 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
             {modal.show && (
                 <div className="fixed inset-0 bg-black/80 z-[1003] flex items-center justify-center p-4 backdrop-blur-sm">
-                    {modal.type === 'mufa' && <FormMufa data={modal.data} onCancel={() => setModal({show:false})} onSuccess={() => actualizarIconoPoste(modal.data?.posteId)} crearMufa={crearMufa} actualizarMufa={actualizarMufa} />}
-                    {modal.type === 'caja' && <FormCaja data={modal.data} mufas={mufas} onCancel={() => setModal({show:false})} onSuccess={() => { fetchCajas(); actualizarIconoPoste(modal.data?.posteId); setModal({show:false}); }} crearCaja={crearCaja} actualizarCaja={actualizarCaja} />}
+                    {modal.type === 'mufa' && <FormMufa data={modal.data} cajas={cajas} onCancel={() => setModal({show:false})} onSuccess={() => actualizarIconoPoste(modal.data?.posteId)} crearMufa={crearMufa} actualizarMufa={actualizarMufa} />}
+                    {modal.type === 'caja' && <FormCaja data={modal.data} mufas={mufas} cajas={cajas} onCancel={() => setModal({show:false})} onSuccess={() => { fetchCajas(); actualizarIconoPoste(modal.data?.posteId); setModal({show:false}); }} crearCaja={crearCaja} actualizarCaja={actualizarCaja} />}
                     {modal.type === 'caja_rapida' && <FormCajaRapida coordenadas={{ latitud: modal.data.latitud, longitud: modal.data.longitud }} posteId={modal.data.posteId} onCancel={() => setModal({show:false})} onSuccess={() => { fetchCajas(); setModal({show:false}); }} />}
                     {modal.type === 'cliente' && <FormCliente data={modal.data} cajas={cajas} calcularCajaMasCercana={calcularCajaMasCercana} crearCliente={crearCliente} actualizarCliente={actualizarCliente} eliminarCliente={eliminarCliente} onCancel={() => setModal({show:false})} onSuccess={() => setModal({show:false})} />}
                     {modal.type === 'tramo' && <FormTramo data={modal.data} onCancel={() => setModal({show:false})} onSubmit={(datosCompletos) => {

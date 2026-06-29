@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 
 const FormTramo = ({ data, onSubmit, onCancel }) => {
-    const [nombre, setNombre] = useState(data?.nombre || `Tramo-${Date.now().toString().slice(-4)}`);
     const [capacidadHilos, setCapacidadHilos] = useState(data?.capacidadHilos || 48);
+    const [nombre, setNombre] = useState(data?.nombre || `Fibra de ${data?.capacidadHilos || 48} hilos`);
     const [colorVisual, setColorVisual] = useState(data?.colorVisual || '#8b5cf6');
+
+    const handleCapacidadChange = (e) => {
+        const val = e.target.value;
+        setCapacidadHilos(val);
+        if (nombre.startsWith('Fibra de ') || nombre.startsWith('Tramo-')) {
+            setNombre(`Fibra de ${val} hilos`);
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -42,7 +50,7 @@ const FormTramo = ({ data, onSubmit, onCancel }) => {
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Capacidad (Hilos Totales)</label>
                     <select 
                         value={capacidadHilos} 
-                        onChange={(e) => setCapacidadHilos(e.target.value)}
+                        onChange={handleCapacidadChange}
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors"
                     >
                         <option value="6">6 Hilos</option>

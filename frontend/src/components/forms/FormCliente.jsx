@@ -13,7 +13,7 @@ const FormCliente = ({
     calcularCajaMasCercana        
 }) => {
 
-    // Mejor detección de modo edición (acepta id o _id)
+    // Mejor detecciÃ³n de modo ediciÃ³n (acepta id o _id)
     const isEditMode = !!(data?.id || data?._id);
 
     const [form, setForm] = useState({
@@ -21,12 +21,17 @@ const FormCliente = ({
         dni: data.dni || '',
         telefono: data.telefono || '',
         direccion: data.direccion || '',
+        plan: data.plan || '',
         snMac: data.snMac || '',
         latitud: data.latitud || '',
         longitud: data.longitud || '',
         cajaId: data.cajaId || data.caja?.id || '',
         estadoServicio: data.estadoServicio || 'ACTIVO',
-        puerto: data.puerto || ''
+        puerto: data.puerto || '',
+        dropMetros: '',
+        router: data.snMac ? 1 : 0,
+        patchcord: 0,
+        micronodo: 0
     });
 
     const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
@@ -34,7 +39,7 @@ const FormCliente = ({
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const [loadingDelete, setLoadingDelete] = useState(false);
 
-    // Solo calcular caja más cercana cuando se está CREANDO
+    // Solo calcular caja mÃ¡s cercana cuando se estÃ¡ CREANDO
     useEffect(() => {
         if (isEditMode) return;
 
@@ -53,7 +58,7 @@ const FormCliente = ({
                     setForm(prev => ({ ...prev, cajaId: cajaCercana.id }));
                 }
             } catch (error) {
-                console.error("Error al calcular caja más cercana:", error);
+                console.error("Error al calcular caja mÃ¡s cercana:", error);
             } finally {
                 setLoadingCaja(false);
             }
@@ -85,7 +90,13 @@ const FormCliente = ({
                     longitud: parseFloat(form.longitud) || null,
                     estadoServicio: form.estadoServicio,
                     puerto: form.puerto ? parseInt(form.puerto) : null,
-                    cajaId: form.cajaId
+                    cajaId: form.cajaId,
+                    materiales: {
+                        dropMetros: form.dropMetros ? parseFloat(form.dropMetros) : 0,
+                        router: form.router ? parseInt(form.router) : 0,
+                        patchcord: form.patchcord ? parseInt(form.patchcord) : 0,
+                        micronodo: form.micronodo ? parseInt(form.micronodo) : 0
+                    }
                 });
                 alert("? Cliente actualizado correctamente");
             } else {
@@ -98,8 +109,15 @@ const FormCliente = ({
                     latitud: parseFloat(form.latitud) || null,
                     longitud: parseFloat(form.longitud) || null,
                     estadoServicio: form.estadoServicio,
+                    plan: form.plan,
                     puerto: form.puerto ? parseInt(form.puerto) : null,
-                    cajaId: form.cajaId
+                    cajaId: form.cajaId,
+                    materiales: {
+                        dropMetros: form.dropMetros ? parseFloat(form.dropMetros) : 0,
+                        router: form.router ? parseInt(form.router) : 0,
+                        patchcord: form.patchcord ? parseInt(form.patchcord) : 0,
+                        micronodo: form.micronodo ? parseInt(form.micronodo) : 0
+                    }
                 });
                 alert("? Cliente creado correctamente");
             }
@@ -119,7 +137,7 @@ const FormCliente = ({
         if (!clienteId) return;
 
         const confirmar = window.confirm(
-            `¿Estás seguro de eliminar al cliente "${data.nombre || 'este cliente'}"?\n\nEsta acción es irreversible.`
+            `Â¿EstÃ¡s seguro de eliminar al cliente "${data.nombre || 'este cliente'}"?\n\nEsta acciÃ³n es irreversible.`
         );
 
         if (!confirmar) return;
@@ -144,10 +162,10 @@ const FormCliente = ({
                 {isEditMode ? `?? Editar Cliente` : '?? Nuevo Cliente desde Mapa'}
             </h2>
 
-            {/* Info de caja más cercana (solo en creación) */}
+            {/* Info de caja mÃ¡s cercana (solo en creaciÃ³n) */}
             {loadingCaja && (
                 <div className="mb-6 p-4 bg-slate-800 rounded-xl text-slate-400 text-sm">
-                    Buscando caja más cercana...
+                    Buscando caja mÃ¡s cercana...
                 </div>
             )}
 
@@ -175,7 +193,7 @@ const FormCliente = ({
                         />
                     </div>
                     <div>
-                        <label className="block text-slate-400 text-sm mb-1">Teléfono</label>
+                        <label className="block text-slate-400 text-sm mb-1">TelÃ©fono</label>
                         <input
                             type="text"
                             value={form.telefono}
@@ -186,13 +204,30 @@ const FormCliente = ({
                 </div>
 
                 <div>
-                    <label className="block text-slate-400 text-sm mb-1">Dirección</label>
+                    <label className="block text-slate-400 text-sm mb-1">DirecciÃ³n</label>
                     <input
                         type="text"
                         value={form.direccion}
                         onChange={(e) => setForm({ ...form, direccion: e.target.value })}
                         className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500"
                     />
+                </div>
+
+                <div>
+                    <label className="block text-slate-400 text-sm mb-1">Plan Contratado</label>
+                    <select
+                        value={form.plan}
+                        onChange={(e) => setForm({ ...form, plan: e.target.value })}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500"
+                    >
+                        <option value="">Ninguno / Por Defecto</option>
+                        <option value="Internet 50 Mbps">Internet 50 Mbps</option>
+                        <option value="Internet 100 Mbps">Internet 100 Mbps</option>
+                        <option value="Internet 200 Mbps">Internet 200 Mbps</option>
+                        <option value="Internet 300 Mbps">Internet 300 Mbps</option>
+                        <option value="Internet 500 Mbps">Internet 500 Mbps</option>
+                        <option value="Internet 1 Gbps">Internet 1 Gbps</option>
+                    </select>
                 </div>
 
                 <div>
@@ -206,7 +241,7 @@ const FormCliente = ({
                         <option value="">Seleccionar caja</option>
                         {cajas.map((caja) => (
                             <option key={caja.id} value={caja.id}>
-                                {caja.codigo} — {caja.puertosLibres || 0} puertos libres
+                                {caja.codigo} â€” {caja.puertosLibres || 0} puertos libres
                             </option>
                         ))}
                     </select>
@@ -217,10 +252,34 @@ const FormCliente = ({
                     <input
                         type="text"
                         value={form.snMac}
-                        onChange={(e) => setForm({ ...form, snMac: e.target.value })}
+                        onChange={(e) => setForm({ ...form, snMac: e.target.value, router: e.target.value ? 1 : form.router })}
                         className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500"
                     />
                 </div>
+
+                {!isEditMode && (
+<div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 space-y-4 mt-4">
+                        <h3 className="text-white font-bold text-sm border-b border-slate-700 pb-2 mb-2">Materiales (Descuento Auto)</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Drop (Metros)</label>
+                                <input type="number" value={form.dropMetros} onChange={(e) => setForm({ ...form, dropMetros: e.target.value })} className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-violet-500" />
+                            </div>
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Router (Unids)</label>
+                                <input type="number" value={form.router} onChange={(e) => setForm({ ...form, router: e.target.value })} className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-violet-500" />
+                            </div>
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Patchcord (Unids)</label>
+                                <input type="number" value={form.patchcord} onChange={(e) => setForm({ ...form, patchcord: e.target.value })} className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-violet-500" />
+                            </div>
+                            <div>
+                                <label className="block text-slate-400 text-xs mb-1">Micronodo (Unids)</label>
+                                <input type="number" value={form.micronodo} onChange={(e) => setForm({ ...form, micronodo: e.target.value })} className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-violet-500" />
+                            </div>
+                        </div>
+                    </div>
+)}
 
                 {/* Botones */}
                 <div className="pt-6 space-y-3">

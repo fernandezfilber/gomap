@@ -13,16 +13,19 @@ router.use(checkTenant);
 // ====================== RUTAS ======================
 
 // Crear cliente
-router.post('/', isAdmin, clienteController.createCliente);
+router.post('/', clienteController.createCliente);
 
 // Obtener todos los clientes (de su empresa)
 router.get('/', clienteController.getClientes);
 
 // Actualizar cliente (opcional, puedes activarlo)
-router.put('/:id', isAdmin, clienteController.updateCliente);
+router.put('/:id', clienteController.updateCliente);
 
 // Eliminar cliente (libera puerto)
 router.delete('/:id', isAdmin, clienteController.deleteCliente);
+
+// Obtener historial del cliente (instalación, averías)
+router.get('/:id/historial', clienteController.getHistorial);
 
 // Opcional: Obtener un cliente específico
 // router.get('/:id', clienteController.getClienteById);

@@ -23,8 +23,8 @@ exports.getTramos = async (req, res) => {
 // ====================== CREAR TRAMO ======================
 exports.createTramo = async (req, res) => {
     try {
-        const { empresaId } = req.user;
-        const tramo = await tramoCableService.createTramo(empresaId, req.body);
+        const { empresaId, id: usuarioId } = req.user;
+        const tramo = await tramoCableService.createTramo(empresaId, usuarioId, req.body);
         res.status(201).json({
             success: true,
             message: "Tramo de fibra creado correctamente",

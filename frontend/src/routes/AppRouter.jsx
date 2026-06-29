@@ -11,6 +11,8 @@ import Blocked from '../pages/Blocked';
 import CroquisList from '../pages/Croquis/CroquisList';
 import CroquisEditor from '../pages/Croquis/CroquisEditor';
 import UsuariosAdmin from '../pages/Usuarios/UsuariosAdmin';
+import InventarioDashboard from '../pages/Inventario/InventarioDashboard';
+import ClientesDashboard from '../pages/Clientes/ClientesDashboard';
 
 const getStoredUser = () => {
     try {
@@ -57,6 +59,8 @@ const AppRouter = () => {
             <Route path="/dashboard/croquis/:id" element={<PrivateRoute><CroquisEditor /></PrivateRoute>} />
             
             <Route path="/dashboard/usuarios" element={<AdminRoute><UsuariosAdmin /></AdminRoute>} />
+            <Route path="/dashboard/inventario" element={<AdminRoute><InventarioDashboard /></AdminRoute>} />
+            <Route path="/dashboard/clientes" element={<PrivateRoute><ClientesDashboard /></PrivateRoute>} />
             <Route path="/admin" element={<SuperAdminRoute><AdminPanel /></SuperAdminRoute>} />
             
             <Route path="/verify-email" element={<VerifyEmail />} />

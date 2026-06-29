@@ -3,8 +3,8 @@ const clienteService = require('../services/cliente.service');
 // ====================== CREAR CLIENTE ======================
 exports.createCliente = async (req, res) => {
     try {
-        const { empresaId } = req.user;
-        const result = await clienteService.createCliente(empresaId, req.body);
+        const { empresaId, id: usuarioId } = req.user;
+        const result = await clienteService.createCliente(empresaId, usuarioId, req.body);
         res.status(201).json({
             success: true,
             message: "Cliente registrado y puerto ocupado en NAP",
@@ -60,13 +60,24 @@ exports.deleteCliente = async (req, res) => {
     const { id } = req.params;
     const { empresaId } = req.user;
     try {
-        await clienteService.deleteCliente(id, empresaId);
-        res.json({
-            success: true,
-            message: "Cliente eliminado y puerto de caja NAP liberado"
-        });
+        await clienteService.deleteCliente(id, req.user.empresaId);
+        res.json({ success: true, message: "Cliente y su puerto liberado correctamente" });
     } catch (error) {
         res.status(error.status || 400).json({ success: false, message: error.message });
     }
+};
 
+// ====================== OBTENER HISTORIAL DE CLIENTE ======================
+exports.getHistorial = async (req, res) => {
+    const { id } = req.params;
+    const { empresaId } = req.user;
+    try {
+        const historial = await clienteService.getHistorial(id, empresaId);
+        res.json({
+            success: true,
+            data: historial
+        });
+    } catch (error) {
+        res.status(error.status || 500).json({ success: false, message: error.message || "Error al obtener historial" });
+    }
 };

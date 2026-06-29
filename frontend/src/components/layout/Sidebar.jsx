@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
     LayoutDashboard, Users, Map as MapIcon, LogOut, 
     CheckCircle, PlusCircle, Settings, BarChart3,
-    Search, Target, X, ShieldAlert, Navigation, PenTool
+    Search, Target, X, ShieldAlert, Navigation, PenTool, Package
 } from 'lucide-react';
 
 import useProyectos from '../../hooks/useProyectos';
@@ -279,9 +279,11 @@ const Sidebar = ({ isOpen, onClose }) => {
 
                         {['ADMIN', 'SUPERADMIN'].includes(JSON.parse(localStorage.getItem('user'))?.rol) && (
                             <>
-                                <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
-                                    <Users size={18} className="text-slate-300"/> Clientes
-                                </button>
+                                <Link to="/dashboard/clientes" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                                    <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                        <Users size={18} className="text-slate-300"/> Clientes
+                                    </button>
+                                </Link>
 
                                 <Link to="/estadisticas" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
                                     <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
@@ -292,6 +294,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <Link to="/dashboard/usuarios" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
                                     <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
                                         <Users size={18} className="text-indigo-400"/> Mi Equipo
+                                    </button>
+                                </Link>
+
+                                <Link to="/dashboard/inventario" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                                    <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                        <Package size={18} className="text-orange-400"/> Almacén
                                     </button>
                                 </Link>
                             </>

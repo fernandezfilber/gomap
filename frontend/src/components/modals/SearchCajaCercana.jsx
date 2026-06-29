@@ -4,25 +4,37 @@ import { X, MapPin, Navigation } from 'lucide-react';
 import fvApi from '../../api/fvApi';
 
 const SearchCajaCercana = ({ onClose }) => {
-  const [latitud, setLatitud] = useState('');
-  const [longitud, setLongitud] = useState('');
+  const [coordenadasInput, setCoordenadasInput] = useState('');
   const [radio, setRadio] = useState('500'); // metros
   const [resultados, setResultados] = useState([]);
   const [cargando, setCargando] = useState(false);
 
   const handleBuscar = async (e) => {
     e.preventDefault();
-    if (!latitud || !longitud) {
-      toast.error('Ingresa latitud y longitud');
+    
+    if (!coordenadasInput) {
+      toast.error('Ingresa coordenadas o pega un link');
       return;
     }
+
+    const decoded = decodeURIComponent(coordenadasInput);
+    const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
+    const match = decoded.match(coordRegex);
+
+    if (!match || !match[1] || !match[2]) {
+      toast.error('Formato inválido. Usa lat, lng o un link válido');
+      return;
+    }
+
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
 
     setCargando(true);
     try {
       const response = await fvApi.get('/cajas/cercanas', {
         params: {
-          latitud: parseFloat(latitud),
-          longitud: parseFloat(longitud),
+          latitud: lat,
+          longitud: lng,
           radio: parseInt(radio),
         },
       });
@@ -41,8 +53,7 @@ const SearchCajaCercana = ({ onClose }) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setLatitud(position.coords.latitude.toString());
-          setLongitud(position.coords.longitude.toString());
+          setCoordenadasInput(`${position.coords.latitude}, ${position.coords.longitude}`);
           toast.success('Ubicación obtenida');
         },
         () => toast.error('No puedo obtener ubicación')
@@ -70,29 +81,15 @@ const SearchCajaCercana = ({ onClose }) => {
         </div>
 
         <form onSubmit={handleBuscar} className="space-y-4 mb-6">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Latitud</label>
-              <input
-                type="number"
-                step="0.00001"
-                value={latitud}
-                onChange={(e) => setLatitud(e.target.value)}
-                placeholder="-12.0000"
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Longitud</label>
-              <input
-                type="number"
-                step="0.00001"
-                value={longitud}
-                onChange={(e) => setLongitud(e.target.value)}
-                placeholder="-76.0000"
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Coordenadas o Link</label>
+            <input
+              type="text"
+              value={coordenadasInput}
+              onChange={(e) => setCoordenadasInput(e.target.value)}
+              placeholder="-12.0124, -76.8690"
+              className="w-full px-3 py-2 border rounded"
+            />
           </div>
 
           <div>
@@ -131,9 +128,12 @@ const SearchCajaCercana = ({ onClose }) => {
             <>
               <p className="font-bold text-sm mb-2">Encontradas {resultados.length} cajas:</p>
               {resultados.map((caja, idx) => {
+                const match = decodeURIComponent(coordenadasInput).match(/(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/);
+                const latBusqueda = match ? parseFloat(match[1]) : 0;
+                const lngBusqueda = match ? parseFloat(match[2]) : 0;
                 const dist = distancia(
-                  parseFloat(latitud),
-                  parseFloat(longitud),
+                  latBusqueda,
+                  lngBusqueda,
                   caja.latitud,
                   caja.longitud
                 );

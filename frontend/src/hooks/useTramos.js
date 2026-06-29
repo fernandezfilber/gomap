@@ -61,11 +61,32 @@ const useTramos = (proyectoId = null) => {
                 throw new Error('El tramo debe tener (posteInicio + posteFin) O (mufaOrigen + cajaDestino)');
             }
 
+            // Función para calcular distancia con Haversine (en metros)
+            const calcularDistancia = (path) => {
+                if (!path || path.length < 2) return 0;
+                let distancia = 0;
+                const R = 6371e3; // Radio de la Tierra en metros
+                for (let i = 0; i < path.length - 1; i++) {
+                    const lat1 = path[i][0] * Math.PI / 180;
+                    const lat2 = path[i+1][0] * Math.PI / 180;
+                    const dLat = (path[i+1][0] - path[i][0]) * Math.PI / 180;
+                    const dLon = (path[i+1][1] - path[i][1]) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                              Math.cos(lat1) * Math.cos(lat2) *
+                              Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    distancia += R * c;
+                }
+                return distancia;
+            };
+
             const payload = {
                 nombre: datos.nombre || `Tramo-${Date.now().toString().slice(-6)}`,
                 tipoCable: datos.tipoCable || "FIBRA",
                 path: JSON.stringify(datos.path || []),   // Importante: enviar como string
                 colorVisual: datos.colorVisual || '#ef4444',
+                capacidadHilos: datos.capacidadHilos,
+                longitudMetros: calcularDistancia(datos.path),
                 proyectoId: proyectoId || datos.proyectoId,
                 posteInicioId: datos.posteInicioId,
                 posteFinId: datos.posteFinId,

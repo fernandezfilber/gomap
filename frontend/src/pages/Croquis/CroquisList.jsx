@@ -5,6 +5,7 @@ import { PenTool, Search, Plus, Trash2, Calendar, MapPin, User, FileText, ArrowL
 import useAuth from '../../hooks/useAuth';
 
 const CroquisList = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [croquisList, setCroquisList] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -123,9 +124,11 @@ const CroquisList = () => {
                             >
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="font-bold text-xl text-slate-800 line-clamp-1">{croquis.nombre}</h3>
-                                    <button onClick={(e) => handleDelete(e, croquis.id)} className="text-slate-400 hover:text-red-500 p-1">
-                                        <Trash2 size={18} />
-                                    </button>
+                                    {['ADMIN', 'SUPERADMIN'].includes(user?.rol) && (
+                                        <button onClick={(e) => handleDelete(e, croquis.id)} className="text-slate-400 hover:text-red-500 p-1">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
                                 </div>
                                 
                                 <div className="space-y-3 text-sm text-slate-600">

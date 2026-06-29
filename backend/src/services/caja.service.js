@@ -40,30 +40,52 @@ exports.createCaja = async (empresaId, data) => {
         throw { status: 400, message: "El posteId es obligatorio" };
     }
 
-    // Buscamos el poste para obtener su latitud y longitud
-    const poste = await prisma.poste.findUnique({
-        where: { id: posteId },
-        include: { proyecto: { select: { empresaId: true } } }
-    });
+    return prisma.$transaction(async (tx) => {
+        // Buscamos el poste para obtener su latitud y longitud
+        const poste = await tx.poste.findUnique({
+            where: { id: posteId },
+            include: { proyecto: { select: { empresaId: true } } }
+        });
 
-    // Validamos que el poste exista y sea de la empresa
-    if (!poste || poste.proyecto.empresaId !== empresaId) {
-        throw { status: 403, message: "No tienes acceso a este poste o no existe" };
-    }
-
-    // Creamos la caja usando las coordenadas del poste obtenido
-    return prisma.caja.create({
-        data: {
-            codigo: codigo || `NAP-${Date.now().toString().slice(-6)}`,
-            latitud: poste.latitud,
-            longitud: poste.longitud,
-            capacidadTotal: parseInt(capacidadTotal) || 16,
-            puertosLibres: parseInt(capacidadTotal) || 16,
-            estado: estado || 'ACTIVO',
-            colorHiloCaja: colorHiloCaja || 'Azul',
-            posteId,
-            mufaId: mufaId || null
+        // Validamos que el poste exista y sea de la empresa
+        if (!poste || poste.proyecto.empresaId !== empresaId) {
+            throw { status: 403, message: "No tienes acceso a este poste o no existe" };
         }
+
+        // Validar capacidad del splitter si se conecta a una mufa
+        if (mufaId) {
+            const mufa = await tx.mufa.findUnique({
+                where: { id: mufaId },
+                include: { _count: { select: { cajas: true } } }
+            });
+
+            if (mufa) {
+                const capacidadSplitter = parseInt(mufa.ratioSplitteo.split(':')[1]) || 16;
+                const cajasActuales = mufa._count.cajas;
+
+                if (cajasActuales >= capacidadSplitter) {
+                    throw { 
+                        status: 400, 
+                        message: `Splitter lleno (${cajasActuales}/${capacidadSplitter}). No se pueden agregar más cajas a esta mufa.` 
+                    };
+                }
+            }
+        }
+
+        // Creamos la caja usando las coordenadas del poste obtenido
+        return tx.caja.create({
+            data: {
+                codigo: codigo || `NAP-${Date.now().toString().slice(-6)}`,
+                latitud: poste.latitud,
+                longitud: poste.longitud,
+                capacidadTotal: parseInt(capacidadTotal) || 16,
+                puertosLibres: parseInt(capacidadTotal) || 16,
+                estado: estado || 'ACTIVO',
+                colorHiloCaja: colorHiloCaja || 'Azul',
+                posteId,
+                mufaId: mufaId || null
+            }
+        });
     });
 };
 

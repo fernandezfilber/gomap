@@ -1,6 +1,10 @@
-// src/components/forms/FormCaja.jsx
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+
+const coloresDisponibles = [
+    "Azul", "Naranja", "Verde", "Marrón", "Gris", "Blanco", 
+    "Rojo", "Negro", "Amarillo", "Violeta", "Rosa", "Aqua"
+];
 
 const FormCaja = ({ 
     data, 
@@ -8,7 +12,8 @@ const FormCaja = ({
     onSuccess, 
     crearCaja, 
     actualizarCaja,
-    mufas 
+    mufas,
+    cajas 
 }) => {
     
     const [formData, setFormData] = useState({
@@ -20,6 +25,7 @@ const FormCaja = ({
     });
 
     const [loading, setLoading] = useState(false);
+    const [coloresUsados, setColoresUsados] = useState([]);
 
     // Inicializar datos al abrir el formulario
     useEffect(() => {
@@ -34,6 +40,25 @@ const FormCaja = ({
         }
     }, [data]);
 
+    // Calcular colores usados en la mufa seleccionada
+    useEffect(() => {
+        if (formData.mufaId && cajas) {
+            const cajasEnMufa = cajas.filter(c => c.mufaId === formData.mufaId && c.id !== data?.id);
+            const usados = cajasEnMufa.map(c => c.colorHiloCaja).filter(Boolean);
+            setColoresUsados(usados);
+            
+            // Si el color actual ya está usado y estamos creando, auto-seleccionar el primero libre
+            if (!data?.id && usados.includes(formData.colorHiloCaja)) {
+                const primerDisponible = coloresDisponibles.find(c => !usados.includes(c));
+                if (primerDisponible) {
+                    setFormData(prev => ({ ...prev, colorHiloCaja: primerDisponible }));
+                }
+            }
+        } else {
+            setColoresUsados([]);
+        }
+    }, [formData.mufaId, cajas, data, formData.colorHiloCaja]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -45,7 +70,7 @@ const FormCaja = ({
     const handleMufaSelect = (mufaId) => {
         setFormData(prev => ({ 
             ...prev, 
-            mufaId: mufaId ? String(mufaId) : null   // ← Convertido a String (importante)
+            mufaId: mufaId ? String(mufaId) : null 
         }));
     };
 
@@ -69,10 +94,10 @@ const FormCaja = ({
 
             if (data?.id) {
                 await actualizarCaja(data.id, payload);
-                alert("✅ Caja actualizada correctamente");
+                alert("✓ Caja actualizada correctamente");
             } else {
                 await crearCaja(payload);
-                alert("✅ Caja instalada correctamente");
+                alert("✓ Caja instalada correctamente");
             }
 
             onSuccess?.();
@@ -157,7 +182,7 @@ const FormCaja = ({
                 {/* Color de Hilo */}
                 <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">
-                        COLOR DE HILO
+                        COLOR DE HILO {coloresUsados.length > 0 && <span className="text-red-400 ml-2">({coloresUsados.length} en uso)</span>}
                     </label>
                     <select
                         name="colorHiloCaja"
@@ -165,25 +190,24 @@ const FormCaja = ({
                         onChange={handleChange}
                         className="w-full bg-slate-800 border border-slate-600 text-white px-4 py-3 focus:outline-none focus:border-emerald-600"
                     >
-                        <option value="Azul">Azul</option>
-                        <option value="Naranja">Naranja</option>
-                        <option value="Verde">Verde</option>
-                        <option value="Marrón">Marrón (Café)</option>
-                        <option value="Gris">Gris (Pizarra)</option>
-                        <option value="Blanco">Blanco</option>
-                        <option value="Rojo">Rojo</option>
-                        <option value="Negro">Negro</option>
-                        <option value="Amarillo">Amarillo</option>
-                        <option value="Violeta">Violeta (Morado)</option>
-                        <option value="Rosa">Rosa</option>
-                        <option value="Aqua">Aqua (Aguamarina)</option>
+                        {coloresDisponibles.map(color => {
+                            const isUsed = coloresUsados.includes(color);
+                            return (
+                                <option key={color} value={color} disabled={isUsed} className={isUsed ? 'text-slate-500 line-through bg-slate-900' : ''}>
+                                    {color} {isUsed ? '(En Uso)' : ''}
+                                </option>
+                            );
+                        })}
                     </select>
+                    {coloresUsados.length >= coloresDisponibles.length && (
+                        <p className="text-red-400 text-xs mt-2">No hay colores disponibles en esta mufa.</p>
+                    )}
                 </div>
 
                 {/* Botón */}
                 <button
                     type="submit"
-                    disabled={loading || !formData.mufaId || !formData.posteId}
+                    disabled={loading || !formData.mufaId || !formData.posteId || coloresUsados.length >= coloresDisponibles.length}
                     className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white py-4 font-medium border border-emerald-700 flex items-center justify-center gap-2 transition-colors"
                 >
                     {loading ? 'GUARDANDO CAJA...' : (data?.id ? 'ACTUALIZAR CAJA' : 'INSTALAR CAJA')}

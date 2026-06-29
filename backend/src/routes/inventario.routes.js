@@ -1,18 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const inventarioController = require('../controllers/inventario.controller');
-const { verifyToken, checkTenant } = require('../Middleware/auth.middleware');
+const { protect, isAdmin } = require('../Middleware/auth.middleware');
 
-router.use(verifyToken);
-router.use(checkTenant);
+// Todas las rutas de inventario requieren autenticación y rol de ADMIN/SUPERADMIN
+router.use(protect, isAdmin);
 
-router.get('/asignaciones', inventarioController.getAllAsignaciones);
-router.get('/', inventarioController.getItems);
-router.get('/:id', inventarioController.getItemById);
-router.post('/', inventarioController.createItem);
-router.put('/:id', inventarioController.updateItem);
-router.delete('/:id', inventarioController.deleteItem);
-router.post('/:id/asignar', inventarioController.asignarItem);
-router.get('/:id/asignaciones', inventarioController.getAsignaciones);
+router.get('/items', inventarioController.getItems);
+router.post('/items', inventarioController.createItem);
+router.put('/items/:id', inventarioController.updateItem);
+
+router.post('/movimientos', inventarioController.registrarMovimiento);
+router.get('/historial', inventarioController.getHistorial);
 
 module.exports = router;

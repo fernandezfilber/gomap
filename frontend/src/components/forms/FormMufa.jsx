@@ -1,14 +1,20 @@
 // src/components/forms/FormMufa.jsx
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import useTroncales from '../../hooks/useTroncales';
+
+const coloresFibra = [
+    "Azul", "Naranja", "Verde", "Marrón", "Gris", "Blanco", 
+    "Rojo", "Negro", "Amarillo", "Violeta", "Rosa", "Aqua"
+];
 
 const FormMufa = ({ 
     data, 
     onCancel, 
     onSuccess, 
     crearMufa,
-    actualizarMufa 
+    actualizarMufa,
+    cajas 
 }) => {
     
     const [formData, setFormData] = useState({
@@ -16,18 +22,19 @@ const FormMufa = ({
         troncalId: '',
         codigo: '',
         tipo: '1:16',
-        hilosTotales: 16,
-        hilosOcupados: 0,
+        categoria: 'SPLITTER',
         color: 'Naranja',
     });
 
     const [loading, setLoading] = useState(false);
     const { troncales, loading: loadingTroncales } = useTroncales();
 
-    // Debug
-    useEffect(() => {
-        console.log("📥 Datos recibidos del mapa:", data);
-    }, [data]);
+    // Calcular hilos ocupados automáticamente desde las cajas conectadas
+    const cajasConectadas = (cajas || []).filter(c => c.mufaId === data?.id);
+    const coloresEnUso = cajasConectadas.map(c => c.colorHiloCaja).filter(Boolean);
+    const ratioNum = parseInt((formData.tipo || '1:16').split(':')[1]) || 16;
+    const hilosOcupados = cajasConectadas.length;
+    const hilosLibres = ratioNum - hilosOcupados;
 
     // Inicializar datos
     useEffect(() => {
@@ -38,8 +45,7 @@ const FormMufa = ({
                 codigo: data.codigo || `MUFA-${Date.now().toString().slice(-6)}`,
                 troncalId: data.troncalId || '',
                 tipo: data.ratioSplitteo || '1:16',
-                hilosTotales: data.hilosTotales || 16,
-                hilosOcupados: data.hilosOcupados || 0,
+                categoria: data.categoria || 'SPLITTER',
                 color: data.color || 'Naranja',
             }));
         }
@@ -56,19 +62,17 @@ const FormMufa = ({
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.posteId) return alert("❌ El poste es obligatorio");
-        if (!formData.troncalId) return alert("❌ Debes seleccionar una troncal");
+        if (!formData.posteId) return alert("El poste es obligatorio");
+        if (!formData.troncalId) return alert("Debes seleccionar una troncal");
 
         setLoading(true);
 
         try {
             const payload = {
                 posteId: formData.posteId,
-                troncalId: formData.troncalId,           // ← Enviar como String (UUID)
+                troncalId: formData.troncalId,
                 codigo: formData.codigo,
-                ratioSplitteo: formData.tipo,            // ← Campo esperado en backend
-                hilosTotales: Number(formData.hilosTotales),
-                hilosOcupados: Number(formData.hilosOcupados),
+                ratioSplitteo: formData.tipo,
                 color: formData.color,
                 latitud: data?.coords?.latitud || data?.latitud,
                 longitud: data?.coords?.longitud || data?.longitud,
@@ -76,10 +80,10 @@ const FormMufa = ({
 
             if (data?.id) {
                 await actualizarMufa(data.id, payload);
-                alert("✅ Mufa actualizada correctamente");
+                alert("✓ Mufa actualizada correctamente");
             } else {
                 await crearMufa(payload);
-                alert("✅ Mufa creada correctamente");
+                alert("✓ Mufa creada correctamente");
             }
 
             onSuccess?.();
@@ -185,29 +189,59 @@ const FormMufa = ({
                     </div>
                 )}
 
-                {/* Hilos */}
-                <div className="grid grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">HILOS TOTALES</label>
-                        <input
-                            type="number"
-                            name="hilosTotales"
-                            value={formData.hilosTotales}
-                            onChange={handleChange}
-                            className="w-full bg-slate-800 border border-slate-600 text-white px-4 py-3 rounded-lg"
-                        />
+                {/* Estado del Splitter - AUTOMÁTICO */}
+                {data?.id && (
+                    <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider">Estado del Splitter</h3>
+                        
+                        {/* Barra de progreso */}
+                        <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                            <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                    hilosLibres <= 0 ? 'bg-red-500' : 
+                                    hilosLibres <= 2 ? 'bg-yellow-500' : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${Math.min((hilosOcupados / ratioNum) * 100, 100)}%` }}
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p className="text-xs text-slate-500">Hilos Totales</p>
+                                <p className="text-xl font-black text-white">{ratioNum}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-500">Ocupados</p>
+                                <p className={`text-xl font-black ${hilosOcupados >= ratioNum ? 'text-red-400' : 'text-orange-400'}`}>{hilosOcupados}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-500">Libres</p>
+                                <p className={`text-xl font-black ${hilosLibres <= 0 ? 'text-red-400' : 'text-emerald-400'}`}>{Math.max(hilosLibres, 0)}</p>
+                            </div>
+                        </div>
+
+                        {/* Colores en uso */}
+                        {coloresEnUso.length > 0 && (
+                            <div>
+                                <p className="text-xs text-slate-500 mb-2">Colores de hilo en uso:</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {coloresEnUso.map((color, i) => (
+                                        <span key={i} className="px-2 py-1 bg-slate-700 text-white text-[10px] font-bold rounded-lg uppercase">
+                                            {color}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {hilosLibres <= 0 && (
+                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 p-2 rounded-lg">
+                                <AlertTriangle size={14} />
+                                <span className="font-bold">Splitter lleno — No se pueden agregar más cajas</span>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">HILOS OCUPADOS</label>
-                        <input
-                            type="number"
-                            name="hilosOcupados"
-                            value={formData.hilosOcupados}
-                            onChange={handleChange}
-                            className="w-full bg-slate-800 border border-slate-600 text-white px-4 py-3 rounded-lg"
-                        />
-                    </div>
-                </div>
+                )}
 
                 {/* Color */}
                 <div>

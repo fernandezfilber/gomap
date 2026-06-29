@@ -65,6 +65,7 @@ model Usuario {
   averiasAsignadas Averia[] @relation("tecnicoAsignado")
   notasAveria      AveriaNota[]
   croquisCreados   Croquis[] @relation("CroquisCreados")
+  movimientosInventario InventarioMovimiento[]
 
   @@index([empresaId])
   @@index([email])
@@ -308,6 +309,7 @@ model Cliente {
   snMac          String?
   latitud        Decimal?
   longitud       Decimal?
+  plan           String?
   estadoServicio EstadoServicio @default(ACTIVO)
   puerto         Int?
 
@@ -316,6 +318,9 @@ model Cliente {
 
   cajaId         String
   caja           Caja     @relation(fields: [cajaId], references: [id], onDelete: Cascade)
+  
+  averias        Averia[]
+  movimientosInventario InventarioMovimiento[]
 
   @@index([cajaId])
   @@map("clientes")
@@ -365,6 +370,7 @@ model Averia {
   tecnicoId     String?
   empresaId     String
 
+  cliente       Cliente? @relation(fields: [clienteId], references: [id])
   tecnico       Usuario? @relation("tecnicoAsignado", fields: [tecnicoId], references: [id])
   empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   notas         AveriaNota[]
@@ -393,10 +399,13 @@ model AveriaNota {
 model InventarioItem {
   id             String   @id @default(uuid())
   tipo           TipoItemInventario
+  nombre         String?
   codigo         String   @unique
   descripcion    String?
-  stockTotal     Int      @default(0)
-  stockMinimo    Int      @default(5)
+  stockTotal     Float    @default(0) // Puede ser 4000 (metros) o 100 (unidades)
+  stockMinimo    Float    @default(5)
+  capacidadHilos Int?     // Número de hilos si es fibra
+  unidadMedida   UnidadMedida @default(UNIDADES)
   ubicacion      String?
   proveedor      String?
   costoUnitario  Decimal?
@@ -407,9 +416,32 @@ model InventarioItem {
 
   empresaId      String
   empresa        Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  movimientos    InventarioMovimiento[]
 
   @@index([empresaId])
   @@map("inventario_items")
+}
+
+model InventarioMovimiento {
+  id             String   @id @default(uuid())
+  tipo           TipoMovimiento // INGRESO, CONSUMO_TRAMO, CONSUMO_INSTALACION, AJUSTE
+  cantidad       Float
+  motivo         String?
+  fecha          DateTime @default(now())
+
+  itemId         String
+  item           InventarioItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+
+  tramoId        String?
+  clienteId      String?
+  cliente        Cliente? @relation(fields: [clienteId], references: [id])
+
+  @@index([itemId])
+  @@index([usuarioId])
+  @@map("inventario_movimientos")
 }
 
 // ====================== ENUMS ======================
@@ -457,10 +489,29 @@ enum TipoItemInventario {
   FIBRA_DROP
   POSTE
   CABLE_FIBRA
+  ROUTER
+  MICRONODO
+  PATCHCORD
+  HERRAMIENTA
+  MUFA
   OTRO
 }
 
 enum TipoNodoSplitter {
   MUFA
   CAJA
+}
+
+enum UnidadMedida {
+  METROS
+  UNIDADES
+  KILOMETROS
+}
+
+enum TipoMovimiento {
+  INGRESO
+  SALIDA
+  CONSUMO_TRAMO
+  CONSUMO_INSTALACION
+  AJUSTE
 }
