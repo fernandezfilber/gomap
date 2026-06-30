@@ -72,14 +72,27 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
     // ==================== AUTO-CENTRAR AL INICIO ====================
     useEffect(() => {
-        if (!inicializadoRef.current && mapRef.current && (postes.length > 0 || cajas.length > 0)) {
-            const coords = [];
-            postes.forEach(p => { if (esCoordenadaValida(p.latitud, p.longitud)) coords.push([parseFloat(p.latitud), parseFloat(p.longitud)]); });
-            cajas.forEach(c => { if (esCoordenadaValida(c.latitud, c.longitud)) coords.push([parseFloat(c.latitud), parseFloat(c.longitud)]); });
-            if (coords.length > 0) {
-                const bounds = L.latLngBounds(coords);
-                mapRef.current.fitBounds(bounds, { padding: [100, 100], maxZoom: 18 });
+        if (!inicializadoRef.current && mapRef.current) {
+            // Revisar si viene de URL (ej. ?lat=x&lng=y)
+            const params = new URLSearchParams(window.location.search);
+            const urlLat = params.get('lat');
+            const urlLng = params.get('lng');
+            
+            if (urlLat && urlLng && esCoordenadaValida(urlLat, urlLng)) {
+                mapRef.current.setView([parseFloat(urlLat), parseFloat(urlLng)], 20);
                 inicializadoRef.current = true;
+                return;
+            }
+
+            if (postes.length > 0 || cajas.length > 0) {
+                const coords = [];
+                postes.forEach(p => { if (esCoordenadaValida(p.latitud, p.longitud)) coords.push([parseFloat(p.latitud), parseFloat(p.longitud)]); });
+                cajas.forEach(c => { if (esCoordenadaValida(c.latitud, c.longitud)) coords.push([parseFloat(c.latitud), parseFloat(c.longitud)]); });
+                if (coords.length > 0) {
+                    const bounds = L.latLngBounds(coords);
+                    mapRef.current.fitBounds(bounds, { padding: [100, 100], maxZoom: 18 });
+                    inicializadoRef.current = true;
+                }
             }
         }
     }, [postes, cajas]);
@@ -328,7 +341,38 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                         </Marker>
                     ))}</LayerGroup></LayersControl.Overlay>
                     
-                    <LayersControl.Overlay checked name="Clientes"><LayerGroup>{clientes.filter(cl => esCoordenadaValida(cl.latitud, cl.longitud)).map(cl => (<Marker key={cl.id} position={[parseFloat(cl.latitud), parseFloat(cl.longitud)]} icon={iconoCliente} ref={el => el ? markerRefs.current.set(cl.id, el) : markerRefs.current.delete(cl.id)}><Popup><div className="text-center"><p className="font-bold text-violet-400 text-xl mb-1">{cl.nombre}</p><p className="text-xs text-slate-500">{cl.dni}</p><div className="flex gap-3 mt-4"><button onClick={() => setModal({ show: true, type: 'cliente', data: cl })} className="flex-1 bg-violet-600 text-white py-2 rounded-xl text-xs">Editar</button><button onClick={() => eliminarCliente(cl.id)} className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs">Eliminar</button></div></div></Popup></Marker>))}</LayerGroup></LayersControl.Overlay>
+                    <LayersControl.Overlay checked name="Clientes">
+                        <LayerGroup>
+                            {clientes.filter(cl => esCoordenadaValida(cl.latitud, cl.longitud)).map(cl => {
+                                const caja = cajas.find(c => c.id === cl.cajaId || c.id === cl.caja?.id);
+                                return (
+                                    <React.Fragment key={cl.id}>
+                                        <Marker position={[parseFloat(cl.latitud), parseFloat(cl.longitud)]} icon={iconoCliente} ref={el => el ? markerRefs.current.set(cl.id, el) : markerRefs.current.delete(cl.id)}>
+                                            <Popup>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-violet-400 text-xl mb-1">{cl.nombre}</p>
+                                                    <p className="text-xs text-slate-500">{cl.dni}</p>
+                                                    <div className="flex gap-3 mt-4">
+                                                        <button onClick={() => setModal({ show: true, type: 'cliente', data: cl })} className="flex-1 bg-violet-600 text-white py-2 rounded-xl text-xs">Editar</button>
+                                                        <button onClick={() => eliminarCliente(cl.id)} className="flex-1 bg-red-600 text-white py-2 rounded-xl text-xs">Eliminar</button>
+                                                    </div>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                        {caja && esCoordenadaValida(caja.latitud, caja.longitud) && (
+                                            <Polyline 
+                                                positions={[
+                                                    [parseFloat(caja.latitud), parseFloat(caja.longitud)], 
+                                                    [parseFloat(cl.latitud), parseFloat(cl.longitud)]
+                                                ]} 
+                                                pathOptions={{ color: '#8b5cf6', weight: 3, dashArray: '5, 5', opacity: 0.7 }} 
+                                            />
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
+                        </LayerGroup>
+                    </LayersControl.Overlay>
                 </LayersControl>
                 <MapEvents />
                 {puntoVerificado && (<Marker position={[puntoVerificado.lat, puntoVerificado.lng]} icon={L.divIcon({ html: `<div class="no-print animate-bounce bg-[#00E5FF] p-2 rounded-full border-2 border-white shadow-lg shadow-[#00E5FF]/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>`, className: 'custom-div-icon', iconSize: [40, 40], iconAnchor: [20, 40] })} />)}

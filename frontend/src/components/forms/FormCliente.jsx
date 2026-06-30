@@ -1,6 +1,7 @@
 // src/components/forms/FormCliente.jsx
 import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { calcularDistanciasCajas } from '../../utils/calcularCajaMasCercana';
 
 const FormCliente = ({ 
     data = {},                    
@@ -34,38 +35,25 @@ const FormCliente = ({
         micronodo: 0
     });
 
-    const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
-    const [loadingCaja, setLoadingCaja] = useState(false);
+    const [cajasOrdenadas, setCajasOrdenadas] = useState([]);
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const [loadingDelete, setLoadingDelete] = useState(false);
 
-    // Solo calcular caja más cercana cuando se está CREANDO
     useEffect(() => {
-        if (isEditMode) return;
+        if (!cajas.length) return;
+        
+        let sorted = cajas;
+        if (data.latitud && data.longitud) {
+            sorted = calcularDistanciasCajas(parseFloat(data.latitud), parseFloat(data.longitud), cajas);
+        }
 
-        const calcularCaja = async () => {
-            if (!data.latitud || !data.longitud || !cajas.length || !calcularCajaMasCercana) return;
+        setCajasOrdenadas(sorted);
 
-            setLoadingCaja(true);
-            try {
-                const cajaCercana = calcularCajaMasCercana(
-                    parseFloat(data.latitud), 
-                    parseFloat(data.longitud)
-                );
-
-                if (cajaCercana) {
-                    setCajaSeleccionada(cajaCercana);
-                    setForm(prev => ({ ...prev, cajaId: cajaCercana.id }));
-                }
-            } catch (error) {
-                console.error("Error al calcular caja más cercana:", error);
-            } finally {
-                setLoadingCaja(false);
-            }
-        };
-
-        calcularCaja();
-    }, [data.latitud, data.longitud, cajas, calcularCajaMasCercana, isEditMode]);
+        // Si es nuevo y no tiene caja asignada, auto-asignar la más cercana (la primera)
+        if (!isEditMode && sorted.length > 0 && !form.cajaId) {
+            setForm(prev => ({ ...prev, cajaId: sorted[0].id }));
+        }
+    }, [data.latitud, data.longitud, cajas, isEditMode]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -239,9 +227,12 @@ const FormCliente = ({
                         required
                     >
                         <option value="">Seleccionar caja</option>
-                        {cajas.map((caja) => (
+                        {(cajasOrdenadas.length > 0 ? cajasOrdenadas : cajas).map((caja) => (
                             <option key={caja.id} value={caja.id}>
                                 {caja.codigo} — {caja.puertosLibres || 0} puertos libres
+                                {caja.distanciaMetros && caja.distanciaMetros !== Infinity 
+                                    ? ` (A aprox. ${Math.round(caja.distanciaMetros)}m)` 
+                                    : ''}
                             </option>
                         ))}
                     </select>

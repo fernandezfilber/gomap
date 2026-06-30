@@ -126,6 +126,12 @@ export default function ClientesDashboard() {
                         >
                           <HistoryIcon size={14} /> Historial
                         </button>
+                        <a 
+                          href={`/dashboard?lat=${cliente.latitud}&lng=${cliente.longitud}`}
+                          className="px-3 py-1.5 bg-violet-100 text-violet-700 hover:bg-violet-200 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors"
+                        >
+                          <MapPin size={14} /> Mapa
+                        </a>
                       </td>
                     </tr>
                   ))
