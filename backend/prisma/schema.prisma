@@ -460,6 +460,7 @@ enum EstadoServicio {
 }
 
 enum TipoAveria {
+  NUEVA_INSTALACION
   CORTE_FIBRA
   ATENUACION_ALTA
   CONEXION_DEFECTUOSA
