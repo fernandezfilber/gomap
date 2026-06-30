@@ -29,7 +29,7 @@ exports.listarAveriasPendientes = async (empresaId) => {
     return prisma.averia.findMany({
         where: {
             empresaId,
-            estado: { in: ["PENDIENTE", "EN_REPARACION", "REPORTADA"] }
+            estado: { in: ["REPORTADA", "ASIGNADA", "EN_REPARACION"] }
         },
         include: {
             cliente: {

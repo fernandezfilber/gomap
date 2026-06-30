@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { Clock, AlertTriangle, PenTool, CheckCircle, Search, Plus, Filter, Printer } from 'lucide-react';
+import { Clock, AlertTriangle, PenTool, CheckCircle, Search, Plus, Filter, Printer, ArrowLeft } from 'lucide-react';
 import useTickets from '../../hooks/useTickets';
 import useTeam from '../../hooks/useTeam';
 import FormTicket from './FormTicket';
@@ -73,6 +74,9 @@ const TicketsDashboard = () => {
                         <p className="text-slate-500 text-sm mt-1">Gestiona instalaciones y averías en tiempo real.</p>
                     </div>
                     <div className="flex gap-3">
+                        <Link to="/dashboard" className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors">
+                            <ArrowLeft size={18} /> Volver
+                        </Link>
                         <button 
                             onClick={() => setShowForm(true)}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-200"
