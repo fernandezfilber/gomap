@@ -1,5 +1,5 @@
 // src/components/Map/MapaPrincipal.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl, LayerGroup, ZoomControl } from 'react-leaflet';
 import { X, Trash2, Ruler, Navigation } from 'lucide-react';
 import L from 'leaflet';
@@ -346,7 +346,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                             {clientes.filter(cl => esCoordenadaValida(cl.latitud, cl.longitud)).map(cl => {
                                 const caja = cajas.find(c => c.id === cl.cajaId || c.id === cl.caja?.id);
                                 return (
-                                    <React.Fragment key={cl.id}>
+                                    <Fragment key={cl.id}>
                                         <Marker position={[parseFloat(cl.latitud), parseFloat(cl.longitud)]} icon={iconoCliente} ref={el => el ? markerRefs.current.set(cl.id, el) : markerRefs.current.delete(cl.id)}>
                                             <Popup>
                                                 <div className="text-center">
@@ -368,7 +368,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                                                 pathOptions={{ color: '#8b5cf6', weight: 3, dashArray: '5, 5', opacity: 0.7 }} 
                                             />
                                         )}
-                                    </React.Fragment>
+                                    </Fragment>
                                 );
                             })}
                         </LayerGroup>
