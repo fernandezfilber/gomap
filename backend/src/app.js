@@ -61,6 +61,7 @@ loadRoute('/api/payments', './routes/payment.routes');
 loadRoute('/api/fusiones', './routes/fusion.routes');
 loadRoute('/api/croquis', './routes/croquis.routes');
 loadRoute('/api/inventario', './routes/inventario.routes');
+loadRoute('/api/averias', './routes/averia.routes');
 
 app.get("/", (req, res) => {
     res.send(`
