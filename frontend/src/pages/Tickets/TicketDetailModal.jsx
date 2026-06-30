@@ -6,7 +6,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
     const printRef = useRef();
 
     const handlePrint = useReactToPrint({
-        content: () => printRef.current,
+        contentRef: printRef,
         documentTitle: `Ticket_${ticket.codigo}`,
     });
 
