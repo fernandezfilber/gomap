@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ==================== CORS CONFIGURACION RECOMENDADA ====================
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 
-    'http://localhost,http://localhost:80,http://localhost:8080,http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:8080,http://127.0.0.1:5173,https://demostracion.toq.life,https://www.demostracion.toq.life,https://api-demostracion.toq.life,https://www.api-demostracion.toq.life'
+    'http://localhost,https://localhost,capacitor://localhost,http://localhost:80,http://localhost:8080,http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:80,http://127.0.0.1:8080,http://127.0.0.1:5173,https://demostracion.toq.life,https://www.demostracion.toq.life,https://api-demostracion.toq.life,https://www.api-demostracion.toq.life'
 ).split(',').map(origin => origin.trim()).filter(Boolean);
 
 const corsOptions = {
