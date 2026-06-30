@@ -31,6 +31,31 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
     const fechaCreacion = new Date(ticket.creadoEn).toLocaleString();
     const fechaResolucion = ticket.resueltoEn ? new Date(ticket.resueltoEn).toLocaleString() : 'En curso';
 
+    // Parsear datos del cliente si es NUEVA_INSTALACION
+    const extraerDato = (texto, clave) => {
+        if (!texto) return null;
+        const regex = new RegExp(`\\[${clave}:(.*?)\\]`);
+        const match = texto.match(regex);
+        return match ? match[1].trim() : null;
+    };
+
+    let clienteNombre = ticket.cliente?.nombre || 'Desconocido';
+    let clienteDireccion = ticket.cliente?.direccion || 'No registrada';
+    let clienteTelefono = ticket.cliente?.telefono || 'No registrado';
+    let descripcionLimpia = ticket.descripcion || '';
+
+    if (ticket.tipo === 'NUEVA_INSTALACION') {
+        const nom = extraerDato(ticket.descripcion, 'Nombre');
+        if (nom) clienteNombre = `${nom} (NUEVO)`;
+        const dir = extraerDato(ticket.descripcion, 'Dir');
+        if (dir) clienteDireccion = dir;
+        const tel = extraerDato(ticket.descripcion, 'Tel');
+        if (tel) clienteTelefono = tel;
+
+        // Limpiar la descripción para no mostrar los corchetes
+        descripcionLimpia = ticket.descripcion.replace(/\[.*?\]/g, '').trim();
+    }
+
     return (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -62,9 +87,9 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
                             <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
                                 <User size={16}/> Datos del Cliente
                             </h3>
-                            <p className="text-sm text-slate-600 mb-1"><strong>Nombre:</strong> {ticket.cliente?.nombre || 'Desconocido'}</p>
-                            <p className="text-sm text-slate-600 mb-1"><strong>Dirección:</strong> {ticket.cliente?.direccion || 'No registrada'}</p>
-                            <p className="text-sm text-slate-600"><strong>Teléfono:</strong> {ticket.cliente?.telefono || 'No registrado'}</p>
+                            <p className="text-sm text-slate-600 mb-1"><strong>Nombre:</strong> {clienteNombre}</p>
+                            <p className="text-sm text-slate-600 mb-1"><strong>Dirección:</strong> {clienteDireccion}</p>
+                            <p className="text-sm text-slate-600"><strong>Teléfono:</strong> {clienteTelefono}</p>
                         </div>
 
                         {/* Info Ticket */}
@@ -81,7 +106,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
                     <div className="mb-8">
                         <h3 className="font-bold text-slate-700 mb-2">Descripción del Trabajo</h3>
                         <div className="bg-slate-50 p-4 rounded-xl text-slate-600 text-sm whitespace-pre-wrap border border-slate-100">
-                            {ticket.descripcion}
+                            {descripcionLimpia}
                         </div>
                     </div>
 

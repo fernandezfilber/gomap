@@ -144,6 +144,15 @@ const TicketsDashboard = () => {
                                                     {column.items.map((item, index) => {
                                                         const demora = calcularDemora(item.creadoEn, item.resueltoEn);
                                                         const esInstalacion = item.tipo === 'INSTALACION' || item.tipo === 'NUEVA_INSTALACION';
+                                                        
+                                                        let clienteNombre = item.cliente?.nombre || 'Sin Cliente';
+                                                        let desc = item.descripcion || '';
+                                                        if (item.tipo === 'NUEVA_INSTALACION') {
+                                                            const match = item.descripcion?.match(/\[Nombre:(.*?)\]/);
+                                                            if (match) clienteNombre = `${match[1].trim()} (NUEVO)`;
+                                                            desc = item.descripcion?.replace(/\[.*?\]/g, '').trim() || 'Nueva Instalación';
+                                                        }
+
                                                         return (
                                                             <Draggable key={item.id} draggableId={item.id} index={index}>
                                                                 {(provided, snapshot) => (
@@ -165,8 +174,8 @@ const TicketsDashboard = () => {
                                                                             </span>
                                                                             <span className="text-xs font-bold text-slate-400">{item.codigo}</span>
                                                                         </div>
-                                                                        <h3 className="font-bold text-slate-800 text-sm mb-1">{item.cliente?.nombre || 'Sin Cliente'}</h3>
-                                                                        <p className="text-slate-500 text-xs line-clamp-2 mb-3">{item.descripcion}</p>
+                                                                        <h3 className="font-bold text-slate-800 text-sm mb-1">{clienteNombre}</h3>
+                                                                        <p className="text-slate-500 text-xs line-clamp-2 mb-3">{desc}</p>
                                                                         
                                                                         <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-50">
                                                                             <div className="flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">
