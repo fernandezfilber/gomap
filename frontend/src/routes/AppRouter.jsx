@@ -13,6 +13,7 @@ import CroquisEditor from '../pages/Croquis/CroquisEditor';
 import UsuariosAdmin from '../pages/Usuarios/UsuariosAdmin';
 import InventarioDashboard from '../pages/Inventario/InventarioDashboard';
 import ClientesDashboard from '../pages/Clientes/ClientesDashboard';
+import TicketsDashboard from '../pages/Tickets/TicketsDashboard';
 
 const getStoredUser = () => {
     try {
@@ -57,6 +58,7 @@ const AppRouter = () => {
             <Route path="/estadisticas" element={<AdminRoute><Estadisticas /></AdminRoute>} />
             <Route path="/dashboard/croquis" element={<PrivateRoute><CroquisList /></PrivateRoute>} />
             <Route path="/dashboard/croquis/:id" element={<PrivateRoute><CroquisEditor /></PrivateRoute>} />
+            <Route path="/dashboard/tickets" element={<PrivateRoute><TicketsDashboard /></PrivateRoute>} />
             
             <Route path="/dashboard/usuarios" element={<AdminRoute><UsuariosAdmin /></AdminRoute>} />
             <Route path="/dashboard/inventario" element={<AdminRoute><InventarioDashboard /></AdminRoute>} />
