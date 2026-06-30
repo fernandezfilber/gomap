@@ -302,7 +302,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                 </div>
             )}
 
-            <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-white p-3 rounded-full shadow-xl hover:bg-slate-50 transition-all text-blue-600 border border-slate-200" title="Mi Ubicación"><Navigation size={20} fill="currentColor" /></button>
+            <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-slate-900/80 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-blue-500 border border-slate-700/50" title="Mi Ubicación"><Navigation size={20} fill="currentColor" /></button>
 
             <MapContainer center={mapCenter} zoom={18} maxZoom={22} className="h-full w-full" zoomControl={false}>
                 <ZoomControl position="bottomright" />

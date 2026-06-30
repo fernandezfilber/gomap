@@ -149,7 +149,7 @@ const MapaDashboard = () => {
 
       {/* Controles Laterales */}
       {user?.rol === 'ADMIN' && (
-        <div className="absolute top-20 left-4 z-[500] bg-white rounded-lg shadow-lg p-2 space-y-2">
+        <div className="absolute top-20 left-4 z-[500] bg-slate-900/80 backdrop-blur border border-slate-700/50 rounded-xl shadow-2xl p-2 space-y-2">
           <button
             onClick={() => setModo(modo === 'poste' ? null : 'poste')}
             className={`w-12 h-12 rounded flex items-center justify-center transition ${
@@ -319,7 +319,7 @@ const MapaDashboard = () => {
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-sm">
+      <div className="absolute bottom-4 right-4 z-[1001] bg-slate-900/80 backdrop-blur border border-slate-700/50 rounded-xl shadow-2xl p-4 text-sm text-slate-200">
         <p className="font-bold mb-2">🗺️ Leyenda</p>
         <div className="space-y-1">
           <p>🔵 Postes</p>
