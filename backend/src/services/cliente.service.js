@@ -9,7 +9,7 @@ exports.createCliente = async (empresaId, usuarioId, data) => {
     const { 
         nombre, dni, telefono, direccion, 
         snMac, latitud, longitud, estadoServicio,
-        cajaId, puerto, materiales, plan
+        cajaId, puerto, materiales, plan, ticketId
     } = data;
 
     if (!nombre || !dni || !cajaId) {
@@ -101,6 +101,17 @@ exports.createCliente = async (empresaId, usuarioId, data) => {
                     });
                 }
             }
+        }
+        // 6. Si viene con un ticketId (Instalación), lo marcamos como resuelto y le asociamos el cliente
+        if (ticketId) {
+            await tx.averia.update({
+                where: { id: ticketId },
+                data: {
+                    estado: 'RESUELTA',
+                    resueltoEn: new Date(),
+                    clienteId: nuevoCliente.id
+                }
+            });
         }
 
         return nuevoCliente;

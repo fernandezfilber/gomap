@@ -9,7 +9,8 @@ exports.crearAveria = async (empresaId, data) => {
 
     return prisma.averia.create({
         data: {
-            clienteId,
+            clienteId: clienteId || null,
+            codigo: `TKT-${Math.floor(Math.random() * 1000000)}`,
             descripcion,
             tipo: tipo || 'OTRO',
             prioridad: prioridad || 'MEDIA',
@@ -97,4 +98,38 @@ exports.getNotas = async (id, empresaId) => {
         orderBy: { creadoEn: 'asc' },
         include: { usuario: { select: { id: true, nombre: true } } }
     });
+};
+
+exports.buscarInstalacionPorDni = async (dni, empresaId) => {
+    const averias = await prisma.averia.findMany({
+        where: {
+            empresaId,
+            estado: { in: ["REPORTADA", "ASIGNADA", "EN_REPARACION"] },
+            descripcion: { contains: `[DNI:${dni}]` }
+        },
+        orderBy: { creadoEn: 'desc' },
+        take: 1
+    });
+
+    if (averias.length === 0) {
+        throw { status: 404, message: "No se encontró ningún ticket de instalación pendiente para ese DNI" };
+    }
+
+    const averia = averias[0];
+    
+    const extraer = (key) => {
+        const regex = new RegExp(`\\[${key}:(.*?)\\]`);
+        const match = averia.descripcion.match(regex);
+        return match ? match[1].trim() : '';
+    };
+
+    return {
+        ticketId: averia.id,
+        dni: extraer("DNI"),
+        nombre: extraer("Nombre"),
+        direccion: extraer("Dir"),
+        telefono: extraer("Tel"),
+        plan: extraer("Plan"),
+        notas: averia.descripcion // por si acaso
+    };
 };

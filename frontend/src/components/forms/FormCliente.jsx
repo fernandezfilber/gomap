@@ -1,7 +1,8 @@
 // src/components/forms/FormCliente.jsx
 import { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Search, Loader2 } from 'lucide-react';
 import { calcularDistanciasCajas } from '../../utils/calcularCajaMasCercana';
+import fvApi from '../../api/fvApi';
 
 const FormCliente = ({ 
     data = {},                    
@@ -38,6 +39,36 @@ const FormCliente = ({
     const [cajasOrdenadas, setCajasOrdenadas] = useState([]);
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const [loadingDelete, setLoadingDelete] = useState(false);
+    
+    // Para buscar ticket
+    const [dniSearch, setDniSearch] = useState('');
+    const [loadingSearch, setLoadingSearch] = useState(false);
+    const [ticketId, setTicketId] = useState('');
+
+    const handleBuscarTicket = async () => {
+        if (!dniSearch.trim()) return;
+        setLoadingSearch(true);
+        try {
+            const { data } = await fvApi.get(`/averias/buscar-instalacion/${dniSearch.trim()}`);
+            if (data.success && data.instalacion) {
+                const i = data.instalacion;
+                setForm(prev => ({
+                    ...prev,
+                    nombre: i.nombre || prev.nombre,
+                    dni: i.dni || prev.dni,
+                    direccion: i.direccion || prev.direccion,
+                    telefono: i.telefono || prev.telefono,
+                    plan: i.plan || prev.plan
+                }));
+                setTicketId(i.ticketId);
+                alert("¡Ticket encontrado! Datos autocompletados.");
+            }
+        } catch (error) {
+            alert("No se encontró instalación pendiente para este DNI.");
+        } finally {
+            setLoadingSearch(false);
+        }
+    };
 
     useEffect(() => {
         if (!cajas.length) return;
@@ -98,6 +129,7 @@ const FormCliente = ({
                     longitud: parseFloat(form.longitud) || null,
                     estadoServicio: form.estadoServicio,
                     plan: form.plan,
+                    ticketId: ticketId || undefined,
                     puerto: form.puerto ? parseInt(form.puerto) : null,
                     cajaId: form.cajaId,
                     materiales: {
@@ -145,14 +177,33 @@ const FormCliente = ({
     };
 
     return (
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-700 w-full max-w-lg mx-auto shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                {isEditMode ? `?? Editar Cliente` : '?? Nuevo Cliente desde Mapa'}
+        <div className="bg-slate-900 p-4 md:p-6 rounded-2xl border border-slate-700 w-full max-w-lg mx-auto shadow-2xl max-h-[90vh] flex flex-col">
+            <h2 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 shrink-0">
+                {isEditMode ? `✏️ Editar Cliente` : '👤 Nuevo Cliente desde Mapa'}
             </h2>
 
+            {!isEditMode && (
+                <div className="flex gap-2 mb-4 shrink-0 bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                    <input
+                        type="text"
+                        value={dniSearch}
+                        onChange={(e) => setDniSearch(e.target.value)}
+                        placeholder="Buscar ticket por DNI..."
+                        className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 text-sm"
+                    />
+                    <button 
+                        type="button"
+                        onClick={handleBuscarTicket}
+                        disabled={loadingSearch}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors disabled:opacity-50 text-sm"
+                    >
+                        {loadingSearch ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                        Buscar
+                    </button>
+                </div>
+            )}
 
-
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 pb-4">
                 <div>
                     <label className="block text-slate-400 text-sm mb-1">Nombre completo *</label>
                     <input

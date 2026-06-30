@@ -8,7 +8,13 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
         tipo: 'NUEVA_INSTALACION', // o AVERIA
         prioridad: 'MEDIA',
         descripcion: '',
-        tecnicoId: ''
+        tecnicoId: '',
+        // Campos para instalación
+        dni: '',
+        nombre: '',
+        direccion: '',
+        telefono: '',
+        plan: ''
     });
 
     const [loading, setLoading] = useState(false);
@@ -20,7 +26,17 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const success = await crearTicket(form);
+
+        let dataToSend = { ...form };
+        
+        if (form.tipo === 'NUEVA_INSTALACION') {
+            // Empaquetar los datos en la descripción
+            const extraData = `\n\n[DNI:${form.dni}] [Nombre:${form.nombre}] [Dir:${form.direccion}] [Tel:${form.telefono}] [Plan:${form.plan}]`;
+            dataToSend.descripcion = (form.descripcion || 'Instalación nueva') + extraData;
+            dataToSend.clienteId = ''; // No hay cliente creado aun
+        }
+
+        const success = await crearTicket(dataToSend);
         if (success) {
             onSuccess();
         } else {
@@ -39,22 +55,7 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
                 </div>
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
-                    <div>
-                        <label className="block text-slate-500 text-sm font-bold mb-2">Cliente *</label>
-                        <select 
-                            required
-                            value={form.clienteId}
-                            onChange={e => setForm({...form, clienteId: e.target.value})}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        >
-                            <option value="">Seleccionar cliente...</option>
-                            {clientes.map(c => (
-                                <option key={c.id} value={c.id}>{c.nombre} {c.dni ? `(${c.dni})` : ''}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-slate-500 text-sm font-bold mb-2">Tipo</label>
                             <select 
@@ -62,7 +63,7 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
                                 onChange={e => setForm({...form, tipo: e.target.value})}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                             >
-                                <option value="NUEVA_INSTALACION">Instalación</option>
+                                <option value="NUEVA_INSTALACION">Instalación (Nuevo Cliente)</option>
                                 <option value="CORTE_FIBRA">Avería: Corte de Fibra</option>
                                 <option value="ATENUACION_ALTA">Avería: Atenuación</option>
                                 <option value="PROBLEMA_CLIENTE">Avería: Problema Cliente</option>
@@ -83,6 +84,49 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
                             </select>
                         </div>
                     </div>
+
+                    {form.tipo !== 'NUEVA_INSTALACION' ? (
+                        <div>
+                            <label className="block text-slate-500 text-sm font-bold mb-2">Cliente Existente *</label>
+                            <select 
+                                required
+                                value={form.clienteId}
+                                onChange={e => setForm({...form, clienteId: e.target.value})}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                            >
+                                <option value="">Seleccionar cliente...</option>
+                                {clientes.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nombre} {c.dni ? `(${c.dni})` : ''}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <div className="md:col-span-2">
+                                <h3 className="font-bold text-indigo-800 text-sm mb-3">Datos del Nuevo Cliente</h3>
+                            </div>
+                            <div>
+                                <label className="block text-slate-500 text-xs font-bold mb-1">DNI *</label>
+                                <input type="text" required value={form.dni} onChange={e => setForm({...form, dni: e.target.value})} className="w-full rounded-lg px-3 py-2 border-slate-200 focus:border-indigo-500" placeholder="Ej. 12345678" />
+                            </div>
+                            <div>
+                                <label className="block text-slate-500 text-xs font-bold mb-1">Teléfono</label>
+                                <input type="text" value={form.telefono} onChange={e => setForm({...form, telefono: e.target.value})} className="w-full rounded-lg px-3 py-2 border-slate-200 focus:border-indigo-500" placeholder="Ej. 999888777" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-slate-500 text-xs font-bold mb-1">Nombre Completo *</label>
+                                <input type="text" required value={form.nombre} onChange={e => setForm({...form, nombre: e.target.value})} className="w-full rounded-lg px-3 py-2 border-slate-200 focus:border-indigo-500" placeholder="Ej. Juan Pérez" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-slate-500 text-xs font-bold mb-1">Dirección Referencial</label>
+                                <input type="text" value={form.direccion} onChange={e => setForm({...form, direccion: e.target.value})} className="w-full rounded-lg px-3 py-2 border-slate-200 focus:border-indigo-500" placeholder="Av. Principal 123" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-slate-500 text-xs font-bold mb-1">Plan Contratado</label>
+                                <input type="text" value={form.plan} onChange={e => setForm({...form, plan: e.target.value})} className="w-full rounded-lg px-3 py-2 border-slate-200 focus:border-indigo-500" placeholder="Ej. 50 Mbps" />
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-slate-500 text-sm font-bold mb-2">Técnico Asignado (Opcional)</label>

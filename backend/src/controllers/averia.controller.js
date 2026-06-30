@@ -63,3 +63,15 @@ exports.getNotas = async (req, res) => {
         res.status(error.status || 500).json({ success: false, message: error.message || 'Error al obtener notas' });
     }
 };
+
+exports.buscarInstalacionPorDni = async (req, res) => {
+    try {
+        const { dni } = req.params;
+        const empresaId = req.user?.empresaId;
+        const instalacion = await averiaService.buscarInstalacionPorDni(dni, empresaId);
+        res.json({ success: true, instalacion });
+    } catch (error) {
+        console.error('❌ Error buscando instalación por DNI:', error);
+        res.status(error.status || 500).json({ success: false, message: error.message || 'Error buscando instalación' });
+    }
+};

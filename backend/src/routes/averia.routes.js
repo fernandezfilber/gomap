@@ -9,6 +9,7 @@ router.use(checkTenant);
 router.post('/', averiaController.crearAveria);
 router.get('/', averiaController.listarAveriasPendientes);
 router.put('/:id/estado', averiaController.actualizarEstadoAveria);
+router.get('/buscar-instalacion/:dni', averiaController.buscarInstalacionPorDni);
 router.post('/:id/notas', averiaController.agregarNota);
 router.get('/:id/notas', averiaController.getNotas);
 
