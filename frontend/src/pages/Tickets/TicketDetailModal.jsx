@@ -56,6 +56,23 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
         descripcionLimpia = ticket.descripcion.replace(/\[.*?\]/g, '').trim();
     }
 
+    const handleActionClick = () => {
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            const ticketText = `ORDEN DE TRABAJO\nTicket #${ticket.codigo}\nTipo: ${ticket.tipo}\n\nCLIENTE:\nNombre: ${clienteNombre}\nDirección: ${clienteDireccion}\nTeléfono: ${clienteTelefono}\n\nTRABAJO A REALIZAR:\n${descripcionLimpia}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: `Ticket #${ticket.codigo}`,
+                    text: ticketText
+                }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(ticketText);
+                alert('Ticket copiado al portapapeles');
+            }
+        } else {
+            handlePrint();
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -65,7 +82,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
                         Ticket #{ticket.codigo}
                     </h2>
                     <div className="flex gap-2">
-                        <button onClick={handlePrint} className="text-slate-500 hover:text-indigo-600 bg-white p-2 rounded-lg border border-slate-200 transition-colors shadow-sm">
+                        <button onClick={handleActionClick} className="text-slate-500 hover:text-indigo-600 bg-white p-2 rounded-lg border border-slate-200 transition-colors shadow-sm">
                             <Printer size={20} />
                         </button>
                         <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors p-2">
