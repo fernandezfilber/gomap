@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
+import useClientes from '../../hooks/useClientes';
 
 const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
     const [form, setForm] = useState({
@@ -11,11 +12,11 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
     });
 
     const [loading, setLoading] = useState(false);
+    const { clientes, fetchClientes } = useClientes();
 
-    // En un sistema real, aquí habría un autocompletado de clientes.
-    // Por simplicidad, asumiremos que se ingresa el ID o se selecciona de una lista corta.
-    // Lo ideal sería usar useClientes() aquí para tener la lista.
-    
+    useEffect(() => {
+        fetchClientes();
+    }, [fetchClientes]);
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -39,15 +40,18 @@ const FormTicket = ({ onClose, onSuccess, team, crearTicket }) => {
                 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
                     <div>
-                        <label className="block text-slate-500 text-sm font-bold mb-2">Cliente ID * (Prueba)</label>
-                        <input 
-                            type="text" 
+                        <label className="block text-slate-500 text-sm font-bold mb-2">Cliente *</label>
+                        <select 
                             required
                             value={form.clienteId}
                             onChange={e => setForm({...form, clienteId: e.target.value})}
-                            placeholder="Ej. ID del cliente"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                        />
+                        >
+                            <option value="">Seleccionar cliente...</option>
+                            {clientes.map(c => (
+                                <option key={c.id} value={c.id}>{c.nombre} {c.dni ? `(${c.dni})` : ''}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
