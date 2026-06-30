@@ -150,12 +150,7 @@ const FormCliente = ({
                 {isEditMode ? `?? Editar Cliente` : '?? Nuevo Cliente desde Mapa'}
             </h2>
 
-            {/* Info de caja más cercana (solo en creación) */}
-            {loadingCaja && (
-                <div className="mb-6 p-4 bg-slate-800 rounded-xl text-slate-400 text-sm">
-                    Buscando caja más cercana...
-                </div>
-            )}
+
 
             <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
