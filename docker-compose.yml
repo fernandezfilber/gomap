@@ -22,7 +22,10 @@ services:
       - shared-infra
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      args:
+        VITE_PAYPAL_CLIENT_ID: "AfUnH02UYtkQA37IHjbAXahkAscIgR9NGwCQyCR__3ooakMQwXeJJyOU7ehF1WPflTbt_1HNgyNEzlFU"
     container_name: fv_frontend
     labels:
       - traefik.enable=true
