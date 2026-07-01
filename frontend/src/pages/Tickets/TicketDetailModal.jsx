@@ -3,7 +3,7 @@ import { X, Printer, User, Clock, AlertTriangle, Calendar, PenTool, Check, Erase
 import { useReactToPrint } from 'react-to-print';
 import SignatureCanvas from 'react-signature-canvas';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import fvApi from '../../api/fvApi';
 import toast from 'react-hot-toast';
@@ -163,7 +163,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
             toast.success('📄 PDF generado exitosamente');
         } catch (error) {
             console.error('Error generando PDF:', error);
-            toast.error('Error al generar el PDF');
+            toast.error(`Error al generar el PDF: ${error.message || 'Desconocido'}`);
         } finally {
             setGenerandoPdf(false);
         }
