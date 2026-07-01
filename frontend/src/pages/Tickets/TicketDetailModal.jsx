@@ -136,16 +136,29 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
             const element = printRef.current;
             if (!element) return;
 
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
+            // Temporarily disable scroll to capture full content
+            const originalOverflow = element.style.overflow;
+            const originalHeight = element.style.height;
+            element.style.overflow = 'visible';
+            element.style.height = 'max-content';
+
+            // Wait a moment for DOM to update
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            const imgData = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
                 backgroundColor: '#ffffff',
-                filter: (node) => {
-                    if (node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true') {
-                        return false;
-                    }
-                    return true;
-                }
-            });
+                scrollY: -window.scrollY,
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight,
+                ignoreElements: (node) => node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true'
+            }).then(canvas => canvas.toDataURL('image/png'));
+
+            // Restore styles
+            element.style.overflow = originalOverflow;
+            element.style.height = originalHeight;
 
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
