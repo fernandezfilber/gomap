@@ -132,45 +132,153 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
         }
     };
 
-    // Generar PDF
+    // Generar PDF Nativo
     const handleGenerarPDF = async () => {
         setGenerandoPdf(true);
         try {
-            const element = printRef.current;
-            if (!element) return;
-
-            // Temporarily disable scroll to capture full content
-            const originalOverflow = element.style.overflow;
-            const originalHeight = element.style.height;
-            element.style.overflow = 'visible';
-            element.style.height = 'max-content';
-
-            // Wait a moment for DOM to update
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            const imgData = await toPng(element, {
-                pixelRatio: 2,
-                backgroundColor: '#ffffff',
-                width: element.scrollWidth,
-                height: element.scrollHeight,
-                filter: (node) => {
-                    if (node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true') {
-                        return false;
-                    }
-                    return true;
-                }
-            });
-
-            // Restore styles
-            element.style.overflow = originalOverflow;
-            element.style.height = originalHeight;
-
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            // Calcular altura proporcional
-            const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            let y = 20;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            // Titulo
+            pdf.setFontSize(22);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("ORDEN DE TRABAJO", pageWidth / 2, y, { align: "center" });
+            y += 8;
+
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(100);
+            pdf.text(`Ticket #${ticket.codigo} • ${fechaCreacion}`, pageWidth / 2, y, { align: "center" });
+            y += 15;
+
+            // Linea separadora
+            pdf.setDrawColor(200);
+            pdf.line(15, y, pageWidth - 15, y);
+            y += 10;
+
+            // Datos del Cliente y Ticket
+            pdf.setFontSize(12);
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(0);
+            pdf.text("Datos del Cliente", 15, y);
+            pdf.text("Detalles del Ticket", pageWidth / 2, y);
+            y += 8;
+
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica", "normal");
+            pdf.text(`Nombre: ${clienteNombre}`, 15, y);
+            pdf.text(`Tipo: ${ticket.tipo}`, pageWidth / 2, y);
+            y += 6;
+
+            pdf.text(`DNI: ${clienteDni}`, 15, y);
+            pdf.text(`Estado: ${ticket.estado}`, pageWidth / 2, y);
+            y += 6;
+
+            pdf.text(`Dirección: ${clienteDireccion}`, 15, y);
+            pdf.text(`Creado: ${fechaCreacion}`, pageWidth / 2, y);
+            y += 6;
+
+            pdf.text(`Teléfono: ${clienteTelefono}`, 15, y);
+            pdf.text(`Resuelto: ${fechaResolucion}`, pageWidth / 2, y);
+            y += 15;
+
+            // Linea
+            pdf.line(15, y, pageWidth - 15, y);
+            y += 10;
+
+            // Descripcion
+            pdf.setFontSize(12);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Descripción del Trabajo", 15, y);
+            y += 8;
+
+            pdf.setFontSize(10);
+            pdf.setFont("helvetica", "normal");
+            const splitDesc = pdf.splitTextToSize(descripcionLimpia, pageWidth - 30);
+            pdf.text(splitDesc, 15, y);
+            y += (splitDesc.length * 5) + 10;
+
+            // Firmas
+            if (firmaTecnicoData || firmaClienteData) {
+                if (y > 230) {
+                    pdf.addPage();
+                    y = 20;
+                } else {
+                    pdf.line(15, y, pageWidth - 15, y);
+                    y += 10;
+                }
+
+                pdf.setFontSize(12);
+                pdf.setFont("helvetica", "bold");
+                pdf.text("Firmas de Conformidad", pageWidth / 2, y, { align: "center" });
+                y += 15;
+
+                if (firmaTecnicoData) {
+                    pdf.addImage(firmaTecnicoData, 'PNG', 20, y, 60, 30);
+                    pdf.line(20, y + 32, 80, y + 32);
+                    pdf.setFontSize(10);
+                    pdf.text("Firma del Técnico", 50, y + 37, { align: "center" });
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100);
+                    pdf.text(ticket.tecnico?.nombre || '', 50, y + 42, { align: "center" });
+                }
+
+                if (firmaClienteData) {
+                    pdf.addImage(firmaClienteData, 'PNG', pageWidth - 80, y, 60, 30);
+                    pdf.line(pageWidth - 80, y + 32, pageWidth - 20, y + 32);
+                    pdf.setFontSize(10);
+                    pdf.setTextColor(0);
+                    pdf.text("Firma del Cliente", pageWidth - 50, y + 37, { align: "center" });
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100);
+                    pdf.text("Conformidad de trabajo", pageWidth - 50, y + 42, { align: "center" });
+                }
+                
+                y += 50;
+            }
+
+            // Fotos
+            if (fotosData && fotosData.length > 0) {
+                pdf.setFontSize(12);
+                pdf.setFont("helvetica", "bold");
+                pdf.setTextColor(0);
+                
+                if (y > 200) {
+                    pdf.addPage();
+                    y = 20;
+                } else {
+                    pdf.line(15, y, pageWidth - 15, y);
+                    y += 10;
+                }
+                
+                pdf.text("Evidencia Fotográfica", 15, y);
+                y += 10;
+
+                let x = 15;
+                const photoWidth = 85;
+                const photoHeight = 85;
+
+                for (let i = 0; i < fotosData.length; i++) {
+                    if (x + photoWidth > pageWidth) {
+                        x = 15;
+                        y += photoHeight + 10;
+                    }
+                    if (y + photoHeight > 280) {
+                        pdf.addPage();
+                        y = 20;
+                        x = 15;
+                    }
+                    
+                    try {
+                        // Ensure it's a valid image data url (JPEG or PNG usually works)
+                        pdf.addImage(fotosData[i], 'JPEG', x, y, photoWidth, photoHeight);
+                    } catch (e) {
+                        console.error('Error adding image to PDF', e);
+                    }
+                    x += photoWidth + 10;
+                }
+            }
 
             // En móvil: Guardar y compartir; en web: descargar
             if (window.Capacitor && window.Capacitor.isNativePlatform()) {
