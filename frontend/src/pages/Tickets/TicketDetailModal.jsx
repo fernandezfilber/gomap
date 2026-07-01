@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { X, Printer, User, Clock, AlertTriangle, Calendar, PenTool, Check, Eraser, FileText, Share2, Save } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import SignatureCanvas from 'react-signature-canvas';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import fvApi from '../../api/fvApi';
@@ -134,17 +134,21 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
             const element = printRef.current;
             if (!element) return;
 
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
+            const imgData = await toPng(element, {
+                pixelRatio: 2,
                 backgroundColor: '#ffffff',
-                logging: false,
+                filter: (node) => {
+                    if (node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true') {
+                        return false;
+                    }
+                    return true;
+                }
             });
 
-            const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            // Calcular altura proporcional
+            const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
 
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
