@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import fvApi from '../../api/fvApi';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2 } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
@@ -193,7 +193,20 @@ const CroquisEditor = () => {
             <div className="flex-1 relative">
                 <MapContainer center={[-11.95, -76.72]} zoom={15} maxZoom={22} className="h-full w-full" zoomControl={false}>
                     <ZoomControl position="topright" />
-                    <TileLayer url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
+                    <LayersControl position="topright">
+                        <LayersControl.BaseLayer checked name="Satélite (Google)">
+                            <TileLayer url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
+                        </LayersControl.BaseLayer>
+                        <LayersControl.BaseLayer name="Calles (Google)">
+                            <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
+                        </LayersControl.BaseLayer>
+                        <LayersControl.BaseLayer name="Relieve (Google)">
+                            <TileLayer url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
+                        </LayersControl.BaseLayer>
+                        <LayersControl.BaseLayer name="OpenStreetMap">
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OSM' maxZoom={19} />
+                        </LayersControl.BaseLayer>
+                    </LayersControl>
                     
                     {nodos.map(n => {
                         const icon = n.type === 'mufa' ? iconMufa : createCustomIcon('📦', 'emerald', n.label);
