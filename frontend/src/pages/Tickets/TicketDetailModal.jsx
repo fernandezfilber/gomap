@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { X, Printer, User, Clock, AlertTriangle, Calendar, PenTool, Check, Eraser, FileText, Share2, Save } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import SignatureCanvas from 'react-signature-canvas';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
