@@ -286,12 +286,6 @@ const Sidebar = ({ isOpen, onClose }) => {
                                     </button>
                                 </Link>
 
-                                <Link to="/dashboard/tickets" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
-                                    <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
-                                        <ClipboardList size={18} className="text-emerald-400"/> Tickets
-                                    </button>
-                                </Link>
-
                                 <Link to="/estadisticas" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
                                     <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
                                         <BarChart3 size={18} className="text-slate-300"/> Inteligencia
@@ -317,6 +311,14 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 <PenTool size={18} className="text-violet-400"/> Bloc Notas
                             </button>
                         </Link>
+
+                        {['ADMIN', 'SUPERADMIN', 'TECNICO'].includes(JSON.parse(localStorage.getItem('user'))?.rol) && (
+                            <Link to="/dashboard/tickets" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                                <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                    <ClipboardList size={18} className="text-emerald-400"/> Tickets
+                                </button>
+                            </Link>
+                        )}
                     </div>
 
                     <div className="space-y-2 pt-6 border-t border-slate-50">
