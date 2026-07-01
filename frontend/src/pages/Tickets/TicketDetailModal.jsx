@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { X, Printer, User, Clock, AlertTriangle, Calendar, PenTool, Check, Eraser, FileText, Share2, Save } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import SignatureCanvas from 'react-signature-canvas';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -148,16 +148,18 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
             // Wait a moment for DOM to update
             await new Promise(resolve => setTimeout(resolve, 200));
 
-            const imgData = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
+            const imgData = await toPng(element, {
+                pixelRatio: 2,
                 backgroundColor: '#ffffff',
-                scrollY: -window.scrollY,
-                windowWidth: element.scrollWidth,
-                windowHeight: element.scrollHeight,
-                ignoreElements: (node) => node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true'
-            }).then(canvas => canvas.toDataURL('image/png'));
+                width: element.scrollWidth,
+                height: element.scrollHeight,
+                filter: (node) => {
+                    if (node.getAttribute && node.getAttribute('data-html2canvas-ignore') === 'true') {
+                        return false;
+                    }
+                    return true;
+                }
+            });
 
             // Restore styles
             element.style.overflow = originalOverflow;
