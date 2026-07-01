@@ -39,22 +39,6 @@ services:
     networks:
       - shared-infra
 
-  mobile:
-    build:
-      context: ./mobile
-      args:
-        VITE_API_URL: https://gomap.digital
-    container_name: fv_mobile
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=shared-infra
-      - traefik.http.routers.mobile.rule=Host(`m.gomap.digital`)
-      - traefik.http.routers.mobile.entrypoints=websecure
-      - traefik.http.routers.mobile.tls.certresolver=myresolver
-      - traefik.http.services.mobile.loadbalancer.server.port=80
-    restart: unless-stopped
-    networks:
-      - shared-infra
 
 networks:
   shared-infra:
