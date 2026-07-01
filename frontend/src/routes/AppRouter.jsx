@@ -35,6 +35,12 @@ const PrivateRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
     const user = getStoredUser();
     const token = getStoredToken();
+    return (token && (user?.rol === 'ADMIN' || user?.rol === 'SUPERADMIN' || user?.rol === 'TECNICO')) ? children : <Navigate to="/dashboard" />;
+};
+
+const InventoryRoute = ({ children }) => {
+    const user = getStoredUser();
+    const token = getStoredToken();
     return (token && (user?.rol === 'ADMIN' || user?.rol === 'SUPERADMIN')) ? children : <Navigate to="/dashboard" />;
 };
 
@@ -61,7 +67,7 @@ const AppRouter = () => {
             <Route path="/dashboard/tickets" element={<PrivateRoute><TicketsDashboard /></PrivateRoute>} />
             
             <Route path="/dashboard/usuarios" element={<AdminRoute><UsuariosAdmin /></AdminRoute>} />
-            <Route path="/dashboard/inventario" element={<AdminRoute><InventarioDashboard /></AdminRoute>} />
+            <Route path="/dashboard/inventario" element={<InventoryRoute><InventarioDashboard /></InventoryRoute>} />
             <Route path="/dashboard/clientes" element={<PrivateRoute><ClientesDashboard /></PrivateRoute>} />
             <Route path="/admin" element={<SuperAdminRoute><AdminPanel /></SuperAdminRoute>} />
             

@@ -48,12 +48,23 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
-// ====================== VERIFICAR ROL ADMIN O SUPERADMIN ======================
+// ====================== VERIFICAR ROL ADMIN O SUPERADMIN O TECNICO ======================
 const isAdmin = (req, res, next) => {
+    if (!req.user || (req.user.rol !== 'ADMIN' && req.user.rol !== 'SUPERADMIN' && req.user.rol !== 'TECNICO')) {
+        return res.status(403).json({
+            success: false,
+            message: "Acceso denegado: Se requiere rol de Administrador o Técnico"
+        });
+    }
+    next();
+};
+
+// ====================== VERIFICAR ESTRICTO ADMIN O SUPERADMIN ======================
+const isStrictAdmin = (req, res, next) => {
     if (!req.user || (req.user.rol !== 'ADMIN' && req.user.rol !== 'SUPERADMIN')) {
         return res.status(403).json({
             success: false,
-            message: "Acceso denegado: Se requiere rol de Administrador o SuperAdmin"
+            message: "Acceso denegado: Se requiere rol de Administrador"
         });
     }
     next();
@@ -152,6 +163,7 @@ const protect = (req, res, next) => {
 module.exports = {
     verifyToken,
     isAdmin,
+    isStrictAdmin,
     isSuperAdmin,
     isTecnicoOrHigher,
     checkTenant,

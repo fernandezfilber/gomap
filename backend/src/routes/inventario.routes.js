@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const inventarioController = require('../controllers/inventario.controller');
-const { protect, isAdmin } = require('../Middleware/auth.middleware');
+const { protect, isStrictAdmin } = require('../middleware/auth.middleware');
 
 // Todas las rutas de inventario requieren autenticación y rol de ADMIN/SUPERADMIN
-router.use(protect, isAdmin);
+router.use(protect, isStrictAdmin);
 
 router.get('/items', inventarioController.getItems);
 router.post('/items', inventarioController.createItem);
