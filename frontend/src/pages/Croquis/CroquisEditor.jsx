@@ -7,16 +7,19 @@ import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2 } from 'luci
 import useAuth from '../../hooks/useAuth';
 
 // Iconos Personalizados para el Borrador
-const createCustomIcon = (emoji, color) => L.divIcon({
-    html: `<div class="bg-white border-2 border-${color}-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">${emoji}</div>`,
+const createCustomIcon = (emoji, color, label) => L.divIcon({
+    html: `<div style="display:flex;flex-direction:column;align-items:center;">
+        <div class="bg-white border-2 border-${color}-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">${emoji}</div>
+        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:9px;font-weight:bold;padding:1px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
+    </div>`,
     className: 'custom-div-icon',
-    iconSize: [32, 32],
+    iconSize: [32, 48],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16]
 });
 
-const iconMufa = createCustomIcon('🌀', 'orange');
-const iconCaja = createCustomIcon('📦', 'emerald');
+const iconMufa = createCustomIcon('🌀', 'orange', null);
+const iconCajaDefault = createCustomIcon('📦', 'emerald', null);
 
 const CroquisEditor = () => {
     const { id } = useParams();
@@ -100,7 +103,8 @@ const CroquisEditor = () => {
                 if (modo === 'add_mufa') {
                     setNodos(prev => [...prev, { id: `mufa_${Date.now()}`, type: 'mufa', lat: e.latlng.lat, lng: e.latlng.lng, label: 'Nueva Mufa' }]);
                 } else if (modo === 'add_caja') {
-                    setNodos(prev => [...prev, { id: `caja_${Date.now()}`, type: 'caja', lat: e.latlng.lat, lng: e.latlng.lng, label: 'Nueva Caja' }]);
+                    const nombreCaja = prompt('Nombre de la caja:') || 'Nueva Caja';
+                    setNodos(prev => [...prev, { id: `caja_${Date.now()}`, type: 'caja', lat: e.latlng.lat, lng: e.latlng.lng, label: nombreCaja }]);
                 } else if (modo === 'add_tramo') {
                     setPuntosTemporales(prev => [...prev, [e.latlng.lat, e.latlng.lng]]);
                 }
@@ -191,21 +195,34 @@ const CroquisEditor = () => {
                     <ZoomControl position="topright" />
                     <TileLayer url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
                     
-                    {nodos.map(n => (
+                    {nodos.map(n => {
+                        const icon = n.type === 'mufa' ? iconMufa : createCustomIcon('📦', 'emerald', n.label);
+                        return (
                         <Marker 
                             key={n.id} 
                             position={[n.lat, n.lng]} 
-                            icon={n.type === 'mufa' ? iconMufa : iconCaja}
+                            icon={icon}
                             eventHandlers={{ click: () => handleNodoClick(n.id, n.lat, n.lng) }}
                         >
                             <Popup>
-                                <div className="text-center p-2 min-w-[150px]">
-                                    <p className="font-bold text-slate-800 mb-2">{n.label}</p>
+                                <div className="text-center p-2 min-w-[180px]">
+                                    <input 
+                                        type="text" 
+                                        defaultValue={n.label}
+                                        onBlur={(e) => {
+                                            const newLabel = e.target.value.trim() || n.label;
+                                            setNodos(prev => prev.map(nd => nd.id === n.id ? { ...nd, label: newLabel } : nd));
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                        className="w-full text-center font-bold text-slate-800 mb-2 border-b border-slate-300 focus:border-violet-500 focus:outline-none py-1 text-sm"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mb-2 uppercase">Toca para editar nombre</p>
                                     <button onClick={() => eliminarNodo(n.id)} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white w-full py-2 rounded-lg text-xs font-bold transition-colors">Eliminar Nodo</button>
                                 </div>
                             </Popup>
                         </Marker>
-                    ))}
+                        );
+                    })}
 
                     {tramos.map(t => (
                         <Polyline key={t.id} positions={t.path} pathOptions={{ color: t.color, weight: 6, opacity: 0.9 }}>
