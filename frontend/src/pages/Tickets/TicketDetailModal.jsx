@@ -52,6 +52,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
     };
 
     let clienteNombre = ticket.cliente?.nombre || 'Desconocido';
+    let clienteDni = ticket.cliente?.dni || 'No registrado';
     let clienteDireccion = ticket.cliente?.direccion || 'No registrada';
     let clienteTelefono = ticket.cliente?.telefono || 'No registrado';
     let descripcionLimpia = ticket.descripcion || '';
@@ -59,6 +60,8 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
     if (ticket.tipo === 'NUEVA_INSTALACION') {
         const nom = extraerDato(ticket.descripcion, 'Nombre');
         if (nom) clienteNombre = `${nom} (NUEVO)`;
+        const dni = extraerDato(ticket.descripcion, 'DNI');
+        if (dni) clienteDni = dni;
         const dir = extraerDato(ticket.descripcion, 'Dir');
         if (dir) clienteDireccion = dir;
         const tel = extraerDato(ticket.descripcion, 'Tel');
@@ -240,6 +243,7 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
                                 <User size={14}/> Datos del Cliente
                             </h3>
                             <p className="text-xs sm:text-sm text-slate-600 mb-1"><strong>Nombre:</strong> {clienteNombre}</p>
+                            <p className="text-xs sm:text-sm text-slate-600 mb-1"><strong>DNI:</strong> {clienteDni}</p>
                             <p className="text-xs sm:text-sm text-slate-600 mb-1"><strong>Dirección:</strong> {clienteDireccion}</p>
                             <p className="text-xs sm:text-sm text-slate-600"><strong>Teléfono:</strong> {clienteTelefono}</p>
                         </div>
