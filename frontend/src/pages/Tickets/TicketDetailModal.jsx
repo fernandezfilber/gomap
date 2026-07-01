@@ -5,6 +5,8 @@ import SignatureCanvas from 'react-signature-canvas';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import fvApi from '../../api/fvApi';
 import toast from 'react-hot-toast';
 import { Camera as CameraIcon } from 'lucide-react';
@@ -152,13 +154,25 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
 
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-            // En móvil: compartir; en web: descargar
-            if (window.Capacitor && window.Capacitor.isNativePlatform() && navigator.share) {
-                const pdfBlob = pdf.output('blob');
-                const file = new File([pdfBlob], `Ticket_${ticket.codigo}.pdf`, { type: 'application/pdf' });
-                await navigator.share({
+            // En móvil: Guardar y compartir; en web: descargar
+            if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                // Obtener base64 string sin el data:application/pdf;base64,
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                const fileName = `Ticket_${ticket.codigo}.pdf`;
+                
+                // Guardar en cache del dispositivo
+                const savedFile = await Filesystem.writeFile({
+                    path: fileName,
+                    data: pdfBase64,
+                    directory: Directory.Cache
+                });
+
+                // Abrir menú de compartir nativo
+                await Share.share({
                     title: `Orden de Trabajo - Ticket #${ticket.codigo}`,
-                    files: [file]
+                    text: 'Adjunto el ticket de trabajo',
+                    url: savedFile.uri,
+                    dialogTitle: 'Compartir Ticket PDF'
                 });
             } else {
                 pdf.save(`Ticket_${ticket.codigo}.pdf`);

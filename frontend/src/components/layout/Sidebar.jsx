@@ -130,6 +130,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 w-72 bg-white h-screen flex flex-col text-slate-500 border-r border-slate-100 
                 shadow-2xl z-[1001]
                 transition-transform duration-300 ease-in-out
+                pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
                 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
                 

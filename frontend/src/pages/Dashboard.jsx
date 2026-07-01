@@ -38,11 +38,13 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="h-screen w-screen bg-slate-950 overflow-hidden flex flex-col">
+        <div className="h-[100dvh] w-screen bg-slate-950 overflow-hidden flex flex-col">
             
             {/* Navbar Superior (Móvil) */}
-            <div className="lg:hidden bg-slate-900/95 backdrop-blur-md border-b border-slate-800 p-4 flex justify-between items-center z-[1002]">
-                <GoMapLogo className="h-7 w-7" textClassName="text-lg" />
+            <div className="lg:hidden bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex justify-between items-center z-[1002] pt-[env(safe-area-inset-top)]">
+                <div className="flex items-center gap-2">
+                    <GoMapLogo className="h-7 w-7" textClassName="text-lg" />
+                </div>
                 
                 <div className="flex items-center gap-2">
                     <button 
