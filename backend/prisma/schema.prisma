@@ -66,6 +66,7 @@ model Usuario {
   notasAveria      AveriaNota[]
   croquisCreados   Croquis[] @relation("CroquisCreados")
   movimientosInventario InventarioMovimiento[]
+  ubicaciones          UbicacionTecnico[] @relation("ubicacionesTecnico")
 
   @@index([empresaId])
   @@index([email])
@@ -375,10 +376,30 @@ model Averia {
   empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   notas         AveriaNota[]
 
+  firmaTecnico  String?  @db.LongText
+  firmaCliente  String?  @db.LongText
+  firmadoEn     DateTime?
+  fotos         Json?
+
   @@index([empresaId])
   @@index([estado])
   @@index([prioridad])
   @@map("averias")
+}
+
+model UbicacionTecnico {
+  id         String   @id @default(uuid())
+  usuarioId  String
+  latitud    Decimal
+  longitud   Decimal
+  precision  Float?
+  creadoEn   DateTime @default(now())
+
+  usuario    Usuario  @relation("ubicacionesTecnico", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([creadoEn])
+  @@map("ubicaciones_tecnico")
 }
 
 model AveriaNota {

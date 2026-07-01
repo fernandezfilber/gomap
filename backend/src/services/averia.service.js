@@ -133,3 +133,70 @@ exports.buscarInstalacionPorDni = async (dni, empresaId) => {
         notas: averia.descripcion // por si acaso
     };
 };
+
+exports.guardarFirmas = async (id, empresaId, data) => {
+    const { firmaTecnico, firmaCliente } = data;
+
+    const averia = await prisma.averia.findUnique({ where: { id } });
+    if (!averia || averia.empresaId !== empresaId) {
+        throw { status: 403, message: 'No tienes acceso a esta avería' };
+    }
+
+    return prisma.averia.update({
+        where: { id },
+        data: {
+            firmaTecnico,
+            firmaCliente,
+            firmadoEn: new Date()
+        }
+    });
+};
+
+exports.guardarFotos = async (id, empresaId, fotos) => {
+    const averia = await prisma.averia.findUnique({ where: { id } });
+    if (!averia || averia.empresaId !== empresaId) {
+        throw { status: 403, message: 'No tienes acceso a esta avería' };
+    }
+
+    // Merge existing photos with new ones
+    const fotosExistentes = averia.fotos || [];
+    const todasLasFotos = [...fotosExistentes, ...fotos];
+
+    return prisma.averia.update({
+        where: { id },
+        data: { fotos: todasLasFotos }
+    });
+};
+
+// GPS Tracking
+exports.guardarUbicacion = async (usuarioId, data) => {
+    const { latitud, longitud, precision } = data;
+    return prisma.ubicacionTecnico.create({
+        data: { usuarioId, latitud, longitud, precision }
+    });
+};
+
+exports.obtenerUbicacionesTecnicos = async (empresaId) => {
+    // Get latest location per technician
+    const tecnicos = await prisma.usuario.findMany({
+        where: { empresaId, rol: 'TECNICO', activo: true },
+        select: {
+            id: true, nombre: true,
+            ubicaciones: {
+                orderBy: { creadoEn: 'desc' },
+                take: 1
+            }
+        }
+    });
+
+    return tecnicos
+        .filter(t => t.ubicaciones.length > 0)
+        .map(t => ({
+            id: t.id,
+            nombre: t.nombre,
+            latitud: t.ubicaciones[0].latitud,
+            longitud: t.ubicaciones[0].longitud,
+            precision: t.ubicaciones[0].precision,
+            ultimaActualizacion: t.ubicaciones[0].creadoEn
+        }));
+};

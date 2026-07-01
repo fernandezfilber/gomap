@@ -75,3 +75,54 @@ exports.buscarInstalacionPorDni = async (req, res) => {
         res.status(error.status || 500).json({ success: false, message: error.message || 'Error buscando instalación' });
     }
 };
+
+// GUARDAR FIRMAS DIGITALES
+exports.guardarFirmas = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = req.user?.empresaId;
+        const resultado = await averiaService.guardarFirmas(id, empresaId, req.body);
+        res.json({ success: true, message: 'Firmas guardadas correctamente', data: resultado });
+    } catch (error) {
+        console.error('❌ Error guardando firmas:', error);
+        res.status(error.status || 500).json({ success: false, message: error.message || 'Error al guardar firmas' });
+    }
+};
+
+// GUARDAR FOTOS DEL TICKET
+exports.guardarFotos = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = req.user?.empresaId;
+        const { fotos } = req.body; // Array of base64 images
+        const resultado = await averiaService.guardarFotos(id, empresaId, fotos);
+        res.json({ success: true, message: 'Fotos guardadas', data: resultado });
+    } catch (error) {
+        console.error('❌ Error guardando fotos:', error);
+        res.status(error.status || 500).json({ success: false, message: error.message || 'Error al guardar fotos' });
+    }
+};
+
+// GPS: GUARDAR UBICACIÓN DEL TÉCNICO
+exports.guardarUbicacion = async (req, res) => {
+    try {
+        const usuarioId = req.user?.id;
+        const resultado = await averiaService.guardarUbicacion(usuarioId, req.body);
+        res.json({ success: true, data: resultado });
+    } catch (error) {
+        console.error('❌ Error guardando ubicación:', error);
+        res.status(500).json({ success: false, message: 'Error al guardar ubicación' });
+    }
+};
+
+// GPS: OBTENER UBICACIONES DE TÉCNICOS
+exports.obtenerUbicaciones = async (req, res) => {
+    try {
+        const empresaId = req.user?.empresaId;
+        const ubicaciones = await averiaService.obtenerUbicacionesTecnicos(empresaId);
+        res.json({ success: true, ubicaciones });
+    } catch (error) {
+        console.error('❌ Error obteniendo ubicaciones:', error);
+        res.status(500).json({ success: false, message: 'Error al obtener ubicaciones' });
+    }
+};

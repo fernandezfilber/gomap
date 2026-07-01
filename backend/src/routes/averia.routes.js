@@ -12,5 +12,9 @@ router.put('/:id/estado', averiaController.actualizarEstadoAveria);
 router.get('/buscar-instalacion/:dni', averiaController.buscarInstalacionPorDni);
 router.post('/:id/notas', averiaController.agregarNota);
 router.get('/:id/notas', averiaController.getNotas);
+router.put('/:id/firmas', averiaController.guardarFirmas);
+router.put('/:id/fotos', averiaController.guardarFotos);
+router.post('/ubicacion', averiaController.guardarUbicacion);
+router.get('/ubicaciones', averiaController.obtenerUbicaciones);
 
 module.exports = router;

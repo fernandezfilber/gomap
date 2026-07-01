@@ -17,12 +17,35 @@ function App() {
           CapacitorApp.exitApp();
         }
       });
-    }
-    return () => {
-      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      
+      // GPS Tracker (cada 1 minuto)
+      const rastrearGPS = async () => {
+        try {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          const pos = await Geolocation.getCurrentPosition();
+          
+          // Import fvApi on the fly to avoid circular deps in App
+          const { default: fvApi } = await import('./api/fvApi');
+          
+          await fvApi.post('/averias/ubicacion', {
+            latitud: pos.coords.latitude,
+            longitud: pos.coords.longitude,
+            precision: pos.coords.accuracy
+          });
+        } catch (e) {
+          console.log('Error de GPS:', e);
+        }
+      };
+
+      // Rastrear inmediatamente y luego cada minuto
+      rastrearGPS();
+      const interval = setInterval(rastrearGPS, 60000);
+
+      return () => {
         CapacitorApp.removeAllListeners();
-      }
-    };
+        clearInterval(interval);
+      };
+    }
   }, []);
 
   return (
