@@ -11,48 +11,48 @@ import clienteImg from '../assets/icons/clasificacion.png';
 
 export const iconoPoste = new L.Icon({
     iconUrl: posteImg,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
+    iconSize: [16, 16],
+    iconAnchor: [8, 16],
+    popupAnchor: [0, -16],
 });
 
 export const iconoPosteOcupado = new L.Icon({
     iconUrl: posteOcupadoImg,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
+    iconSize: [16, 16],
+    iconAnchor: [8, 16],
+    popupAnchor: [0, -16],
 });
 
 export const iconoMufa = new L.Icon({
     iconUrl: mufaImg,
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30],
+    iconSize: [15, 15],
+    iconAnchor: [7, 15],
+    popupAnchor: [0, -15],
 });
 
 export const iconoCaja = L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div class="bg-white border-2 border-emerald-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">📦</div>
+        <div class="bg-white border-[1px] border-emerald-500 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm">📦</div>
     </div>`,
     className: 'custom-div-icon',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
 });
 
 export const iconoCliente = new L.Icon({
     iconUrl: clienteImg,
-    iconSize: [28, 36],
-    iconAnchor: [14, 36],
-    popupAnchor: [0, -36],
+    iconSize: [14, 18],
+    iconAnchor: [7, 18],
+    popupAnchor: [0, -18],
 });
 
 // Icono temporal (opcional)
 export const iconoPosteTemporal = new L.Icon({
-    iconUrl: posteImg, // o crea uno especial
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -38],
+    iconUrl: posteImg,
+    iconSize: [19, 19],
+    iconAnchor: [9, 19],
+    popupAnchor: [0, -19],
 });
 
 export default {
