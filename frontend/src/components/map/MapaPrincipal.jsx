@@ -1,6 +1,6 @@
 // src/components/Map/MapaPrincipal.jsx
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl, LayerGroup, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl, LayerGroup, ZoomControl, Tooltip } from 'react-leaflet';
 import { X, Trash2, Ruler, Navigation } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet-polylineoffset';
@@ -35,6 +35,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
     const [colorTramoTemporal, setColorTramoTemporal] = useState('#ef4444');
     const [modal, setModal] = useState({ show: false, type: null, data: null });
     const [puntosDistancia, setPuntosDistancia] = useState([]);
+    const [miUbicacion, setMiUbicacion] = useState(null);
 
     const { proyectoSeleccionado } = useProyectos();
     const { postes, crearPoste, eliminarPoste } = usePostes(proyectoSeleccionado?.id);
@@ -206,7 +207,9 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
     const handleMiUbicacion = () => {
         if (!mapRef.current) return;
         navigator.geolocation.getCurrentPosition((pos) => {
-            mapRef.current.flyTo([pos.coords.latitude, pos.coords.longitude], 18);
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setMiUbicacion(loc);
+            mapRef.current.flyTo([loc.lat, loc.lng], 18);
         }, (err) => alert("No se pudo obtener la ubicación"));
     };
 
@@ -322,6 +325,9 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
                         <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={iconoCaja} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
+                            <Tooltip direction="bottom" offset={[0, 15]} opacity={0.9} permanent className="font-bold text-emerald-600 bg-white border border-emerald-400 shadow-md !p-1 !text-[10px]">
+                                {c.codigo}
+                            </Tooltip>
                             <Popup>
                                 <div className="text-center p-3">
                                     <p className="font-bold text-emerald-400 text-xl mb-1">📦 Caja: {c.codigo}</p>
@@ -376,6 +382,8 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                 </LayersControl>
                 <MapEvents />
                 {puntoVerificado && (<Marker position={[puntoVerificado.lat, puntoVerificado.lng]} icon={L.divIcon({ html: `<div class="no-print animate-bounce bg-[#00E5FF] p-2 rounded-full border-2 border-white shadow-lg shadow-[#00E5FF]/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>`, className: 'custom-div-icon', iconSize: [40, 40], iconAnchor: [20, 40] })} />)}
+                {miUbicacion && (<Marker position={[miUbicacion.lat, miUbicacion.lng]} icon={L.divIcon({ html: `<div class="no-print animate-pulse bg-blue-500 p-2 rounded-full border-2 border-white shadow-lg shadow-blue-500/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`, className: 'custom-div-icon', iconSize: [40, 40], iconAnchor: [20, 40] })}><Popup>Tu ubicación actual</Popup></Marker>)}
+
                 {puntosTemporales.length > 1 && <Polyline positions={puntosTemporales} pathOptions={{ color: colorTramoTemporal, weight: 6, opacity: 0.85, dashArray: '8, 6' }} />}
                 {medirDistancia && puntosDistancia.length > 1 && <Polyline positions={puntosDistancia} pathOptions={{ color: '#ec4899', weight: 5, dashArray: '10, 5' }} />}
             </MapContainer>

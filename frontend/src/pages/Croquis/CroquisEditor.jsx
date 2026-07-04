@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import fvApi from '../../api/fvApi';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
-import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
 // Iconos Personalizados para el Borrador
@@ -40,6 +40,10 @@ const CroquisEditor = () => {
     
     // Loading
     const [saving, setSaving] = useState(false);
+    
+    // Ubicacion
+    const [miUbicacion, setMiUbicacion] = useState(null);
+    const mapRef = useRef(null);
 
     useEffect(() => {
         if (id && id !== 'nuevo') {
@@ -47,7 +51,9 @@ const CroquisEditor = () => {
         } else {
             // Autocentrar si es nuevo usando ubicación
             navigator.geolocation.getCurrentPosition(pos => {
-                // center will be handled in MapEvents
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setMiUbicacion(loc);
+                if (mapRef.current) mapRef.current.flyTo([loc.lat, loc.lng], 18);
             });
         }
     }, [id]);
@@ -97,8 +103,17 @@ const CroquisEditor = () => {
         }
     };
 
+    const handleMiUbicacion = () => {
+        if (!mapRef.current) return;
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setMiUbicacion(loc);
+            mapRef.current.flyTo([loc.lat, loc.lng], 18);
+        }, (err) => alert("No se pudo obtener la ubicación"));
+    };
+
     const MapEvents = () => {
-        useMapEvents({
+        const map = useMapEvents({
             click(e) {
                 if (modo === 'add_mufa') {
                     setNodos(prev => [...prev, { id: `mufa_${Date.now()}`, type: 'mufa', lat: e.latlng.lat, lng: e.latlng.lng, label: 'Nueva Mufa' }]);
@@ -110,6 +125,7 @@ const CroquisEditor = () => {
                 }
             }
         });
+        mapRef.current = map;
         return null;
     };
 
@@ -191,6 +207,10 @@ const CroquisEditor = () => {
 
             {/* Main Area */}
             <div className="flex-1 relative">
+                <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-slate-900/80 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-violet-400 border border-slate-700/50" title="Mi Ubicación">
+                    <Navigation size={20} fill="currentColor" />
+                </button>
+
                 <MapContainer center={[-11.95, -76.72]} zoom={15} maxZoom={22} className="h-full w-full" zoomControl={false}>
                     <ZoomControl position="topright" />
                     <LayersControl position="topright">
@@ -250,6 +270,8 @@ const CroquisEditor = () => {
 
                     {/* Tramo Temporal */}
                     {puntosTemporales.length > 0 && <Polyline positions={puntosTemporales} pathOptions={{ color: '#ec4899', weight: 6, dashArray: '10, 8' }} />}
+
+                    {miUbicacion && (<Marker position={[miUbicacion.lat, miUbicacion.lng]} icon={L.divIcon({ html: `<div class="no-print animate-pulse bg-violet-500 p-2 rounded-full border-2 border-white shadow-lg shadow-violet-500/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`, className: 'custom-div-icon', iconSize: [40, 40], iconAnchor: [20, 40] })}><Popup>Tu ubicación actual</Popup></Marker>)}
 
                     <MapEvents />
                 </MapContainer>
