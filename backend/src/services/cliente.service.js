@@ -112,6 +112,12 @@ exports.createCliente = async (empresaId, usuarioId, data) => {
                     clienteId: nuevoCliente.id
                 }
             });
+            
+            // Link materials used on this ticket to the newly created client
+            await tx.inventarioMovimiento.updateMany({
+                where: { averiaId: ticketId },
+                data: { clienteId: nuevoCliente.id }
+            });
         }
 
         return nuevoCliente;
@@ -224,9 +230,14 @@ exports.getHistorial = async (id, empresaId) => {
         throw { status: 403, message: "Cliente no encontrado o sin acceso" };
     }
 
-    // Instalación: buscar movimientos de inventario asociados al cliente
+    // Instalación: buscar movimientos de inventario asociados al cliente directo o a una avería del cliente
     const movimientos = await prisma.inventarioMovimiento.findMany({
-        where: { clienteId: id },
+        where: { 
+            OR: [
+                { clienteId: id },
+                { averia: { clienteId: id } }
+            ]
+        },
         include: {
             usuario: { select: { nombre: true, rol: true } },
             item: { select: { nombre: true, tipo: true } }
