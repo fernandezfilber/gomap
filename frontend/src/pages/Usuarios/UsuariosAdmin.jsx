@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import fvApi from '../../api/fvApi';
-import { Users, UserPlus, Mail, Shield, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Users, UserPlus, Mail, Shield, CheckCircle, XCircle, ArrowLeft, User as UserIcon } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -158,6 +158,7 @@ export default function UsuariosAdmin() {
               <th className="p-4 text-sm font-semibold text-gray-600">Rol</th>
               <th className="p-4 text-sm font-semibold text-gray-600">Estado</th>
               <th className="p-4 text-sm font-semibold text-gray-600">Último Acceso</th>
+              <th className="p-4 text-sm font-semibold text-gray-600 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -197,6 +198,14 @@ export default function UsuariosAdmin() {
                 </td>
                 <td className="p-4 text-sm text-gray-500">
                   {member.ultimoLogin ? new Date(member.ultimoLogin).toLocaleDateString() : 'Nunca'}
+                </td>
+                <td className="p-4 text-center">
+                  <button 
+                    onClick={() => navigate(`/dashboard/perfil/${member.id}`)}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center gap-1 text-sm font-medium"
+                  >
+                    <UserIcon size={16}/> Perfil
+                  </button>
                 </td>
               </tr>
             ))}

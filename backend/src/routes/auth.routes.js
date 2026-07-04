@@ -12,6 +12,9 @@ const { verifyToken, isAdmin } = require('../Middleware/auth.middleware');
 // Ruta para registrar técnico (solo Admin)
 router.post('/register-tecnico', verifyToken, isAdmin, authController.registerTecnico);
 router.get('/team', verifyToken, isAdmin, authController.getTeam);
+router.get('/perfil', verifyToken, authController.getPerfilTecnico);
+router.get('/perfil/:id', verifyToken, authController.getPerfilTecnico);
+router.post('/perfil/foto', verifyToken, authController.actualizarFotoPerfil);
 
 // Opcional: Ruta para crear el primer usuario (puedes borrarla luego de usarla)
 router.post('/register', authController.register); 

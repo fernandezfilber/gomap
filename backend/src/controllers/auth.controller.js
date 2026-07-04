@@ -164,3 +164,80 @@ exports.resetPassword = async (req, res) => {
         res.status(error.status || 500).json({ success: false, message: error.message || "Error al cambiar la contraseña." });
     }
 };
+
+exports.getPerfilTecnico = async (req, res) => {
+    try {
+        const id = req.params.id || req.user.id;
+        
+        // Verificar si el usuario que solicita es el mismo, o es admin de su empresa
+        const requester = await prisma.usuario.findUnique({ where: { id: req.user.id } });
+        const target = await prisma.usuario.findUnique({ where: { id } });
+
+        if (!target) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        
+        // Restricción de seguridad
+        if (id !== req.user.id && requester.rol !== 'ADMIN' && requester.rol !== 'SUPERADMIN') {
+            return res.status(403).json({ success: false, message: 'No autorizado' });
+        }
+        if (target.empresaId !== requester.empresaId && requester.rol !== 'SUPERADMIN') {
+            return res.status(403).json({ success: false, message: 'No pertenece a tu empresa' });
+        }
+
+        // Obtener historial
+        const ticketsResueltos = await prisma.averia.findMany({
+            where: { tecnicoId: id, estado: 'RESUELTA' },
+            orderBy: { resueltoEn: 'desc' },
+            take: 50,
+            include: { cliente: { select: { nombre: true, direccion: true } } }
+        });
+
+        const materialesUsados = await prisma.inventarioMovimiento.findMany({
+            where: { usuarioId: id, tipo: 'CONSUMO_INSTALACION' },
+            orderBy: { fecha: 'desc' },
+            take: 50,
+            include: { 
+                item: { select: { nombre: true, codigo: true, unidadMedida: true } },
+                cliente: { select: { nombre: true } }
+            }
+        });
+
+        res.json({
+            success: true,
+            perfil: {
+                id: target.id,
+                nombre: target.nombre,
+                email: target.email,
+                rol: target.rol,
+                fotoPerfil: target.fotoPerfil,
+                fechaRegistro: target.creadoEn,
+                historial: {
+                    tickets: ticketsResueltos,
+                    materiales: materialesUsados
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error al obtener perfil:', error);
+        res.status(500).json({ success: false, message: 'Error interno' });
+    }
+};
+
+exports.actualizarFotoPerfil = async (req, res) => {
+    try {
+        const id = req.user.id;
+        const { fotoBase64 } = req.body;
+
+        if (!fotoBase64) return res.status(400).json({ success: false, message: 'Falta la imagen' });
+
+        await prisma.usuario.update({
+            where: { id },
+            data: { fotoPerfil: fotoBase64 }
+        });
+
+        res.json({ success: true, message: 'Foto actualizada' });
+    } catch (error) {
+        console.error('Error al actualizar foto:', error);
+        res.status(500).json({ success: false, message: 'Error interno' });
+    }
+};

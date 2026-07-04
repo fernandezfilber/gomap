@@ -9,7 +9,8 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import fvApi from '../../api/fvApi';
 import toast from 'react-hot-toast';
-import { Camera as CameraIcon } from 'lucide-react';
+import { Camera as CameraIcon, Package } from 'lucide-react';
+import TicketMateriales from './TicketMateriales';
 
 const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado }) => {
     const printRef = useRef();
@@ -405,6 +406,12 @@ const TicketDetailModal = ({ ticket, onClose, onUpdate, team, updateTicketEstado
                             </select>
                         </div>
                     </div>
+
+                    {/* Sección de Registro de Materiales (Visible si es instalación o si el admin quiere añadir) */}
+                    <TicketMateriales 
+                        ticketId={ticket.id} 
+                        clienteId={ticket.clienteId}
+                    />
 
                     {/* Sección de Firmas Digitales */}
                     {showSignatures && (

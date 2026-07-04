@@ -50,6 +50,7 @@ model Usuario {
   password      String
   rol           Rol      @default(TECNICO)
   activo        Boolean  @default(true)
+  fotoPerfil    String?  @db.LongText
   
   // Verificación de Correo
   emailVerified Boolean  @default(false)
@@ -375,6 +376,7 @@ model Averia {
   tecnico       Usuario? @relation("tecnicoAsignado", fields: [tecnicoId], references: [id])
   empresa       Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   notas         AveriaNota[]
+  movimientosInventario InventarioMovimiento[] @relation("AveriaInventarioMovimientos")
 
   firmaTecnico  String?  @db.LongText
   firmaCliente  String?  @db.LongText
@@ -459,6 +461,8 @@ model InventarioMovimiento {
   tramoId        String?
   clienteId      String?
   cliente        Cliente? @relation(fields: [clienteId], references: [id])
+  averiaId       String?
+  averia         Averia?  @relation("AveriaInventarioMovimientos", fields: [averiaId], references: [id])
 
   @@index([itemId])
   @@index([usuarioId])

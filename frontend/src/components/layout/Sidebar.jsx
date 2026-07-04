@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
     LayoutDashboard, Users, Map as MapIcon, LogOut, 
     CheckCircle, PlusCircle, Settings, BarChart3,
-    Search, Target, X, ShieldAlert, Navigation, PenTool, Package, ClipboardList
+    Search, Target, X, ShieldAlert, Navigation, PenTool, Package, ClipboardList, User
 } from 'lucide-react';
 
 import useProyectos from '../../hooks/useProyectos';
@@ -329,6 +329,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 </button>
                             </Link>
                         )}
+                        <Link to="/dashboard/perfil" className="block" onClick={() => { if(window.innerWidth < 1024) onClose(); }}>
+                            <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-900">
+                                <User size={18} className="text-blue-400"/> Mi Perfil
+                            </button>
+                        </Link>
                         <button className="flex items-center gap-3 w-full p-4 rounded-2xl hover:bg-slate-50 transition-all font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900">
                             <Settings size={18} className="text-slate-200"/> Ajustes
                         </button>

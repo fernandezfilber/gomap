@@ -10,8 +10,8 @@ const useInventario = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await fvApi.get('/inventario');
-      setItems(data.items || []);
+      const { data } = await fvApi.get('/inventario/items');
+      setItems(data.data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Error al cargar inventario');
       console.error(err);

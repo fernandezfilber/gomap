@@ -161,3 +161,57 @@ exports.getHistorial = async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al obtener historial' });
     }
 };
+
+exports.consumoTicket = async (req, res) => {
+    try {
+        const { averiaId, clienteId, items } = req.body;
+        // items: [{ itemId: string, cantidad: number }]
+
+        if (!items || items.length === 0) {
+            return res.status(400).json({ success: false, message: 'No hay items para descontar' });
+        }
+
+        const resultado = await prisma.$transaction(async (tx) => {
+            const movimientos = [];
+            
+            for (const reqItem of items) {
+                const itemDb = await tx.inventarioItem.findUnique({ where: { id: reqItem.itemId } });
+                if (!itemDb || itemDb.empresaId !== req.user.empresaId) {
+                    throw new Error(`Item no encontrado: ${reqItem.itemId}`);
+                }
+                
+                const cant = parseFloat(reqItem.cantidad);
+                if (cant <= 0) throw new Error(`Cantidad inválida para ${itemDb.nombre}`);
+                if (itemDb.stockTotal < cant) {
+                    throw new Error(`Stock insuficiente de ${itemDb.nombre}. Disponible: ${itemDb.stockTotal}`);
+                }
+
+                const nuevoStock = itemDb.stockTotal - cant;
+                
+                await tx.inventarioItem.update({
+                    where: { id: itemDb.id },
+                    data: { stockTotal: nuevoStock }
+                });
+
+                const mov = await tx.inventarioMovimiento.create({
+                    data: {
+                        itemId: itemDb.id,
+                        tipo: 'CONSUMO_INSTALACION',
+                        cantidad: cant,
+                        motivo: `Ticket #${averiaId || 'N/A'}`,
+                        usuarioId: req.user.id,
+                        averiaId: averiaId || null,
+                        clienteId: clienteId || null
+                    }
+                });
+                movimientos.push(mov);
+            }
+            return movimientos;
+        });
+
+        res.json({ success: true, data: resultado });
+    } catch (error) {
+        console.error('Error consumoTicket:', error);
+        res.status(400).json({ success: false, message: error.message || 'Error al descontar materiales' });
+    }
+};

@@ -65,7 +65,8 @@ const AppRouter = () => {
             <Route path="/dashboard/croquis" element={<PrivateRoute><CroquisList /></PrivateRoute>} />
             <Route path="/dashboard/croquis/:id" element={<PrivateRoute><CroquisEditor /></PrivateRoute>} />
             <Route path="/dashboard/tickets" element={<PrivateRoute><TicketsDashboard /></PrivateRoute>} />
-            
+            <Route path="/dashboard/perfil" element={<PrivateRoute><TecnicoPerfil /></PrivateRoute>} />
+            <Route path="/dashboard/perfil/:id" element={<PrivateRoute><TecnicoPerfil /></PrivateRoute>} />
             <Route path="/dashboard/usuarios" element={<AdminRoute><UsuariosAdmin /></AdminRoute>} />
             <Route path="/dashboard/inventario" element={<InventoryRoute><InventarioDashboard /></InventoryRoute>} />
             <Route path="/dashboard/clientes" element={<PrivateRoute><ClientesDashboard /></PrivateRoute>} />
