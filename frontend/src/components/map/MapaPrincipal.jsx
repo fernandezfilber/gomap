@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, LayersControl, LayerGroup, ZoomControl, Tooltip } from 'react-leaflet';
 import { X, Trash2, Ruler, Navigation } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet-polylineoffset';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
     const [modal, setModal] = useState({ show: false, type: null, data: null });
     const [puntosDistancia, setPuntosDistancia] = useState([]);
     const [miUbicacion, setMiUbicacion] = useState(null);
+    const location = useLocation();
 
     const { proyectoSeleccionado } = useProyectos();
     const { postes, crearPoste, eliminarPoste } = usePostes(proyectoSeleccionado?.id);
@@ -97,6 +99,27 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
             }
         }
     }, [postes, cajas]);
+
+    // ==================== ABRIR MODAL DESDE OTRA PÁGINA ====================
+    useEffect(() => {
+        if (location.state?.action === 'edit_cliente' && location.state?.targetId && clientes.length > 0) {
+            const clienteToEdit = clientes.find(c => c.id === location.state.targetId);
+            if (clienteToEdit) {
+                // Remove state so it doesn't keep opening on every re-render
+                window.history.replaceState({}, document.title);
+                
+                // Fly to coordinate if valid
+                if (esCoordenadaValida(clienteToEdit.latitud, clienteToEdit.longitud) && mapRef.current) {
+                    mapRef.current.flyTo([parseFloat(clienteToEdit.latitud), parseFloat(clienteToEdit.longitud)], 20, { animate: true });
+                }
+                
+                // Open modal
+                setTimeout(() => {
+                    setModal({ show: true, type: 'cliente', data: clienteToEdit });
+                }, 500);
+            }
+        }
+    }, [location.state, clientes]);
 
     // ==================== ESCUCHAR EVENTOS GLOBALES ====================
     useEffect(() => {

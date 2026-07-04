@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import fvApi from '../../api/fvApi';
-import { Users, Search, History as HistoryIcon, MapPin, Map, Phone, Briefcase } from 'lucide-react';
+import { Users, Search, History as HistoryIcon, MapPin, Map, Phone, Briefcase, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function ClientesDashboard() {
@@ -125,6 +125,12 @@ export default function ClientesDashboard() {
                           className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors"
                         >
                           <HistoryIcon size={14} /> Historial
+                        </button>
+                        <button
+                          onClick={() => navigate('/dashboard', { state: { action: 'edit_cliente', targetId: cliente.id } })}
+                          className="px-3 py-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors"
+                        >
+                          <Edit size={14} /> Editar
                         </button>
                         <a 
                           href={`/dashboard?lat=${cliente.latitud}&lng=${cliente.longitud}`}
