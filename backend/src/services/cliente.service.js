@@ -99,6 +99,8 @@ exports.createCliente = async (empresaId, usuarioId, data) => {
                             clienteId: nuevoCliente.id
                         }
                     });
+                } else {
+                    throw { status: 400, message: `Para descontar materiales automáticamente debes crear un ítem de tipo ${consumo.tipo} en tu Almacén/Inventario.` };
                 }
             }
         }
