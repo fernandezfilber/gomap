@@ -3,11 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import fvApi from '../../api/fvApi';
 import toast from 'react-hot-toast';
 import { User, MapPin, Briefcase, Camera as CameraIcon, CheckCircle, Package } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 
 export default function TecnicoPerfil() {
     const { id } = useParams();
-    const { user: currentUser } = useAuth();
+    const currentUser = JSON.parse(localStorage.getItem('user'));
     const navigate = useNavigate();
     const [perfil, setPerfil] = useState(null);
     const [loading, setLoading] = useState(true);
