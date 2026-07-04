@@ -11,6 +11,9 @@ export default function TecnicoPerfil() {
     const [perfil, setPerfil] = useState(null);
     const [loading, setLoading] = useState(true);
     const fileInputRef = useRef(null);
+    const [filtroMateriales, setFiltroMateriales] = useState('TODO');
+    const [fechaInicio, setFechaInicio] = useState('');
+    const [fechaFin, setFechaFin] = useState('');
 
     const isOwnProfile = !id || id === currentUser?.id;
     const targetId = id || currentUser?.id;
@@ -56,6 +59,44 @@ export default function TecnicoPerfil() {
     if (loading) return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div></div>;
     if (!perfil) return <div className="p-8 text-center text-gray-500">Perfil no encontrado.</div>;
 
+    const getMaterialesFiltrados = () => {
+        if (!perfil?.historial?.materiales) return [];
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        
+        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        
+        return perfil.historial.materiales.filter(mov => {
+            const fecha = new Date(mov.fecha);
+            if (filtroMateriales === 'HOY') {
+                return fecha >= hoy;
+            } else if (filtroMateriales === 'ESTE_MES') {
+                return fecha >= primerDiaMes;
+            } else if (filtroMateriales === 'CUSTOM') {
+                const inicio = fechaInicio ? new Date(fechaInicio) : null;
+                const fin = fechaFin ? new Date(fechaFin) : null;
+                if (fin) fin.setHours(23, 59, 59, 999);
+                
+                if (inicio && fin) return fecha >= inicio && fecha <= fin;
+                if (inicio) return fecha >= inicio;
+                if (fin) return fecha <= fin;
+                return true;
+            }
+            return true;
+        });
+    };
+
+    const materialesFiltrados = getMaterialesFiltrados();
+    
+    const resumenMateriales = materialesFiltrados.reduce((acc, mov) => {
+        const key = mov.item.nombre || mov.item.tipo;
+        if (!acc[key]) {
+            acc[key] = { cantidad: 0, unidad: mov.item.unidadMedida };
+        }
+        acc[key].cantidad += mov.cantidad;
+        return acc;
+    }, {});
+
     return (
         <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
             <div className="flex items-center gap-4 mb-2">
@@ -98,6 +139,58 @@ export default function TecnicoPerfil() {
                         </span>
                     </div>
                 </div>
+            </div>
+
+            {/* Resumen de Materiales */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b pb-4">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Package className="text-indigo-500" /> Resumen de Materiales
+                    </h2>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <select 
+                            value={filtroMateriales} 
+                            onChange={(e) => setFiltroMateriales(e.target.value)}
+                            className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                            <option value="TODO">Historial Completo</option>
+                            <option value="HOY">El Día de Hoy</option>
+                            <option value="ESTE_MES">Este Mes</option>
+                            <option value="CUSTOM">Rango de Fechas</option>
+                        </select>
+                        {filtroMateriales === 'CUSTOM' && (
+                            <div className="flex gap-2 items-center">
+                                <input 
+                                    type="date" 
+                                    value={fechaInicio} 
+                                    onChange={(e) => setFechaInicio(e.target.value)} 
+                                    className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2 text-slate-700"
+                                />
+                                <span className="text-slate-400">-</span>
+                                <input 
+                                    type="date" 
+                                    value={fechaFin} 
+                                    onChange={(e) => setFechaFin(e.target.value)} 
+                                    className="bg-slate-50 border border-slate-200 text-sm rounded-lg px-3 py-2 text-slate-700"
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {Object.keys(resumenMateriales).length === 0 ? (
+                    <p className="text-slate-500 text-sm text-center py-4">No hay materiales registrados para este periodo.</p>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {Object.entries(resumenMateriales).map(([nombre, { cantidad, unidad }]) => (
+                            <div key={nombre} className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100 flex flex-col justify-between items-center text-center">
+                                <span className="text-sm font-semibold text-slate-600 mb-2">{nombre}</span>
+                                <div className="text-3xl font-black text-indigo-600 mb-1">{cantidad}</div>
+                                <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400">{unidad || 'Unidades'}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
