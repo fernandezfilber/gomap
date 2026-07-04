@@ -259,7 +259,11 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
         mapRef.current = map;
         useEffect(() => {
             const handleClick = (e) => {
-                if (e.originalEvent.button === 2) { e.originalEvent.preventDefault(); setModal({ show: true, type: 'cliente', data: { latitud: e.latlng.lat, longitud: e.latlng.lng } }); return; }
+                if (e.type === 'contextmenu' || (e.originalEvent && e.originalEvent.button === 2)) { 
+                    e.originalEvent?.preventDefault?.(); 
+                    setModal({ show: true, type: 'cliente', data: { latitud: e.latlng.lat, longitud: e.latlng.lng } }); 
+                    return; 
+                }
                 if (medirDistancia) { setPuntosDistancia(prev => [...prev, [e.latlng.lat, e.latlng.lng]]); return; }
                 if ((modo === 'tramo' || e.originalEvent?.shiftKey) && proyectoSeleccionado) {
                     const p = postes.find(p => esCoordenadaValida(p.latitud, p.longitud) && calcularDistancia(e.latlng.lat, e.latlng.lng, p.latitud, p.longitud) * 1000 <= 15);
@@ -325,7 +329,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
                         <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={iconoCaja} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
-                            <Tooltip direction="bottom" offset={[0, 15]} opacity={0.9} permanent className="font-bold text-emerald-600 bg-white border border-emerald-400 shadow-md !p-1 !text-[10px]">
+                            <Tooltip direction="bottom" offset={[0, 15]} opacity={0.9} permanent className="font-bold !text-white !bg-slate-900 !border-slate-700 shadow-md !p-1 !text-[10px]">
                                 {c.codigo}
                             </Tooltip>
                             <Popup>
