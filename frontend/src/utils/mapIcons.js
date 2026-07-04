@@ -30,11 +30,14 @@ export const iconoMufa = new L.Icon({
     popupAnchor: [0, -30],
 });
 
-export const iconoCaja = new L.Icon({
-    iconUrl: cajaImg,
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30],
+export const iconoCaja = L.divIcon({
+    html: `<div style="display:flex;flex-direction:column;align-items:center;">
+        <div class="bg-white border-2 border-emerald-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">📦</div>
+    </div>`,
+    className: 'custom-div-icon',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
 });
 
 export const iconoCliente = new L.Icon({

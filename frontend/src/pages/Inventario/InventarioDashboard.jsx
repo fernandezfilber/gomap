@@ -17,6 +17,9 @@ export default function InventarioDashboard() {
   const [formData, setFormData] = useState({ tipo: 'CABLE_FIBRA', nombre: '', codigo: '', stockTotal: 0, unidadMedida: 'METROS', ubicacion: '', capacidadHilos: 12 });
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [showMovModal, setShowMovModal] = useState(false);
+  const [movData, setMovData] = useState({ itemId: null, itemNombre: '', tipo: 'INGRESO', cantidad: 0, motivo: '' });
+
   useEffect(() => {
     fetchItems();
   }, []);
@@ -73,6 +76,27 @@ export default function InventarioDashboard() {
     } catch (error) {
       console.error(error);
       setErrorMsg(error.response?.data?.message || (isEditMode ? 'Error al actualizar item' : 'Error al crear item'));
+    }
+  };
+
+  const openMovModal = (item, tipo) => {
+    setMovData({ itemId: item.id, itemNombre: item.nombre || item.tipo, tipo, cantidad: '', motivo: '' });
+    setErrorMsg('');
+    setShowMovModal(true);
+  };
+
+  const handleRegistrarMov = async (e) => {
+    e.preventDefault();
+    try {
+      setErrorMsg('');
+      const res = await fvApi.post('/inventario/movimientos', movData);
+      if (res.data.success) {
+        setShowMovModal(false);
+        fetchItems();
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMsg(error.response?.data?.message || 'Error al registrar movimiento');
     }
   };
 
@@ -161,11 +185,14 @@ export default function InventarioDashboard() {
                         <button onClick={() => openEditModal(item)} className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg tooltip" title="Editar Item">
                           <Edit size={16} />
                         </button>
-                        <button className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg tooltip" title="Ingreso (Comprar)">
+                        <button onClick={() => openMovModal(item, 'INGRESO')} className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg tooltip" title="Ingreso (Comprar)">
                           <ArrowDown size={16} />
                         </button>
-                        <button className="p-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg tooltip" title="Salida (Entregar)">
+                        <button onClick={() => openMovModal(item, 'SALIDA')} className="p-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg tooltip" title="Salida (Entregar / Falla)">
                           <ArrowUp size={16} />
+                        </button>
+                        <button onClick={() => openMovModal(item, 'AJUSTE')} className="p-2 bg-orange-100 text-orange-700 hover:bg-orange-200 rounded-lg tooltip" title="Ajuste de Stock (Añadir/Quitar libremente)">
+                          <FileText size={16} />
                         </button>
                       </td>
                     </tr>
@@ -242,6 +269,38 @@ export default function InventarioDashboard() {
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors font-bold">Cancelar</button>
                 <button type="submit" className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors shadow-sm font-bold">{isEditMode ? 'Guardar Cambios' : 'Guardar Item'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Movimiento */}
+      {showMovModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Ajuste de Stock: {movData.itemNombre}</h2>
+            {errorMsg && <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-4 text-sm font-bold">{errorMsg}</div>}
+            <form onSubmit={handleRegistrarMov} className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Movimiento</label>
+                <select value={movData.tipo} onChange={e => setMovData({...movData, tipo: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg font-bold">
+                  <option value="INGRESO">INGRESO (Añadir Stock)</option>
+                  <option value="SALIDA">SALIDA (Restar Stock)</option>
+                  <option value="AJUSTE">AJUSTE (Modificar libremente)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Cantidad</label>
+                <input required type="number" step="0.01" min="0.01" value={movData.cantidad} onChange={e => setMovData({...movData, cantidad: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg text-lg font-black" placeholder="Ej: 5" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Motivo / Descripción</label>
+                <input required type="text" value={movData.motivo} onChange={e => setMovData({...movData, motivo: e.target.value})} className="w-full p-2 border border-gray-200 rounded-lg" placeholder="Ej: Equipo con falla, Devolución..." />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button type="button" onClick={() => setShowMovModal(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors font-bold">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-bold">Guardar</button>
               </div>
             </form>
           </div>
