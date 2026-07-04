@@ -14,6 +14,7 @@ import UsuariosAdmin from '../pages/Usuarios/UsuariosAdmin';
 import InventarioDashboard from '../pages/Inventario/InventarioDashboard';
 import ClientesDashboard from '../pages/Clientes/ClientesDashboard';
 import TicketsDashboard from '../pages/Tickets/TicketsDashboard';
+import TecnicoPerfil from '../pages/Usuarios/TecnicoPerfil';
 
 const getStoredUser = () => {
     try {
