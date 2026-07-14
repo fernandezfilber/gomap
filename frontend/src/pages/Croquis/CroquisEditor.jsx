@@ -3,23 +3,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import fvApi from '../../api/fvApi';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet-rotate';
 import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
 // Iconos Personalizados para el Borrador
 const createCustomIcon = (emoji, color, label) => L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div class="bg-white border border-${color}-500 rounded-full w-4 h-4 flex items-center justify-center text-[7px] shadow">${emoji}</div>
-        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:4px;font-weight:bold;padding:0px 2px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
+        <div style="background:white;border:2px solid ${color};border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">${emoji}</div>
+        ${label ? `<span style="background:rgba(0,0,0,0.85);color:white;font-size:5px;font-weight:bold;padding:1px 3px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
     </div>`,
     className: 'custom-div-icon',
-    iconSize: [14, 20],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -7]
+    iconSize: [18, 24],
+    iconAnchor: [9, 9],
+    popupAnchor: [0, -9]
 });
 
-const iconMufa = createCustomIcon('🌀', 'orange', null);
-const iconCajaDefault = createCustomIcon('📦', 'emerald', null);
+// Iconos con colores de alto contraste para mapa de calles claro
+const iconMufa = createCustomIcon('🌀', '#f97316', null);
+const iconCajaDefault = createCustomIcon('📦', '#10b981', null);
 
 const CroquisEditor = () => {
     const { id } = useParams();
@@ -211,13 +213,13 @@ const CroquisEditor = () => {
                     <Navigation size={20} fill="currentColor" />
                 </button>
 
-                <MapContainer center={[-11.95, -76.72]} zoom={15} maxZoom={22} className="h-full w-full" zoomControl={false}>
+                <MapContainer center={[-11.95, -76.72]} zoom={15} maxZoom={22} className="h-full w-full" zoomControl={false} rotate={true} touchRotate={true} rotateControl={{ closeOnZeroBearing: false }}>
                     <ZoomControl position="topright" />
                     <LayersControl position="topright">
-                        <LayersControl.BaseLayer checked name="Satélite (Google)">
+                        <LayersControl.BaseLayer name="Satélite (Google)">
                             <TileLayer url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
                         </LayersControl.BaseLayer>
-                        <LayersControl.BaseLayer name="Calles (Google)">
+                        <LayersControl.BaseLayer checked name="Calles (Google)">
                             <TileLayer url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} />
                         </LayersControl.BaseLayer>
                         <LayersControl.BaseLayer name="Relieve (Google)">
