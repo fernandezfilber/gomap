@@ -9,13 +9,13 @@ import useAuth from '../../hooks/useAuth';
 // Iconos Personalizados para el Borrador
 const createCustomIcon = (emoji, color, label) => L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div class="bg-white border border-${color}-500 rounded-full w-3 h-3 flex items-center justify-center text-[5px] shadow">${emoji}</div>
-        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:3px;font-weight:bold;padding:0px 2px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:40px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
+        <div class="bg-white border border-${color}-500 rounded-full w-4 h-4 flex items-center justify-center text-[7px] shadow">${emoji}</div>
+        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:4px;font-weight:bold;padding:0px 2px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:50px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
     </div>`,
     className: 'custom-div-icon',
-    iconSize: [10, 16],
-    iconAnchor: [5, 5],
-    popupAnchor: [0, -5]
+    iconSize: [14, 20],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -7]
 });
 
 const iconMufa = createCustomIcon('🌀', 'orange', null);
