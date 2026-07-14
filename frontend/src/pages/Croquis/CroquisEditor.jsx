@@ -9,13 +9,13 @@ import useAuth from '../../hooks/useAuth';
 // Iconos Personalizados para el Borrador
 const createCustomIcon = (emoji, color, label) => L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div class="bg-white border-2 border-${color}-500 rounded-full w-8 h-8 flex items-center justify-center text-lg shadow-lg">${emoji}</div>
-        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:9px;font-weight:bold;padding:1px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
+        <div class="bg-white border border-${color}-500 rounded-full w-3 h-3 flex items-center justify-center text-[5px] shadow">${emoji}</div>
+        ${label ? `<span style="background:rgba(0,0,0,0.75);color:white;font-size:3px;font-weight:bold;padding:0px 2px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:40px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
     </div>`,
     className: 'custom-div-icon',
-    iconSize: [32, 48],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16]
+    iconSize: [10, 16],
+    iconAnchor: [5, 5],
+    popupAnchor: [0, -5]
 });
 
 const iconMufa = createCustomIcon('🌀', 'orange', null);
@@ -258,7 +258,7 @@ const CroquisEditor = () => {
                     })}
 
                     {tramos.map(t => (
-                        <Polyline key={t.id} positions={t.path} pathOptions={{ color: t.color, weight: 6, opacity: 0.9 }}>
+                        <Polyline key={t.id} positions={t.path} pathOptions={{ color: t.color, weight: 2, opacity: 0.9 }}>
                             <Popup>
                                 <div className="text-center p-2">
                                     <p className="font-bold text-slate-800 mb-2">{t.label}</p>
@@ -269,7 +269,7 @@ const CroquisEditor = () => {
                     ))}
 
                     {/* Tramo Temporal */}
-                    {puntosTemporales.length > 0 && <Polyline positions={puntosTemporales} pathOptions={{ color: '#ec4899', weight: 6, dashArray: '10, 8' }} />}
+                    {puntosTemporales.length > 0 && <Polyline positions={puntosTemporales} pathOptions={{ color: '#ec4899', weight: 2, dashArray: '4, 3' }} />}
 
                     {miUbicacion && (<Marker position={[miUbicacion.lat, miUbicacion.lng]} icon={L.divIcon({ html: `<div class="no-print animate-pulse bg-violet-500 p-2 rounded-full border-2 border-white shadow-lg shadow-violet-500/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`, className: 'custom-div-icon', iconSize: [40, 40], iconAnchor: [20, 40] })}><Popup>Tu ubicación actual</Popup></Marker>)}
 
