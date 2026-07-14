@@ -10,7 +10,7 @@ import useAuth from '../../hooks/useAuth';
 // Iconos Personalizados para el Borrador
 const createCustomIcon = (emoji, color, label) => L.divIcon({
     html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div style="background:white;border:2px solid ${color};border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">${emoji}</div>
+        <div style="background:#1e293b;border:2px solid ${color};border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">${emoji}</div>
         ${label ? `<span style="background:rgba(0,0,0,0.85);color:white;font-size:5px;font-weight:bold;padding:1px 3px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
     </div>`,
     className: 'custom-div-icon',
@@ -71,6 +71,11 @@ const CroquisEditor = () => {
                 if (c.datosGraficos) {
                     setNodos(c.datosGraficos.nodos || []);
                     setTramos(c.datosGraficos.tramos || []);
+                    
+                    if (c.datosGraficos.nodos?.length > 0 && mapRef.current) {
+                        const ult = c.datosGraficos.nodos[c.datosGraficos.nodos.length - 1];
+                        mapRef.current.flyTo([ult.lat, ult.lng], 18);
+                    }
                 }
             }
         } catch (error) {
@@ -143,7 +148,8 @@ const CroquisEditor = () => {
             setPuntosTemporales([]);
             return;
         }
-        setTramos([...tramos, { id: `tramo_${Date.now()}`, path: puntosTemporales, color: '#8b5cf6', label: 'Nuevo Tramo' }]);
+        const colorInput = prompt('Color del tramo (ej. #ef4444, #3b82f6, red, blue):', '#8b5cf6') || '#8b5cf6';
+        setTramos([...tramos, { id: `tramo_${Date.now()}`, path: puntosTemporales, color: colorInput, label: 'Nuevo Tramo' }]);
         setPuntosTemporales([]);
         setModo('select');
     };
@@ -264,7 +270,13 @@ const CroquisEditor = () => {
                             <Popup>
                                 <div className="text-center p-2">
                                     <p className="font-bold text-slate-800 mb-2">{t.label}</p>
-                                    <button onClick={() => eliminarTramo(t.id)} className="bg-red-500/10 text-red-500 w-full py-2 rounded-lg text-xs font-bold transition-colors">Borrar Tramo</button>
+                                    <div className="flex flex-col gap-2">
+                                        <button onClick={() => {
+                                            const newColor = prompt('Nuevo color:', t.color);
+                                            if (newColor) setTramos(tramos.map(tr => tr.id === t.id ? { ...tr, color: newColor } : tr));
+                                        }} className="bg-indigo-500/10 text-indigo-600 w-full py-1.5 rounded-lg text-xs font-bold transition-colors">Cambiar Color</button>
+                                        <button onClick={() => eliminarTramo(t.id)} className="bg-red-500/10 text-red-500 w-full py-1.5 rounded-lg text-xs font-bold transition-colors">Borrar Tramo</button>
+                                    </div>
                                 </div>
                             </Popup>
                         </Polyline>

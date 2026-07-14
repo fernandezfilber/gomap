@@ -5,6 +5,7 @@ import { X, Trash2, Ruler, Navigation } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet-polylineoffset';
+import 'leaflet-rotate';
 import toast from 'react-hot-toast';
 
 import useProyectos from '../../hooks/useProyectos';
@@ -334,7 +335,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
             <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-slate-900/80 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-blue-500 border border-slate-700/50" title="Mi Ubicación"><Navigation size={20} fill="currentColor" /></button>
 
-            <MapContainer center={mapCenter} zoom={18} maxZoom={22} className="h-full w-full" zoomControl={false}>
+            <MapContainer center={mapCenter} zoom={18} maxZoom={22} className="h-full w-full" zoomControl={false} rotate={true} touchRotate={true} rotateControl={{ closeOnZeroBearing: false }}>
                 <ZoomControl position="bottomright" />
                 <LayersControl position="bottomright">
                     <LayersControl.BaseLayer checked name="Google Satélite + Calles"><TileLayer url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} maxNativeZoom={20} /></LayersControl.BaseLayer>
