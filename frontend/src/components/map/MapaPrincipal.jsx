@@ -383,7 +383,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                     ))}</LayerGroup></LayersControl.Overlay>
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
-                        <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, c.colorHiloCaja || 'Azul', zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
+                        <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
                             <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 18 ? 1 : 0} permanent={zoomLevel >= 18} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
                                 {c.codigo}
                             </Tooltip>
