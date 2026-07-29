@@ -46,35 +46,45 @@ export const getIconoPosteOcupado = (zoomLevel = 18) => {
 
 export const getIconoMufa = (zoomLevel = 18) => {
     const isMob = isMobile();
-    const baseSize = isMob ? 15 : 22;
+    const baseSize = isMob ? 14 : 20;
     const size = Math.max(14, Math.round(baseSize * getZoomScale(zoomLevel)));
-    return new L.Icon({
-        iconUrl: mufaImg,
-        iconSize: [size, size],
-        iconAnchor: [Math.round(size / 2), size],
-        popupAnchor: [0, -size],
+    const fontSize = isMob ? '10px' : '12px';
+    const textFontSize = isMob ? '7px' : '10px';
+    const bgColor = '#7c3aed';
+    const borderColor = '#ffffff';
+    const showLabel = zoomLevel >= 18;
+
+    return L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 2px 10px rgba(124,58,237,0.35);">🌀</div>
+            ${showLabel ? `<div style="background:rgba(0,0,0,0.85);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 5px;border-radius:4px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">MUFA</div>` : ''}
+        </div>`,
+        className: 'custom-div-icon',
+        iconSize: [size, showLabel ? size + 20 : size],
+        iconAnchor: [Math.round(size / 2), showLabel ? size + 20 : size],
+        popupAnchor: [0, -(size / 2 + 10)]
     });
 };
 
 export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
     const isMob = isMobile();
-    const baseSize = isMob ? 20 : 28;
-    const size = Math.max(16, Math.round(baseSize * getZoomScale(zoomLevel)));
+    const baseSize = isMob ? 16 : 24;
+    const size = Math.max(14, Math.round(baseSize * getZoomScale(zoomLevel)));
     const fontSize = isMob ? '10px' : '12px';
-    const textFontSize = isMob ? '8px' : '10px';
-    const bgColor = '#ff6b35';
-    const borderColor = '#fff';
-    const codigoTruncado = codigo && codigo.length > 10 ? codigo.substring(0, 10) + '...' : codigo;
-    const showLabel = zoomLevel >= 15;
+    const textFontSize = isMob ? '7px' : '10px';
+    const bgColor = '#f97316';
+    const borderColor = '#ffffff';
+    const codigoTruncado = codigo && codigo.length > 12 ? codigo.substring(0, 12) + '...' : codigo;
+    const showLabel = zoomLevel >= 18;
 
     return L.divIcon({
         html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 2px 8px rgba(255,107,53,0.45);">📦</div>
-            ${showLabel && codigoTruncado ? `<div style="background:rgba(0,0,0,0.9);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 5px;border-radius:3px;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${codigoTruncado}</div>` : ''}
+            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 2px 10px rgba(249,115,22,0.35);">📦</div>
+            ${showLabel && codigoTruncado ? `<div style="background:rgba(0,0,0,0.85);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 5px;border-radius:4px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${codigoTruncado}</div>` : ''}
         </div>`,
         className: 'custom-div-icon',
-        iconSize: [size, showLabel && codigoTruncado ? size + 20 : size],
-        iconAnchor: [Math.round(size / 2), showLabel && codigoTruncado ? size + 20 : size],
+        iconSize: [size, showLabel && codigoTruncado ? size + 22 : size],
+        iconAnchor: [Math.round(size / 2), showLabel && codigoTruncado ? size + 22 : size],
         popupAnchor: [0, -(size / 2 + 10)]
     });
 };
