@@ -52,14 +52,26 @@ const Sidebar = ({ isOpen, onClose }) => {
     const extraerCoordenadas = (input) => {
         if (!input) return null;
 
-        let match = input.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-        if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        const comprobadores = [
+            /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+            /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+            /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+            /(-?\d+\.\d+)\s+(-?\d+\.\d+)/
+        ];
 
-        match = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-        if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        for (const regex of comprobadores) {
+            const match = input.match(regex);
+            if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        }
 
-        match = input.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-        if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+        const numbers = input.match(/-?\d+(?:\.\d+)?/g) || [];
+        for (let i = 0; i + 1 < numbers.length; i += 1) {
+            const lat = parseFloat(numbers[i]);
+            const lng = parseFloat(numbers[i + 1]);
+            if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                return { lat, lng };
+            }
+        }
 
         return null;
     };

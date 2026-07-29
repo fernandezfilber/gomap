@@ -12,6 +12,32 @@ const SearchCajaCercana = ({ onClose }) => {
   const [resultadosCroquis, setResultadosCroquis] = useState([]);
   const [cargando, setCargando] = useState(false);
 
+  const extraerCoordenadas = (input) => {
+    if (!input) return null;
+
+    const buscadores = [
+      /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+      /(-?\d+\.\d+)\s+(-?\d+\.\d+)/
+    ];
+
+    for (const regex of buscadores) {
+      const match = input.match(regex);
+      if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    }
+
+    const numbers = input.match(/-?\d+(?:\.\d+)?/g) || [];
+    for (let i = 0; i + 1 < numbers.length; i += 1) {
+      const lat = parseFloat(numbers[i]);
+      const lng = parseFloat(numbers[i + 1]);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+    return null;
+  };
+
   const handleBuscar = async (e) => {
     e.preventDefault();
 
@@ -21,21 +47,14 @@ const SearchCajaCercana = ({ onClose }) => {
     }
 
     const decoded = decodeURIComponent(coordenadasInput.trim());
-    const coordRegex = /(-?\d+(?:\.\d+)?)[^\d-]+(-?\d+(?:\.\d+)?)/;
-    const match = decoded.match(coordRegex);
+    const coords = extraerCoordenadas(decoded);
 
-    if (!match || !match[1] || !match[2]) {
+    if (!coords) {
       toast.error('Formato inválido. Usa lat, lng o un link válido');
       return;
     }
 
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-
-    if (Number.isNaN(lat) || Number.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      toast.error('Coordenadas inválidas. Verifica latitud y longitud');
-      return;
-    }
+    const { lat, lng } = coords;
 
     setResultados([]);
     setResultadosCroquis([]);

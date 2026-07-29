@@ -361,7 +361,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                         const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
                         const pathOptions = {
                             color: t.colorVisual || '#ef4444',
-                            weight: isDesktop ? 9 : 6,
+                            weight: isDesktop ? (zoomLevel >= 18 ? 12 : 10) : 6,
                             opacity: isDesktop ? 0.95 : 0.9,
                             offset: getOffset(t),
                             lineCap: 'round',
@@ -383,7 +383,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
                         <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
-                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 16 ? 1 : 0.85} permanent={zoomLevel >= 16} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
+                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 17 ? 1 : 0.7} permanent={zoomLevel >= 17} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
                                 {c.codigo}
                             </Tooltip>
                             <Popup>

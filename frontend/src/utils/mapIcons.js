@@ -4,17 +4,17 @@ import L from 'leaflet';
 import posteImg from '../assets/icons/luz-de-la-calle.png';
 import posteOcupadoImg from '../assets/icons/energia.png';
 import mufaImg from '../assets/icons/fibra-optica.png';
-import cajaImg from '../assets/icons/caja-negra.png';
 import clienteImg from '../assets/icons/clasificacion.png';
 
 // Detectar si es dispositivo móvil
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
 const getZoomScale = (zoomLevel) => {
-    if (zoomLevel >= 18) return 1.25;
-    if (zoomLevel >= 16) return 1;
-    if (zoomLevel >= 14) return 0.85;
-    return 0.68;
+    if (zoomLevel >= 18) return 1.2;
+    if (zoomLevel >= 17) return 1.05;
+    if (zoomLevel >= 15) return 0.85;
+    if (zoomLevel >= 13) return 0.68;
+    return 0.55;
 };
 
 // ==================== ICONOS DINÁMICOS (RESPONSIVE) ====================
@@ -64,7 +64,7 @@ export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
     const bgColor = '#ff6b35';
     const borderColor = '#fff';
     const codigoTruncado = codigo && codigo.length > 10 ? codigo.substring(0, 10) + '...' : codigo;
-    const showLabel = zoomLevel >= 15;
+    const showLabel = zoomLevel >= 17;
     
     return L.divIcon({
         html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
