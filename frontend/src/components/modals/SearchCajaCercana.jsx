@@ -14,14 +14,14 @@ const SearchCajaCercana = ({ onClose }) => {
 
   const handleBuscar = async (e) => {
     e.preventDefault();
-    
+
     if (!coordenadasInput) {
       toast.error('Ingresa coordenadas o pega un link');
       return;
     }
 
-    const decoded = decodeURIComponent(coordenadasInput);
-    const coordRegex = /(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/;
+    const decoded = decodeURIComponent(coordenadasInput.trim());
+    const coordRegex = /(-?\d+(?:\.\d+)?)[^\d-]+(-?\d+(?:\.\d+)?)/;
     const match = decoded.match(coordRegex);
 
     if (!match || !match[1] || !match[2]) {
@@ -32,28 +32,45 @@ const SearchCajaCercana = ({ onClose }) => {
     const lat = parseFloat(match[1]);
     const lng = parseFloat(match[2]);
 
+    if (Number.isNaN(lat) || Number.isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error('Coordenadas inválidas. Verifica latitud y longitud');
+      return;
+    }
+
+    setResultados([]);
+    setResultadosCroquis([]);
     setCargando(true);
+
     try {
-      const [resMapa, resCroquis] = await Promise.all([
+      const res = await Promise.allSettled([
         fvApi.get('/cajas/cercanas', {
-          params: { latitud: lat, longitud: lng, radio: parseInt(radio) },
-        }).catch(err => ({ data: { cajas: [] } })),
+          params: { latitud: lat, longitud: lng, radio: parseInt(radio, 10) },
+        }),
         fvApi.get('/croquis/cajas-cercanas', {
-          params: { latitud: lat, longitud: lng, radio: parseInt(radio) },
-        }).catch(err => ({ data: { cajas: [] } }))
+          params: { latitud: lat, longitud: lng, radio: parseInt(radio, 10) },
+        })
       ]);
 
-      const cajasMapa = resMapa.data?.cajas || [];
-      const cajasCroquis = resCroquis.data?.cajas || [];
+      const mapaResult = res[0];
+      const croquisResult = res[1];
+
+      const cajasMapa = mapaResult.status === 'fulfilled' ? mapaResult.value.data?.cajas || [] : [];
+      const cajasCroquis = croquisResult.status === 'fulfilled' ? croquisResult.value.data?.cajas || [] : [];
 
       setResultados(cajasMapa);
       setResultadosCroquis(cajasCroquis);
 
-      if (cajasMapa.length === 0 && cajasCroquis.length === 0) {
+      if (mapaResult.status === 'rejected' || croquisResult.status === 'rejected') {
+        const mensajeMapa = mapaResult.status === 'rejected' ? mapaResult.reason.response?.data?.message : null;
+        const mensajeCroquis = croquisResult.status === 'rejected' ? croquisResult.reason.response?.data?.message : null;
+        const mensaje = mensajeMapa || mensajeCroquis || 'Error en búsqueda';
+        toast.error(`Búsqueda parcial: ${mensaje}`);
+      } else if (cajasMapa.length === 0 && cajasCroquis.length === 0) {
         toast.info('No hay cajas cercanas en el mapa ni en croquis');
       }
     } catch (error) {
-      toast.error('Error en búsqueda');
+      console.error('Error en búsqueda:', error);
+      toast.error(error.response?.data?.message || 'Error en búsqueda');
     } finally {
       setCargando(false);
     }

@@ -57,6 +57,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
     const mapRef = useRef(null);
     const inicializadoRef = useRef(false);
     const [iconosActualizados, setIconosActualizados] = useState(0);
+    const [zoomLevel, setZoomLevel] = useState(18);
 
     // Listener para cambios de tamaño de ventana - regenerar iconos
     useEffect(() => {
@@ -250,7 +251,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
     const getPosteIcon = (posteId) => {
         const tieneMufa = mufas.some(m => m.posteId === posteId);
         const tieneCaja = cajas.some(c => c.posteId === posteId);
-        return (tieneMufa || tieneCaja) ? getIconoPosteOcupado() : getIconoPoste();
+        return (tieneMufa || tieneCaja) ? getIconoPosteOcupado(zoomLevel) : getIconoPoste(zoomLevel);
     };
 
     const actualizarIconoPoste = (posteId) => {
@@ -292,6 +293,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
         const map = useMap();
         mapRef.current = map;
         useEffect(() => {
+            const updateZoom = () => setZoomLevel(map.getZoom());
             const handleClick = (e) => {
                 if (e.type === 'contextmenu' || (e.originalEvent && e.originalEvent.button === 2)) { 
                     e.originalEvent?.preventDefault?.(); 
@@ -309,8 +311,10 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                 }
                 if (modo === 'poste' && proyectoSeleccionado) crearPoste({ codigo: `P-${Date.now().toString().slice(-5)}`, latitud: e.latlng.lat, longitud: e.latlng.lng, tipo: 'CONCRETO', proyectoId: proyectoSeleccionado.id });
             };
+            updateZoom();
+            map.on('zoomend', updateZoom);
             map.on('click', handleClick); map.on('contextmenu', handleClick);
-            return () => { map.off('click', handleClick); map.off('contextmenu', handleClick); };
+            return () => { map.off('click', handleClick); map.off('contextmenu', handleClick); map.off('zoomend', updateZoom); };
         }, [modo, medirDistancia, postes, puntosTemporales, proyectoSeleccionado]);
         return null;
     };
@@ -353,17 +357,33 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                     <LayersControl.BaseLayer name="OpenStreetMap"><TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' maxZoom={22} /></LayersControl.BaseLayer>
                     
                     <LayersControl.Overlay checked name="Postes"><LayerGroup>{postes.filter(p => esCoordenadaValida(p.latitud, p.longitud)).map(p => (<Marker key={p.id} position={[parseFloat(p.latitud), parseFloat(p.longitud)]} icon={getPosteIcon(p.id)} ref={el => el ? markerRefs.current.set(p.id, el) : markerRefs.current.delete(p.id)} eventHandlers={{ click: (e) => { if (modo === 'tramo' || e.originalEvent?.shiftKey) { L.DomEvent.stopPropagation(e); if (puntosTemporales.length === 0) setNodoInicio({ id: p.id, tipo: 'poste' }); else setNodoFin({ id: p.id, tipo: 'poste' }); setPuntosTemporales(prev => [...prev, [parseFloat(p.latitud), parseFloat(p.longitud)]]); } } }}><Popup><div className="text-center p-2"><p className="font-bold mb-2">Poste: {p.codigo}</p><div className="flex gap-2"><button onClick={() => setModal({ show: true, type: 'mufa', data: { posteId: p.id, latitud: p.latitud, longitud: p.longitud } })} className="bg-orange-600 text-white px-2 py-1 rounded text-xs">+Mufa</button><button onClick={() => setModal({ show: true, type: 'caja_rapida', data: { posteId: p.id, latitud: p.latitud, longitud: p.longitud } })} className="bg-emerald-600 text-white px-2 py-1 rounded text-xs">+Caja</button></div><button onClick={() => eliminarPoste(p.id)} className="mt-4 text-red-500 text-xs">Eliminar Poste</button></div></Popup></Marker>))}</LayerGroup></LayersControl.Overlay>
-                    <LayersControl.Overlay checked name="Cables"><LayerGroup>{tramos.map(t => (<Polyline key={t.id} positions={t.path} pathOptions={{ color: t.colorVisual || '#ef4444', weight: 5, opacity: 0.9, offset: getOffset(t) }}><Popup><div className="text-center min-w-[180px] p-2"><p className="font-bold text-lg text-emerald-500 mb-1">{t.nombre || `Tramo ${t.id.slice(0,6)}`}</p><p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-4">{t.capacidadHilos || 48} Hilos Totales</p><div className="flex flex-col gap-3"><button onClick={() => { setTramoBaseParaContinuar(t); setPuntosTemporales([t.path[t.path.length - 1]]); setNodoInicio({ id: t.posteFinId || t.posteInicioId, tipo: 'poste' }); setModo('tramo'); }} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl text-sm w-full shadow-lg shadow-emerald-600/30">Continuar Tramo</button><button onClick={() => eliminarTramo(t.id)} className="text-red-500 hover:text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-50/10 rounded-xl py-2 w-full transition-colors">Eliminar</button></div></div></Popup></Polyline>))}</LayerGroup></LayersControl.Overlay>
+                    <LayersControl.Overlay checked name="Cables"><LayerGroup>{tramos.map(t => {
+                        const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+                        const pathOptions = {
+                            color: t.colorVisual || '#ef4444',
+                            weight: isDesktop ? 9 : 6,
+                            opacity: isDesktop ? 0.95 : 0.9,
+                            offset: getOffset(t),
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                            dashArray: isDesktop ? undefined : '5, 5'
+                        };
+                        return (
+                            <Polyline key={t.id} positions={t.path} pathOptions={pathOptions}>
+                                <Popup><div className="text-center min-w-[180px] p-2"><p className="font-bold text-lg text-emerald-500 mb-1">{t.nombre || `Tramo ${t.id.slice(0,6)}`}</p><p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mb-4">{t.capacidadHilos || 48} Hilos Totales</p><div className="flex flex-col gap-3"><button onClick={() => { setTramoBaseParaContinuar(t); setPuntosTemporales([t.path[t.path.length - 1]]); setNodoInicio({ id: t.posteFinId || t.posteInicioId, tipo: 'poste' }); setModo('tramo'); }} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl text-sm w-full shadow-lg shadow-emerald-600/30">Continuar Tramo</button><button onClick={() => eliminarTramo(t.id)} className="text-red-500 hover:text-red-400 font-bold text-sm border border-red-500/50 hover:bg-red-50/10 rounded-xl py-2 w-full transition-colors">Eliminar</button></div></div></Popup>
+                            </Polyline>
+                        );
+                    })}</LayerGroup></LayersControl.Overlay>
                     
                     <LayersControl.Overlay checked name="Mufas"><LayerGroup>{mufas.filter(m => esCoordenadaValida(m.latitud, m.longitud)).map(m => (
-                        <Marker key={m.id} position={[parseFloat(m.latitud), parseFloat(m.longitud)]} icon={getIconoMufa()} ref={el => el ? markerRefs.current.set(m.id, el) : markerRefs.current.delete(m.id)}>
+                        <Marker key={m.id} position={[parseFloat(m.latitud), parseFloat(m.longitud)]} icon={getIconoMufa(zoomLevel)} ref={el => el ? markerRefs.current.set(m.id, el) : markerRefs.current.delete(m.id)}>
                             <Popup><div className="text-center p-3"><p className="font-bold text-orange-400 text-xl mb-1">🌀 Mufa: {m.codigo}</p><p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Splitter: {m.ratioSplitteo || 'N/A'}</p>{(() => { const cap = parseInt((m.ratioSplitteo || '1:16').split(':')[1]) || 16; const ocu = (cajas || []).filter(c => c.mufaId === m.id).length; const libre = cap - ocu; return <p className={`text-xs font-black mb-2 ${libre <= 0 ? 'text-red-400' : libre <= 2 ? 'text-yellow-400' : 'text-emerald-400'}`}>Hilos: {ocu}/{cap} usados ({libre} libres)</p>; })()}<div className="flex gap-2 mt-4"><button onClick={() => setModal({ show: true, type: 'mufa', data: m })} className="flex-1 bg-orange-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Editar</button><button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: m.id, tipoNodo: 'MUFA' } })} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-1 rounded-xl text-xs font-bold transition-colors">Empalmes</button><button onClick={() => eliminarMufa(m.id)} className="flex-1 bg-red-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Borrar</button></div></div></Popup>
                         </Marker>
                     ))}</LayerGroup></LayersControl.Overlay>
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
-                        <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
-                            <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
+                        <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
+                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 16 ? 1 : 0.85} permanent={zoomLevel >= 16} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
                                 {c.codigo}
                             </Tooltip>
                             <Popup>
@@ -391,7 +411,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                                 const caja = cajas.find(c => c.id === cl.cajaId || c.id === cl.caja?.id);
                                 return (
                                     <Fragment key={cl.id}>
-                                        <Marker position={[parseFloat(cl.latitud), parseFloat(cl.longitud)]} icon={getIconoCliente()} ref={el => el ? markerRefs.current.set(cl.id, el) : markerRefs.current.delete(cl.id)}>
+                                        <Marker position={[parseFloat(cl.latitud), parseFloat(cl.longitud)]} icon={getIconoCliente(zoomLevel)} ref={el => el ? markerRefs.current.set(cl.id, el) : markerRefs.current.delete(cl.id)}>
                                             <Popup>
                                                 <div className="text-center">
                                                     <p className="font-bold text-violet-400 text-xl mb-1">{cl.nombre}</p>

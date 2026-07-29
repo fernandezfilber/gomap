@@ -10,67 +10,84 @@ import clienteImg from '../assets/icons/clasificacion.png';
 // Detectar si es dispositivo móvil
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
+const getZoomScale = (zoomLevel) => {
+    if (zoomLevel >= 18) return 1.25;
+    if (zoomLevel >= 16) return 1;
+    if (zoomLevel >= 14) return 0.85;
+    return 0.68;
+};
+
 // ==================== ICONOS DINÁMICOS (RESPONSIVE) ====================
 
-export const getIconoPoste = () => {
+export const getIconoPoste = (zoomLevel = 18) => {
     const isMob = isMobile();
+    const baseSize = isMob ? 16 : 24;
+    const size = Math.round(baseSize * getZoomScale(zoomLevel));
     return new L.Icon({
         iconUrl: posteImg,
-        iconSize: isMob ? [16, 16] : [24, 24],
-        iconAnchor: isMob ? [8, 16] : [12, 24],
-        popupAnchor: [0, isMob ? -16 : -24],
+        iconSize: [size, size],
+        iconAnchor: [Math.round(size / 2), size],
+        popupAnchor: [0, -size],
     });
 };
 
-export const getIconoPosteOcupado = () => {
+export const getIconoPosteOcupado = (zoomLevel = 18) => {
     const isMob = isMobile();
+    const baseSize = isMob ? 16 : 24;
+    const size = Math.round(baseSize * getZoomScale(zoomLevel));
     return new L.Icon({
         iconUrl: posteOcupadoImg,
-        iconSize: isMob ? [16, 16] : [24, 24],
-        iconAnchor: isMob ? [8, 16] : [12, 24],
-        popupAnchor: [0, isMob ? -16 : -24],
+        iconSize: [size, size],
+        iconAnchor: [Math.round(size / 2), size],
+        popupAnchor: [0, -size],
     });
 };
 
-export const getIconoMufa = () => {
+export const getIconoMufa = (zoomLevel = 18) => {
     const isMob = isMobile();
+    const baseSize = isMob ? 15 : 22;
+    const size = Math.round(baseSize * getZoomScale(zoomLevel));
     return new L.Icon({
         iconUrl: mufaImg,
-        iconSize: isMob ? [15, 15] : [22, 22],
-        iconAnchor: isMob ? [7, 15] : [11, 22],
-        popupAnchor: [0, isMob ? -15 : -22],
+        iconSize: [size, size],
+        iconAnchor: [Math.round(size / 2), size],
+        popupAnchor: [0, -size],
     });
 };
 
-export const getIconoCaja = (codigo = '') => {
+export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
     const isMob = isMobile();
-    const size = isMob ? 24 : 36;
+    const baseSize = isMob ? 24 : 36;
+    const size = Math.round(baseSize * getZoomScale(zoomLevel));
     const fontSize = isMob ? '12px' : '18px';
     const textFontSize = isMob ? '8px' : '11px';
-    const bgColor = '#ff6b35'; // Naranja vibrante que resalta más
+    const bgColor = '#ff6b35';
     const borderColor = '#fff';
-    // Truncar código a 10 caracteres
     const codigoTruncado = codigo && codigo.length > 10 ? codigo.substring(0, 10) + '...' : codigo;
+    const showLabel = zoomLevel >= 15;
     
     return L.divIcon({
         html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
             <div style="background:${bgColor};border:3px solid ${borderColor};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 4px 12px rgba(255,107,53,0.6);">📦</div>
-            ${codigoTruncado ? `<div style="background:rgba(0,0,0,0.9);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${codigoTruncado}</div>` : ''}
+            ${showLabel && codigoTruncado ? `<div style="background:rgba(0,0,0,0.9);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${codigoTruncado}</div>` : ''}
         </div>`,
         className: 'custom-div-icon',
-        iconSize: [size, codigoTruncado ? size + 20 : size],
-        iconAnchor: [size / 2, codigoTruncado ? size + 20 : size / 2],
+        iconSize: [size, showLabel && codigoTruncado ? size + 20 : size],
+        iconAnchor: [Math.round(size / 2), showLabel && codigoTruncado ? size + 20 : size],
         popupAnchor: [0, -(size / 2 + 10)]
     });
 };
 
-export const getIconoCliente = () => {
+export const getIconoCliente = (zoomLevel = 18) => {
     const isMob = isMobile();
+    const baseSize = isMob ? 14 : 20;
+    const width = Math.round(baseSize * getZoomScale(zoomLevel));
+    const height = Math.round((isMob ? 18 : 26) * getZoomScale(zoomLevel));
     return new L.Icon({
         iconUrl: clienteImg,
-        iconSize: isMob ? [14, 18] : [20, 26],
-        iconAnchor: isMob ? [7, 18] : [10, 26],
-        popupAnchor: [0, isMob ? -18 : -26],
+        iconSize: [width, height],
+        iconAnchor: [Math.round(width / 2), height],
+        popupAnchor: [0, -height],
     });
 };
 

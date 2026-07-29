@@ -98,10 +98,14 @@ const MapaDashboard = () => {
           <Polyline
             key={idx}
             positions={coords}
-            color={tramo.colorVisual || '#8b5cf6'}
-            weight={3}
-            opacity={0.7}
-            dashArray="5, 5"
+            pathOptions={{
+              color: tramo.colorVisual || '#8b5cf6',
+              weight: 6,
+              opacity: 0.92,
+              lineCap: 'round',
+              lineJoin: 'round',
+              dashArray: '4, 6'
+            }}
           />
         );
       } catch {
