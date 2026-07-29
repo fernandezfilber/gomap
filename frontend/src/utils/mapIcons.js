@@ -1,11 +1,5 @@
 import L from 'leaflet';
 
-// Importar las imágenes
-import posteImg from '../assets/icons/luz-de-la-calle.png';
-import posteOcupadoImg from '../assets/icons/energia.png';
-import mufaImg from '../assets/icons/fibra-optica.png';
-import clienteImg from '../assets/icons/clasificacion.png';
-
 // Detectar si es dispositivo móvil
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
@@ -17,78 +11,67 @@ const getZoomScale = (zoomLevel) => {
     return 0.25;
 };
 
+const colorNameToHex = {
+    Azul: '#3b82f6',
+    Naranja: '#f97316',
+    Verde: '#22c55e',
+    Marrón: '#a16207',
+    Gris: '#6b7280',
+    Blanco: '#f8fafc',
+    Rojo: '#ef4444',
+    Negro: '#111827',
+    Amarillo: '#eab308',
+    Violeta: '#8b5cf6',
+    Rosa: '#ec4899',
+    Aqua: '#06b6d4',
+};
+
+const getColorFromName = (colorName) => {
+    if (!colorName) return '#3b82f6';
+    return colorNameToHex[colorName] || colorName;
+};
+
+const getCircleIcon = (fillColor, zoomLevel, label = '') => {
+    const isMob = isMobile();
+    const baseSize = isMob ? 18 : 26;
+    const size = Math.max(14, Math.round(baseSize * getZoomScale(zoomLevel)));
+    const showLabel = zoomLevel >= 18 && label;
+    const labelFontSize = isMob ? '8px' : '10px';
+
+    return L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="background:${fillColor};border:2px solid rgba(255,255,255,0.9);border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 8px rgba(0,0,0,0.18);"></div>
+            ${showLabel ? `<div style="background:rgba(0,0,0,0.75);color:white;font-size:${labelFontSize};font-weight:700;padding:2px 5px;border-radius:9999px;white-space:nowrap;">${label}</div>` : ''}
+        </div>`,
+        className: 'custom-div-icon',
+        iconSize: [size, showLabel ? size + 18 : size],
+        iconAnchor: [Math.round(size / 2), showLabel ? size + 18 : size],
+        popupAnchor: [0, -(size / 2 + 8)],
+    });
+};
+
 // ==================== ICONOS DINÁMICOS (RESPONSIVE) ====================
 
 export const getIconoPoste = (zoomLevel = 18) => {
-    const isMob = isMobile();
-    const baseSize = isMob ? 16 : 24;
-    const size = Math.round(baseSize * getZoomScale(zoomLevel));
-    return new L.Icon({
-        iconUrl: posteImg,
-        iconSize: [size, size],
-        iconAnchor: [Math.round(size / 2), size],
-        popupAnchor: [0, -size],
-    });
+    return getCircleIcon('#64748b', zoomLevel);
 };
 
 export const getIconoPosteOcupado = (zoomLevel = 18) => {
-    const isMob = isMobile();
-    const baseSize = isMob ? 16 : 24;
-    const size = Math.round(baseSize * getZoomScale(zoomLevel));
-    return new L.Icon({
-        iconUrl: posteOcupadoImg,
-        iconSize: [size, size],
-        iconAnchor: [Math.round(size / 2), size],
-        popupAnchor: [0, -size],
-    });
+    return getCircleIcon('#0ea5e9', zoomLevel);
 };
 
 export const getIconoMufa = (zoomLevel = 18) => {
-    const isMob = isMobile();
-    const baseSize = isMob ? 15 : 22;
-    const size = Math.round(baseSize * getZoomScale(zoomLevel));
-    return new L.Icon({
-        iconUrl: mufaImg,
-        iconSize: [size, size],
-        iconAnchor: [Math.round(size / 2), size],
-        popupAnchor: [0, -size],
-    });
+    return getCircleIcon('#f97316', zoomLevel);
 };
 
-export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
-    const isMob = isMobile();
-    const baseSize = isMob ? 20 : 28;
-    const size = Math.max(16, Math.round(baseSize * getZoomScale(zoomLevel)));
-    const fontSize = isMob ? '10px' : '12px';
-    const textFontSize = isMob ? '7px' : '10px';
-    const bgColor = '#ff6b35';
-    const borderColor = '#fff';
-    const codigoTruncado = codigo && codigo.length > 8 ? codigo.substring(0, 8) + '...' : codigo;
-    const showLabel = zoomLevel >= 18;
-    
-    return L.divIcon({
-        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-            <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 2px 8px rgba(255,107,53,0.45);">📦</div>
-            ${showLabel && codigoTruncado ? `<div style="background:rgba(0,0,0,0.9);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 5px;border-radius:3px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${codigoTruncado}</div>` : ''}
-        </div>`,
-        className: 'custom-div-icon',
-        iconSize: [size, showLabel && codigoTruncado ? size + 18 : size],
-        iconAnchor: [Math.round(size / 2), showLabel && codigoTruncado ? size + 18 : size],
-        popupAnchor: [0, -(size / 2 + 10)]
-    });
+export const getIconoCaja = (codigo = '', colorName = '#3b82f6', zoomLevel = 18) => {
+    const fillColor = getColorFromName(colorName);
+    const label = codigo ? (codigo.length > 8 ? `${codigo.substring(0, 8)}...` : codigo) : '';
+    return getCircleIcon(fillColor, zoomLevel, label);
 };
 
 export const getIconoCliente = (zoomLevel = 18) => {
-    const isMob = isMobile();
-    const baseSize = isMob ? 14 : 20;
-    const width = Math.round(baseSize * getZoomScale(zoomLevel));
-    const height = Math.round((isMob ? 18 : 26) * getZoomScale(zoomLevel));
-    return new L.Icon({
-        iconUrl: clienteImg,
-        iconSize: [width, height],
-        iconAnchor: [Math.round(width / 2), height],
-        popupAnchor: [0, -height],
-    });
+    return getCircleIcon('#8b5cf6', zoomLevel);
 };
 
 // Icono temporal (opcional)

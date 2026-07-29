@@ -10,6 +10,7 @@ const SearchCajaCercana = ({ onClose }) => {
   const [radio, setRadio] = useState('500'); // metros
   const [resultados, setResultados] = useState([]);
   const [resultadosCroquis, setResultadosCroquis] = useState([]);
+  const [mensajeBusqueda, setMensajeBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
 
   const extraerCoordenadas = (input) => {
@@ -58,6 +59,7 @@ const SearchCajaCercana = ({ onClose }) => {
 
     setResultados([]);
     setResultadosCroquis([]);
+    setMensajeBusqueda('');
     setCargando(true);
 
     try {
@@ -72,20 +74,34 @@ const SearchCajaCercana = ({ onClose }) => {
 
       const mapaResult = res[0];
       const croquisResult = res[1];
+      const errores = [];
 
       const cajasMapa = mapaResult.status === 'fulfilled' ? mapaResult.value.data?.cajas || [] : [];
+      if (mapaResult.status === 'rejected') {
+        const mensaje = mapaResult.reason.response?.data?.message || 'Error cargando cajas del mapa';
+        errores.push(mensaje);
+      }
+
       const cajasCroquis = croquisResult.status === 'fulfilled' ? croquisResult.value.data?.cajas || [] : [];
+      if (croquisResult.status === 'rejected') {
+        const mensaje = croquisResult.reason.response?.data?.message || 'Error cargando cajas de croquis';
+        errores.push(mensaje);
+      }
 
       setResultados(cajasMapa);
       setResultadosCroquis(cajasCroquis);
 
-      if (mapaResult.status === 'rejected' || croquisResult.status === 'rejected') {
-        const mensajeMapa = mapaResult.status === 'rejected' ? mapaResult.reason.response?.data?.message : null;
-        const mensajeCroquis = croquisResult.status === 'rejected' ? croquisResult.reason.response?.data?.message : null;
-        const mensaje = mensajeMapa || mensajeCroquis || 'Error en búsqueda';
+      if (cajasMapa.length === 0 && cajasCroquis.length === 0) {
+        const mensaje = 'Cajas no disponibles cerca de esta ubicación';
+        setMensajeBusqueda(mensaje);
+        if (errores.length === 0) {
+          toast.info(mensaje);
+        } else if (errores.length === 2) {
+          toast.error(errores.join(' / '));
+        }
+      } else if (errores.length > 0) {
+        const mensaje = errores.join(' / ');
         toast.error(`Búsqueda parcial: ${mensaje}`);
-      } else if (cajasMapa.length === 0 && cajasCroquis.length === 0) {
-        toast.info('No hay cajas cercanas en el mapa ni en croquis');
       }
     } catch (error) {
       console.error('Error en búsqueda:', error);
@@ -221,7 +237,7 @@ const SearchCajaCercana = ({ onClose }) => {
             </>
           ) : (
             <p className="text-gray-500 text-center py-4">
-              {cargando ? 'Buscando...' : 'Sin resultados'}
+              {cargando ? 'Buscando...' : mensajeBusqueda || 'Sin resultados'}
             </p>
           )}
         </div>
