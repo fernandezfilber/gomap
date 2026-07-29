@@ -376,35 +376,40 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                         );
                     })}</LayerGroup></LayersControl.Overlay>
                     
-                    <LayersControl.Overlay checked name="Mufas"><LayerGroup>{mufas.filter(m => esCoordenadaValida(m.latitud, m.longitud)).map(m => (
-                        <Marker key={m.id} position={[parseFloat(m.latitud), parseFloat(m.longitud)]} icon={getIconoMufa(zoomLevel)} ref={el => el ? markerRefs.current.set(m.id, el) : markerRefs.current.delete(m.id)}>
-                            <Popup><div className="text-center p-3"><p className="font-bold text-orange-400 text-xl mb-1">🌀 Mufa: {m.codigo}</p><p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Splitter: {m.ratioSplitteo || 'N/A'}</p>{(() => { const cap = parseInt((m.ratioSplitteo || '1:16').split(':')[1]) || 16; const ocu = (cajas || []).filter(c => c.mufaId === m.id).length; const libre = cap - ocu; return <p className={`text-xs font-black mb-2 ${libre <= 0 ? 'text-red-400' : libre <= 2 ? 'text-yellow-400' : 'text-emerald-400'}`}>Hilos: {ocu}/{cap} usados ({libre} libres)</p>; })()}<div className="flex gap-2 mt-4"><button onClick={() => setModal({ show: true, type: 'mufa', data: m })} className="flex-1 bg-orange-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Editar</button><button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: m.id, tipoNodo: 'MUFA' } })} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-1 rounded-xl text-xs font-bold transition-colors">Empalmes</button><button onClick={() => eliminarMufa(m.id)} className="flex-1 bg-red-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Borrar</button></div></div></Popup>
-                        </Marker>
-                    ))}</LayerGroup></LayersControl.Overlay>
+                    <LayersControl.Overlay checked name="Mufas"><LayerGroup>{mufas.filter(m => esCoordenadaValida(m.latitud, m.longitud)).map(m => {
+                        const simpleMode = !proyectoSeleccionado;
+                        return (
+                            <Marker key={m.id} position={[parseFloat(m.latitud), parseFloat(m.longitud)]} icon={getIconoMufa(zoomLevel, { simple: simpleMode, showLabel: !simpleMode && zoomLevel >= 18 })} ref={el => el ? markerRefs.current.set(m.id, el) : markerRefs.current.delete(m.id)}>
+                                {!simpleMode && <Popup><div className="text-center p-3"><p className="font-bold text-orange-400 text-xl mb-1">🌀 Mufa: {m.codigo}</p><p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Splitter: {m.ratioSplitteo || 'N/A'}</p>{(() => { const cap = parseInt((m.ratioSplitteo || '1:16').split(':')[1]) || 16; const ocu = (cajas || []).filter(c => c.mufaId === m.id).length; const libre = cap - ocu; return <p className={`text-xs font-black mb-2 ${libre <= 0 ? 'text-red-400' : libre <= 2 ? 'text-yellow-400' : 'text-emerald-400'}`}>Hilos: {ocu}/{cap} usados ({libre} libres)</p>; })()}<div className="flex gap-2 mt-4"><button onClick={() => setModal({ show: true, type: 'mufa', data: m })} className="flex-1 bg-orange-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Editar</button><button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: m.id, tipoNodo: 'MUFA' } })} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-1 rounded-xl text-xs font-bold transition-colors">Empalmes</button><button onClick={() => eliminarMufa(m.id)} className="flex-1 bg-red-600 text-white py-2 px-1 rounded-xl text-xs font-bold">Borrar</button></div></div></Popup>}
+                            </Marker>
+                        );
+                    })}</LayerGroup></LayersControl.Overlay>
 
-                    <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
-                        <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
-                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 18 ? 1 : 0} permanent={zoomLevel >= 18} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[9px] !rounded-sm">
-                                {c.codigo || 'Caja'}
-                            </Tooltip>
-                            <Popup>
-                                <div className="text-center p-3">
-                                    <p className="font-bold text-emerald-400 text-xl mb-1">📦 Caja: {c.codigo}</p>
-                                    <div className="mb-3 space-y-1">
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Empresa: <span className="text-white">{c.poste?.proyecto?.empresa?.nombre || 'N/A'}</span></p>
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Hilo: <span className="text-emerald-400">{c.colorHiloCaja || 'Azul'}</span></p>
-                                        {c.mufa && <p className="text-[10px] text-purple-400 uppercase font-bold tracking-wider">Mufa: {c.mufa.codigo}</p>}
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Puertos: <span className="text-white">{c.puertosLibres}/{c.capacidadTotal}</span></p>
+                    <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => {
+                        const simpleMode = !proyectoSeleccionado;
+                        const showTooltip = !simpleMode && zoomLevel < 18;
+                        return (
+                            <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel, { simple: simpleMode, showLabel: !simpleMode && zoomLevel >= 18 })} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
+                                {showTooltip && <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 16 ? 1 : 0} permanent={zoomLevel >= 16} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[9px] !rounded-sm">{c.codigo || 'Caja'}</Tooltip>}
+                                {!simpleMode && <Popup>
+                                    <div className="text-center p-3">
+                                        <p className="font-bold text-emerald-400 text-xl mb-1">📦 Caja: {c.codigo}</p>
+                                        <div className="mb-3 space-y-1">
+                                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Empresa: <span className="text-white">{c.poste?.proyecto?.empresa?.nombre || 'N/A'}</span></p>
+                                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Hilo: <span className="text-emerald-400">{c.colorHiloCaja || 'Azul'}</span></p>
+                                            {c.mufa && <p className="text-[10px] text-purple-400 uppercase font-bold tracking-wider">Mufa: {c.mufa.codigo}</p>}
+                                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Puertos: <span className="text-white">{c.puertosLibres}/{c.capacidadTotal}</span></p>
+                                        </div>
+                                        <div className="flex gap-2 justify-center mt-4">
+                                            <button onClick={() => setModal({ show: true, type: 'caja', data: c })} className="flex-1 text-xs font-bold text-blue-500 hover:text-blue-400">Editar</button>
+                                            <button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: c.id, tipoNodo: 'CAJA' } })} className="flex-1 text-xs font-bold bg-blue-600 text-white rounded px-2 py-1">Empalmes</button>
+                                            <button onClick={() => eliminarCaja(c.id)} className="flex-1 text-xs font-bold text-red-500 hover:text-red-400"><Trash2 size={14} className="inline" /> Borrar</button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2 justify-center mt-4">
-                                        <button onClick={() => setModal({ show: true, type: 'caja', data: c })} className="flex-1 text-xs font-bold text-blue-500 hover:text-blue-400">Editar</button>
-                                        <button onClick={() => setModal({ show: true, type: 'matriz_empalmes', data: { nodoId: c.id, tipoNodo: 'CAJA' } })} className="flex-1 text-xs font-bold bg-blue-600 text-white rounded px-2 py-1">Empalmes</button>
-                                        <button onClick={() => eliminarCaja(c.id)} className="flex-1 text-xs font-bold text-red-500 hover:text-red-400"><Trash2 size={14} className="inline" /> Borrar</button>
-                                    </div>
-                                </div>
-                            </Popup>
-                        </Marker>
-                    ))}</LayerGroup></LayersControl.Overlay>
+                                </Popup>}
+                            </Marker>
+                        );
+                    })}</LayerGroup></LayersControl.Overlay>
                     
                     <LayersControl.Overlay checked name="Clientes">
                         <LayerGroup>
