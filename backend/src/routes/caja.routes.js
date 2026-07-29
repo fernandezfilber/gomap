@@ -23,14 +23,12 @@ const safeHandler = (handler, name) => {
 // --- RUTAS DE CAJAS NAP ---
 router.get('/', safeHandler(cajaController.getCajas, 'getCajas'));
 router.post('/', isAdmin, safeHandler(cajaController.createCaja, 'createCaja'));
+router.get('/cercanas', safeHandler(cajaController.getCajasCercanas, 'getCajasCercanas'));
 router.get('/:id', safeHandler(cajaController.getCajaById, 'getCajaById'));
 router.put('/:id', isAdmin, safeHandler(cajaController.updateCaja, 'updateCaja'));
 router.delete('/:id', isAdmin, safeHandler(cajaController.deleteCaja, 'deleteCaja'));
 
 // Rutas adicionales
-if (cajaController.getCajasCercanas) {
-    router.get('/cercanas', cajaController.getCajasCercanas);
-}
 
 // Verifica si esta función existe en mufaController
 router.get('/mufas/:mufaId/ocupados', safeHandler(cajaController.getHilosOcupados, 'getHilosOcupados'));

@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { X, MapPin, Navigation } from 'lucide-react';
+import { X, MapPin, Navigation, PenTool } from 'lucide-react';
 import fvApi from '../../api/fvApi';
+import { useNavigate } from 'react-router-dom';
 
 const SearchCajaCercana = ({ onClose }) => {
+  const navigate = useNavigate();
   const [coordenadasInput, setCoordenadasInput] = useState('');
   const [radio, setRadio] = useState('500'); // metros
   const [resultados, setResultados] = useState([]);
+  const [resultadosCroquis, setResultadosCroquis] = useState([]);
   const [cargando, setCargando] = useState(false);
 
   const handleBuscar = async (e) => {
@@ -31,16 +34,23 @@ const SearchCajaCercana = ({ onClose }) => {
 
     setCargando(true);
     try {
-      const response = await fvApi.get('/cajas/cercanas', {
-        params: {
-          latitud: lat,
-          longitud: lng,
-          radio: parseInt(radio),
-        },
-      });
-      setResultados(response.data.cajas || []);
-      if (response.data.cajas.length === 0) {
-        toast.info('No hay cajas cercanas');
+      const [resMapa, resCroquis] = await Promise.all([
+        fvApi.get('/cajas/cercanas', {
+          params: { latitud: lat, longitud: lng, radio: parseInt(radio) },
+        }).catch(err => ({ data: { cajas: [] } })),
+        fvApi.get('/croquis/cajas-cercanas', {
+          params: { latitud: lat, longitud: lng, radio: parseInt(radio) },
+        }).catch(err => ({ data: { cajas: [] } }))
+      ]);
+
+      const cajasMapa = resMapa.data?.cajas || [];
+      const cajasCroquis = resCroquis.data?.cajas || [];
+
+      setResultados(cajasMapa);
+      setResultadosCroquis(cajasCroquis);
+
+      if (cajasMapa.length === 0 && cajasCroquis.length === 0) {
+        toast.info('No hay cajas cercanas en el mapa ni en croquis');
       }
     } catch (error) {
       toast.error('Error en búsqueda');
@@ -123,45 +133,55 @@ const SearchCajaCercana = ({ onClose }) => {
         </form>
 
         {/* Resultados */}
-        <div className="space-y-2 max-h-96 overflow-auto">
-          {resultados.length > 0 ? (
+        <div className="space-y-4 max-h-[60vh] overflow-auto">
+          {resultados.length > 0 || resultadosCroquis.length > 0 ? (
             <>
-              <p className="font-bold text-sm mb-2">Encontradas {resultados.length} cajas:</p>
-              {resultados.map((caja, idx) => {
-                const match = decodeURIComponent(coordenadasInput).match(/(-?\d{1,3}\.\d+)[\s,]+(-?\d{1,3}\.\d+)/);
-                const latBusqueda = match ? parseFloat(match[1]) : 0;
-                const lngBusqueda = match ? parseFloat(match[2]) : 0;
-                const dist = distancia(
-                  latBusqueda,
-                  lngBusqueda,
-                  caja.latitud,
-                  caja.longitud
-                );
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                        const event = new window.CustomEvent('cajaSeleccionada', { detail: caja });
-                        window.dispatchEvent(event);
-                        onClose();
-                    }}
-                    className="border rounded p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer"
-                  >
-                    <p className="font-bold text-green-600">📦 {caja.codigo}</p>
-                    <p className="text-sm text-gray-600">
-                      Distancia: <b>{dist}m</b>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Puertos: {caja.puertosLibres}/{caja.capacidadTotal}
-                    </p>
-                    {caja.mufa && (
-                      <p className="text-sm text-purple-600">
-                        Mufa: {caja.mufa.codigo}
-                      </p>
-                    )}
+              {resultados.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-sm mb-2 flex items-center gap-1 text-emerald-600"><MapPin size={16}/> En Mapa Principal ({resultados.length}):</h3>
+                  <div className="space-y-2">
+                    {resultados.map((caja, idx) => (
+                      <div
+                        key={`mapa-${idx}`}
+                        onClick={() => {
+                            const event = new window.CustomEvent('cajaSeleccionada', { detail: caja });
+                            window.dispatchEvent(event);
+                            onClose();
+                        }}
+                        className="border rounded p-3 bg-emerald-50/50 hover:bg-emerald-100 cursor-pointer transition-colors"
+                      >
+                        <p className="font-bold text-emerald-700">📦 {caja.codigo}</p>
+                        <p className="text-sm text-gray-600">
+                          Distancia: <b>{caja.distancia_metros}m</b> | Proyecto: {caja.proyectoNombre || 'N/A'}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              {resultadosCroquis.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-sm mb-2 mt-4 flex items-center gap-1 text-violet-600"><PenTool size={16}/> En Croquis ({resultadosCroquis.length}):</h3>
+                  <div className="space-y-2">
+                    {resultadosCroquis.map((caja, idx) => (
+                      <div
+                        key={`croquis-${idx}`}
+                        onClick={() => {
+                            navigate(`/dashboard/croquis/${caja.croquisId}`);
+                            onClose();
+                        }}
+                        className="border rounded p-3 bg-violet-50/50 hover:bg-violet-100 cursor-pointer transition-colors"
+                      >
+                        <p className="font-bold text-violet-700">📦 {caja.label}</p>
+                        <p className="text-sm text-gray-600">
+                          Distancia: <b>{caja.distancia_metros}m</b> | Croquis: {caja.croquisNombre}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-gray-500 text-center py-4">

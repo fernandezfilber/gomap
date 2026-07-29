@@ -9,16 +9,15 @@ const useCajas = (proyectoId = null) => {
 
     // ==================== FETCH ====================
     const fetchCajas = useCallback(async () => {
-        if (!proyectoId) {
-            setCajas([]);
-            return;
-        }
-
         setLoading(true);
         setError(null);
 
         try {
-            const { data } = await fvApi.get(`/cajas?proyectoId=${proyectoId}`);
+            const url = proyectoId 
+                ? `/cajas?proyectoId=${proyectoId}` 
+                : '/cajas';
+            
+            const { data } = await fvApi.get(url);
             console.log("📡 API CAJAS RAW:", data);
             const nuevasCajas = Array.isArray(data.cajas) ? data.cajas : (Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []));
             setCajas(nuevasCajas);

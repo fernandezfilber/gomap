@@ -1,4 +1,6 @@
 const cajaService = require('../services/caja.service');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // ====================== OBTENER TODAS LAS CAJAS ======================
 exports.getCajas = async (req, res) => {
@@ -75,6 +77,41 @@ exports.deleteCaja = async (req, res) => {
     } catch (error) {
         console.error("❌ Error al eliminar caja:", error);
         res.status(error.status || 500).json({ success: false, message: error.message || "Error al eliminar" });
-    }
+    }};
 
+// ====================== CAJAS CERCANAS ======================
+exports.getCajasCercanas = async (req, res) => {
+    try {
+        const { empresaId } = req.user;
+        const { latitud, longitud, radio } = req.query;
+        
+        const lat = parseFloat(latitud);
+        const lng = parseFloat(longitud);
+        const radioMetros = parseInt(radio) || 500;
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            return res.status(400).json({ success: false, message: 'Coordenadas inválidas' });
+        }
+
+        const cajas = await prisma.$queryRaw`
+            SELECT c.id, c.codigo, c.latitud, c.longitud, c.capacidadTotal, c.puertosLibres, c.mufaId,
+                p.codigo as posteCodigo, pr.nombre as proyectoNombre, pr.id as proyectoId,
+                (6371 * acos(
+                    cos(radians(${lat})) * cos(radians(c.latitud)) * cos(radians(c.longitud) - radians(${lng})) + 
+                    sin(radians(${lat})) * sin(radians(c.latitud))
+                ) * 1000) AS distancia_metros
+            FROM cajas c
+            JOIN postes p ON c.posteId = p.id
+            JOIN proyectos pr ON p.proyectoId = pr.id
+            WHERE pr.empresaId = ${empresaId}
+            HAVING distancia_metros <= ${radioMetros}
+            ORDER BY distancia_metros ASC
+            LIMIT 20
+        `;
+
+        res.json({ success: true, cajas: cajas.map(c => ({ ...c, distancia_metros: Math.round(Number(c.distancia_metros) * 100) / 100 })) });
+    } catch (error) {
+        console.error('Error getCajasCercanas:', error);
+        res.status(500).json({ success: false, message: 'Error buscando cajas cercanas' });
+    }
 };

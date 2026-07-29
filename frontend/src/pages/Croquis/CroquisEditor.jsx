@@ -4,24 +4,43 @@ import fvApi from '../../api/fvApi';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-rotate';
-import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation, UploadCloud, Palette } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import ImportarCroquisModal from '../../components/modals/ImportarCroquisModal';
 
-// Iconos Personalizados para el Borrador
-const createCustomIcon = (emoji, color, label) => L.divIcon({
-    html: `<div style="display:flex;flex-direction:column;align-items:center;">
-        <div style="background:#1e293b;border:2px solid ${color};border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;box-shadow:0 2px 6px rgba(0,0,0,0.5);">${emoji}</div>
-        ${label ? `<span style="background:rgba(0,0,0,0.85);color:white;font-size:5px;font-weight:bold;padding:1px 3px;border-radius:2px;margin-top:1px;white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;">${label}</span>` : ''}
-    </div>`,
-    className: 'custom-div-icon',
-    iconSize: [18, 24],
-    iconAnchor: [9, 9],
-    popupAnchor: [0, -9]
-});
+// Iconos Personalizados para el Borrador - Mejorados con colores visibles
+const createCustomIcon = (emoji, color, label) => {
+    const isMob = typeof window !== 'undefined' && window.innerWidth < 768;
+    const size = isMob ? 24 : 36;
+    const fontSize = isMob ? '12px' : '18px';
+    const textFontSize = isMob ? '8px' : '11px';
+    
+    // Colores mejorados y más visibles
+    const colorMap = {
+        '#f97316': '#ff6b35', // Naranja vibrante (mufa)
+        'emerald': '#ff6b35', // Naranja para cajas (mismo que en principal)
+        '#10b981': '#ff6b35'
+    };
+    
+    const bgColor = colorMap[color] || color || '#ff6b35';
+    // Truncar label a 10 caracteres
+    const labelTruncado = label && label.length > 10 ? label.substring(0, 10) + '...' : label;
+    
+    return L.divIcon({
+        html: `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="background:${bgColor};border:3px solid white;border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${fontSize};font-weight:bold;box-shadow:0 4px 12px rgba(255,107,53,0.6);">${emoji}</div>
+            ${labelTruncado ? `<div style="background:rgba(0,0,0,0.9);color:white;font-size:${textFontSize};font-weight:bold;padding:2px 6px;border-radius:3px;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;border:1px solid ${bgColor};">${labelTruncado}</div>` : ''}
+        </div>`,
+        className: 'custom-div-icon',
+        iconSize: [size, labelTruncado ? size + 20 : size],
+        iconAnchor: [size / 2, labelTruncado ? size + 20 : size / 2],
+        popupAnchor: [0, -(size / 2 + 10)]
+    });
+};
 
 // Iconos con colores de alto contraste para mapa de calles claro
-const iconMufa = createCustomIcon('🌀', '#f97316', null);
-const iconCajaDefault = createCustomIcon('📦', '#10b981', null);
+const iconMufa = createCustomIcon('🌀', '#ff6b35', null);
+const iconCajaDefault = createCustomIcon('📦', '#ff6b35', null);
 
 const CroquisEditor = () => {
     const { id } = useParams();
@@ -39,6 +58,18 @@ const CroquisEditor = () => {
     // Estados de Interacción (Modos: 'select', 'add_mufa', 'add_caja', 'add_tramo')
     const [modo, setModo] = useState('select');
     const [puntosTemporales, setPuntosTemporales] = useState([]);
+    
+    // UI states
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const [pendingTramoColor, setPendingTramoColor] = useState(false);
+    const [tramoEditandoId, setTramoEditandoId] = useState(null);
+
+    // Predefined colors
+    const colors = [
+        '#ef4444', '#3b82f6', '#22c55e', '#f97316', 
+        '#8b5cf6', '#eab308', '#06b6d4', '#ec4899', '#1e293b'
+    ];
     
     // Loading
     const [saving, setSaving] = useState(false);
@@ -148,10 +179,21 @@ const CroquisEditor = () => {
             setPuntosTemporales([]);
             return;
         }
-        const colorInput = prompt('Color del tramo (ej. #ef4444, #3b82f6, red, blue):', '#8b5cf6') || '#8b5cf6';
-        setTramos([...tramos, { id: `tramo_${Date.now()}`, path: puntosTemporales, color: colorInput, label: 'Nuevo Tramo' }]);
-        setPuntosTemporales([]);
-        setModo('select');
+        setPendingTramoColor(true);
+        setShowColorPicker(true);
+    };
+
+    const applyTramoColor = (color) => {
+        if (pendingTramoColor) {
+            setTramos([...tramos, { id: `tramo_${Date.now()}`, path: puntosTemporales, color: color, label: 'Nuevo Tramo' }]);
+            setPuntosTemporales([]);
+            setModo('select');
+            setPendingTramoColor(false);
+        } else if (tramoEditandoId) {
+            setTramos(tramos.map(tr => tr.id === tramoEditandoId ? { ...tr, color: color } : tr));
+            setTramoEditandoId(null);
+        }
+        setShowColorPicker(false);
     };
 
     const eliminarNodo = (nid) => setNodos(nodos.filter(n => n.id !== nid));
@@ -203,14 +245,23 @@ const CroquisEditor = () => {
                     </div>
                 </div>
                 
-                <button 
-                    onClick={handleSave} 
-                    disabled={saving}
-                    className="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-600/30 transition-colors disabled:opacity-50"
-                >
-                    <Save size={18} />
-                    <span className="hidden md:inline">{saving ? 'Guardando...' : 'Guardar'}</span>
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowImportModal(true)}
+                        className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-4 py-2 rounded-xl transition-colors"
+                    >
+                        <UploadCloud size={18} />
+                        <span className="hidden md:inline">Importar al Mapa</span>
+                    </button>
+                    <button 
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2 rounded-xl transition-all shadow-lg shadow-violet-600/30"
+                    >
+                        {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save size={18} />}
+                        <span className="hidden md:inline">Guardar</span>
+                    </button>
+                </div>
             </div>
 
             {/* Main Area */}
@@ -237,7 +288,7 @@ const CroquisEditor = () => {
                     </LayersControl>
                     
                     {nodos.map(n => {
-                        const icon = n.type === 'mufa' ? iconMufa : createCustomIcon('📦', 'emerald', n.label);
+                        const icon = n.type === 'mufa' ? iconMufa : createCustomIcon('📦', '#ff6b35', n.label);
                         return (
                         <Marker 
                             key={n.id} 
@@ -272,9 +323,11 @@ const CroquisEditor = () => {
                                     <p className="font-bold text-slate-800 mb-2">{t.label}</p>
                                     <div className="flex flex-col gap-2">
                                         <button onClick={() => {
-                                            const newColor = prompt('Nuevo color:', t.color);
-                                            if (newColor) setTramos(tramos.map(tr => tr.id === t.id ? { ...tr, color: newColor } : tr));
-                                        }} className="bg-indigo-500/10 text-indigo-600 w-full py-1.5 rounded-lg text-xs font-bold transition-colors">Cambiar Color</button>
+                                            setTramoEditandoId(t.id);
+                                            setShowColorPicker(true);
+                                        }} className="bg-indigo-500/10 text-indigo-600 w-full py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1">
+                                            <Palette size={14} /> Cambiar Color
+                                        </button>
                                         <button onClick={() => eliminarTramo(t.id)} className="bg-red-500/10 text-red-500 w-full py-1.5 rounded-lg text-xs font-bold transition-colors">Borrar Tramo</button>
                                     </div>
                                 </div>
@@ -332,6 +385,42 @@ const CroquisEditor = () => {
                     </div>
                 )}
             </div>
+            
+            {showColorPicker && (
+                <div className="fixed inset-0 z-[2000] bg-black/50 flex justify-center items-center">
+                    <div className="bg-white rounded-2xl p-6 w-80 shadow-2xl">
+                        <h3 className="text-lg font-bold mb-4 text-center">Selecciona un color</h3>
+                        <div className="grid grid-cols-5 gap-3 mb-4">
+                            {colors.map(c => (
+                                <button key={c} onClick={() => applyTramoColor(c)} className="w-10 h-10 rounded-full border-2 border-white shadow-md hover:scale-110 transition-transform" style={{ backgroundColor: c }} />
+                            ))}
+                        </div>
+                        <div className="flex gap-2 items-center mb-4">
+                            <span className="text-sm font-medium">Personalizado:</span>
+                            <input type="color" id="custom-color-picker" className="w-10 h-10 border-0 rounded cursor-pointer" defaultValue="#000000" />
+                            <button onClick={() => applyTramoColor(document.getElementById('custom-color-picker').value)} className="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg font-bold">Aplicar</button>
+                        </div>
+                        <button onClick={() => {
+                            setShowColorPicker(false);
+                            if (pendingTramoColor) {
+                                setPuntosTemporales([]);
+                                setModo('select');
+                                setPendingTramoColor(false);
+                            }
+                            setTramoEditandoId(null);
+                        }} className="w-full bg-slate-100 text-slate-600 font-bold py-2 rounded-xl hover:bg-slate-200">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <ImportarCroquisModal 
+                isOpen={showImportModal} 
+                onClose={() => setShowImportModal(false)} 
+                croquisId={id} 
+                croquisData={{ nodos, tramos }} 
+            />
         </div>
     );
 };
