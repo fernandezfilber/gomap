@@ -359,14 +359,15 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                     <LayersControl.Overlay checked name="Postes"><LayerGroup>{postes.filter(p => esCoordenadaValida(p.latitud, p.longitud)).map(p => (<Marker key={p.id} position={[parseFloat(p.latitud), parseFloat(p.longitud)]} icon={getPosteIcon(p.id)} ref={el => el ? markerRefs.current.set(p.id, el) : markerRefs.current.delete(p.id)} eventHandlers={{ click: (e) => { if (modo === 'tramo' || e.originalEvent?.shiftKey) { L.DomEvent.stopPropagation(e); if (puntosTemporales.length === 0) setNodoInicio({ id: p.id, tipo: 'poste' }); else setNodoFin({ id: p.id, tipo: 'poste' }); setPuntosTemporales(prev => [...prev, [parseFloat(p.latitud), parseFloat(p.longitud)]]); } } }}><Popup><div className="text-center p-2"><p className="font-bold mb-2">Poste: {p.codigo}</p><div className="flex gap-2"><button onClick={() => setModal({ show: true, type: 'mufa', data: { posteId: p.id, latitud: p.latitud, longitud: p.longitud } })} className="bg-orange-600 text-white px-2 py-1 rounded text-xs">+Mufa</button><button onClick={() => setModal({ show: true, type: 'caja_rapida', data: { posteId: p.id, latitud: p.latitud, longitud: p.longitud } })} className="bg-emerald-600 text-white px-2 py-1 rounded text-xs">+Caja</button></div><button onClick={() => eliminarPoste(p.id)} className="mt-4 text-red-500 text-xs">Eliminar Poste</button></div></Popup></Marker>))}</LayerGroup></LayersControl.Overlay>
                     <LayersControl.Overlay checked name="Cables"><LayerGroup>{tramos.map(t => {
                         const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+                        const pesoBase = isDesktop ? 5 : 4;
                         const pathOptions = {
                             color: t.colorVisual || '#ef4444',
-                            weight: isDesktop ? (zoomLevel >= 18 ? 12 : 10) : 6,
-                            opacity: isDesktop ? 0.95 : 0.9,
+                            weight: zoomLevel >= 17 ? pesoBase + 3 : zoomLevel >= 15 ? pesoBase + 1 : pesoBase,
+                            opacity: zoomLevel >= 15 ? 0.85 : 0.7,
                             offset: getOffset(t),
                             lineCap: 'round',
                             lineJoin: 'round',
-                            dashArray: isDesktop ? undefined : '5, 5'
+                            dashArray: zoomLevel >= 14 ? undefined : '5, 5'
                         };
                         return (
                             <Polyline key={t.id} positions={t.path} pathOptions={pathOptions}>
@@ -383,7 +384,7 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
 
                     <LayersControl.Overlay checked name="Cajas"><LayerGroup>{cajas.filter(c => esCoordenadaValida(c.latitud, c.longitud)).map(c => (
                         <Marker key={c.id} position={[parseFloat(c.latitud), parseFloat(c.longitud)]} icon={getIconoCaja(c.codigo, zoomLevel)} ref={el => el ? markerRefs.current.set(c.id, el) : markerRefs.current.delete(c.id)} zIndexOffset={cajaResaltada?.id === c.id ? 5000 : 1000}>
-                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 17 ? 1 : 0.7} permanent={zoomLevel >= 17} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
+                            <Tooltip direction="bottom" offset={[0, 10]} opacity={zoomLevel >= 18 ? 1 : 0} permanent={zoomLevel >= 18} className="font-bold !text-slate-900 !bg-white !border-[1px] !border-slate-800 shadow-sm !py-0 !px-1 !text-[6px] !rounded-sm">
                                 {c.codigo}
                             </Tooltip>
                             <Popup>
