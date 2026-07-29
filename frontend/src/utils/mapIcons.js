@@ -75,14 +75,8 @@ export const getIconoCliente = (zoomLevel = 18) => {
 };
 
 // Icono temporal (opcional)
-export const getIconoPosteTemporal = () => {
-    const isMob = isMobile();
-    return new L.Icon({
-        iconUrl: posteImg,
-        iconSize: isMob ? [19, 19] : [28, 28],
-        iconAnchor: isMob ? [9, 19] : [14, 28],
-        popupAnchor: [0, isMob ? -19 : -28],
-    });
+export const getIconoPosteTemporal = (zoomLevel = 18) => {
+    return getCircleIcon('#64748b', zoomLevel);
 };
 
 // ==================== BACKWARD COMPATIBILITY: ICONOS ESTÁTICOS ====================
