@@ -1,8 +1,8 @@
 import React from 'react';
-import MapaDashboard from '../components/map/MapaDashboard';
+import MapaVisualizacion from '../components/map/MapaVisualizacion';
 
 const MapInteractivo = () => {
-  return <MapaDashboard />;
+  return <MapaVisualizacion />;
 };
 
 export default MapInteractivo;

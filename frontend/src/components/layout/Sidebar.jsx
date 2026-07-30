@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
     LayoutDashboard, Users, Map as MapIcon, LogOut, 
     CheckCircle, PlusCircle, Settings, BarChart3,
-    Search, Target, X, ShieldAlert, Navigation, PenTool, Package, ClipboardList, User
+    Search, Target, X, ShieldAlert, Navigation, PenTool, Package, ClipboardList, User, MapPin
 } from 'lucide-react';
+import SearchCajaCercana from '../modals/SearchCajaCercana';
 
 import useProyectos from '../../hooks/useProyectos';
 import useAuth from '../../hooks/useAuth';
@@ -16,10 +17,13 @@ import logoFull from '../../assets/logoGOmap.png';
 const Sidebar = ({ isOpen, onClose }) => {
     const { proyectos, setProyectoSeleccionado, proyectoSeleccionado, crearProyecto } = useProyectos();
     const { logout } = useAuth();
+    const navigate = useNavigate();
     
     const { verificarCobertura, resultadoFactibilidad, loading: factibilidadLoading } = useRed(proyectoSeleccionado?.id);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [mostrarBusquedaCajas, setMostrarBusquedaCajas] = useState(false);
+    const [busquedaInicialCoords, setBusquedaInicialCoords] = useState(null);
     const [busqueda, setBusqueda] = useState('');
 
     // ==================== MANEJADORES ====================
@@ -28,6 +32,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         if (!idSeleccionado) {
             setProyectoSeleccionado(null);
             localStorage.removeItem('proyectoId');
+            navigate('/mapa');
+            return;
+        }
+        if (idSeleccionado === 'ALL_PROJECTS') {
+            setProyectoSeleccionado(null);
+            localStorage.removeItem('proyectoId');
+            navigate('/mapa');
             return;
         }
         const proyectoEncontrado = proyectos.find(p => p.id === idSeleccionado);
@@ -46,6 +57,21 @@ const Sidebar = ({ isOpen, onClose }) => {
             console.error('Error al crear proyecto:', error);
             alert(error?.message || "Error al crear el proyecto");
         }
+    };
+
+    const handleVerDisponibilidad = () => {
+        if (!navigator.geolocation) {
+            alert('Tu navegador no soporta geolocalización');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setBusquedaInicialCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setMostrarBusquedaCajas(true);
+            },
+            () => alert('No se pudo obtener tu ubicación')
+        );
     };
 
     // ==================== EXTRAER COORDENADAS ====================
@@ -178,6 +204,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                             }`}
                         >
                             <option value="">-- Seleccionar Sector --</option>
+                            <option value="ALL_PROJECTS">Ver Todo</option>
                             {proyectos.map(p => (
                                 <option key={p.id} value={p.id}>{p.nombre}</option>
                             ))}
@@ -226,6 +253,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                             </button>
 
                             <button
+                                onClick={handleVerDisponibilidad}
+                                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white transition-all font-black text-[10px] uppercase tracking-widest py-3.5 rounded-full flex items-center justify-center gap-2 border border-emerald-500 shadow-lg"
+                            >
+                                <MapPin size={16} className="text-white" />
+                                Ver disponibilidad
+                            </button>
+                            <button
                                 onClick={() => {
                                     const event = new window.CustomEvent('abrirBusquedaAvanzada');
                                     window.dispatchEvent(event);
@@ -247,6 +281,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
+                    {mostrarBusquedaCajas && (
+                        <SearchCajaCercana
+                            onClose={() => setMostrarBusquedaCajas(false)}
+                            initialCoordinates={busquedaInicialCoords}
+                            autoSearch={true}
+                        />
+                    )}
 
                     {/* BUSCADOR POR CÓDIGO (NUEVO) */}
                     <div className="space-y-4">

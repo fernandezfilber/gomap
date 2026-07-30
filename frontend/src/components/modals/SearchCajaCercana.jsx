@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { X, MapPin, Navigation, PenTool } from 'lucide-react';
 import fvApi from '../../api/fvApi';
 import { useNavigate } from 'react-router-dom';
 
-const SearchCajaCercana = ({ onClose }) => {
+const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = false }) => {
   const navigate = useNavigate();
-  const [coordenadasInput, setCoordenadasInput] = useState('');
+  const [coordenadasInput, setCoordenadasInput] = useState(initialCoordinates ? `${initialCoordinates.lat}, ${initialCoordinates.lng}` : '');
   const [radio, setRadio] = useState('500'); // metros
   const [resultados, setResultados] = useState([]);
   const [resultadosCroquis, setResultadosCroquis] = useState([]);
   const [mensajeBusqueda, setMensajeBusqueda] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [autoSearchTriggered, setAutoSearchTriggered] = useState(false);
 
   const extraerCoordenadas = (input) => {
     if (!input) return null;
@@ -39,24 +40,7 @@ const SearchCajaCercana = ({ onClose }) => {
     return null;
   };
 
-  const handleBuscar = async (e) => {
-    e.preventDefault();
-
-    if (!coordenadasInput) {
-      toast.error('Ingresa coordenadas o pega un link');
-      return;
-    }
-
-    const decoded = decodeURIComponent(coordenadasInput.trim());
-    const coords = extraerCoordenadas(decoded);
-
-    if (!coords) {
-      toast.error('Formato inválido. Usa lat, lng o un link válido');
-      return;
-    }
-
-    const { lat, lng } = coords;
-
+  const realizarBusqueda = async ({ lat, lng }) => {
     setResultados([]);
     setResultadosCroquis([]);
     setMensajeBusqueda('');
@@ -111,17 +95,48 @@ const SearchCajaCercana = ({ onClose }) => {
     }
   };
 
+  const handleBuscar = async (e) => {
+    e.preventDefault();
+
+    if (!coordenadasInput) {
+      toast.error('Ingresa coordenadas o pega un link');
+      return;
+    }
+
+    const decoded = decodeURIComponent(coordenadasInput.trim());
+    const coords = extraerCoordenadas(decoded);
+
+    if (!coords) {
+      toast.error('Formato inválido. Usa lat, lng o un link válido');
+      return;
+    }
+
+    await realizarBusqueda(coords);
+  };
+
   const handleMiUbicacion = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setCoordenadasInput(`${position.coords.latitude}, ${position.coords.longitude}`);
+          const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setCoordenadasInput(`${coords.lat}, ${coords.lng}`);
           toast.success('Ubicación obtenida');
+          if (autoSearch) {
+            realizarBusqueda(coords);
+          }
         },
         () => toast.error('No puedo obtener ubicación')
       );
     }
   };
+
+  useEffect(() => {
+    if (autoSearch && initialCoordinates && !autoSearchTriggered) {
+      setCoordenadasInput(`${initialCoordinates.lat}, ${initialCoordinates.lng}`);
+      realizarBusqueda(initialCoordinates);
+      setAutoSearchTriggered(true);
+    }
+  }, [autoSearch, initialCoordinates, autoSearchTriggered]);
 
   const distancia = (lat1, lon1, lat2, lon2) => {
     const R = 6371000; // metros
