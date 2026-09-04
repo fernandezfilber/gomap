@@ -33,7 +33,7 @@ const createCustomIcon = (emoji, color, label) => {
         </div>`,
         className: 'custom-div-icon',
         iconSize: [size, labelTruncado ? size + 20 : size],
-        iconAnchor: [size / 2, labelTruncado ? size + 20 : size / 2],
+        iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -(size / 2 + 10)]
     });
 };
@@ -316,8 +316,9 @@ const CroquisEditor = () => {
                         );
                     })}
 
-                    {tramos.map(t => (
-                        <Polyline key={t.id} positions={t.path} pathOptions={{ color: t.color, weight: 2, opacity: 0.9 }}>
+                    {tramos.map(t => {
+                        const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+                        return <Polyline key={t.id} positions={t.path} pathOptions={{ color: t.color, weight: isDesktop ? 5 : 3, opacity: 0.9 }}>
                             <Popup>
                                 <div className="text-center p-2">
                                     <p className="font-bold text-slate-800 mb-2">{t.label}</p>
@@ -333,7 +334,7 @@ const CroquisEditor = () => {
                                 </div>
                             </Popup>
                         </Polyline>
-                    ))}
+                    })}
 
                     {/* Tramo Temporal */}
                     {puntosTemporales.length > 0 && <Polyline positions={puntosTemporales} pathOptions={{ color: '#ec4899', weight: 2, dashArray: '4, 3' }} />}

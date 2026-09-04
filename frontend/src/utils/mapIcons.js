@@ -46,9 +46,9 @@ export const getIconoPosteOcupado = (zoomLevel = 18) => {
 
 export const getIconoMufa = (zoomLevel = 18) => {
     const isMob = isMobile();
-    const baseSize = isMob ? 14 : 20;
+    const baseSize = isMob ? 14 : 28;
     const size = Math.max(14, Math.round(baseSize * getZoomScale(zoomLevel)));
-    const fontSize = isMob ? '10px' : '12px';
+    const fontSize = isMob ? '10px' : '16px';
     const textFontSize = isMob ? '7px' : '10px';
     const bgColor = '#7c3aed';
     const borderColor = '#ffffff';
@@ -61,16 +61,16 @@ export const getIconoMufa = (zoomLevel = 18) => {
         </div>`,
         className: 'custom-div-icon',
         iconSize: [size, showLabel ? size + 20 : size],
-        iconAnchor: [Math.round(size / 2), showLabel ? size + 20 : size],
+        iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
         popupAnchor: [0, -(size / 2 + 10)]
     });
 };
 
 export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
     const isMob = isMobile();
-    const baseSize = isMob ? 16 : 24;
+    const baseSize = isMob ? 16 : 32;
     const size = Math.max(14, Math.round(baseSize * getZoomScale(zoomLevel)));
-    const fontSize = isMob ? '10px' : '12px';
+    const fontSize = isMob ? '10px' : '18px';
     const textFontSize = isMob ? '7px' : '10px';
     const bgColor = '#f97316';
     const borderColor = '#ffffff';
@@ -84,7 +84,7 @@ export const getIconoCaja = (codigo = '', zoomLevel = 18) => {
         </div>`,
         className: 'custom-div-icon',
         iconSize: [size, showLabel && codigoTruncado ? size + 22 : size],
-        iconAnchor: [Math.round(size / 2), showLabel && codigoTruncado ? size + 22 : size],
+        iconAnchor: [Math.round(size / 2), Math.round(size / 2)],
         popupAnchor: [0, -(size / 2 + 10)]
     });
 };
