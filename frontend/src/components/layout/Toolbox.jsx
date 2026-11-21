@@ -1,8 +1,6 @@
-import { MapPin, Share2, Box, Database, MousePointer2 as MousePointer, Ruler, Printer, LogOut } from 'lucide-react';
-import useAuth from '../../hooks/useAuth';
+import { MapPin, Share2, Box, Database, MousePointer2 as MousePointer, Ruler, Printer } from 'lucide-react';
 
 const Toolbox = ({ modo, setModo, medirDistancia, setMedirDistancia, onPrint }) => {
-    const { logout } = useAuth();
     const tools = [
         { 
             id: 'select', 
@@ -37,7 +35,7 @@ const Toolbox = ({ modo, setModo, medirDistancia, setMedirDistancia, onPrint }) 
     ];
 
     return (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[340px] lg:absolute lg:top-6 lg:left-6 lg:bottom-auto lg:translate-x-0 lg:w-auto lg:max-w-none z-[1001] bg-slate-950/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-[2rem] lg:rounded-[2.5rem] p-2 lg:p-3 flex flex-row lg:flex-col gap-2 items-center">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-1/2 -translate-x-1/2 w-[90%] max-w-[340px] lg:absolute lg:top-6 lg:left-6 lg:bottom-auto lg:translate-x-0 lg:w-auto lg:max-w-none z-[1001] bg-slate-950/80 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-[2rem] lg:rounded-[2.5rem] p-2 lg:p-3 flex flex-row lg:flex-col gap-2 items-center">
             {tools.map((tool) => (
                 <button
                     key={tool.id}
@@ -82,15 +80,6 @@ const Toolbox = ({ modo, setModo, medirDistancia, setMedirDistancia, onPrint }) 
                 <Printer size={20} />
             </button>
 
-            <button
-                onClick={() => {
-                    if (window.confirm("¿Cerrar sesión?")) logout();
-                }}
-                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 active:bg-red-500 active:text-white transition-all ml-auto"
-                title="Salir"
-            >
-                <LogOut size={20} />
-            </button>
         </div>
     );
 };

@@ -4,8 +4,7 @@ import fvApi from '../../api/fvApi';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-rotate';
-import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation, UploadCloud, Palette } from 'lucide-react';
-import useAuth from '../../hooks/useAuth';
+import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation, UploadCloud, Palette, Menu, X, LogOut } from 'lucide-react';
 import ImportarCroquisModal from '../../components/modals/ImportarCroquisModal';
 
 // Iconos Personalizados para el Borrador - Mejorados con colores visibles
@@ -64,6 +63,10 @@ const CroquisEditor = () => {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [pendingTramoColor, setPendingTramoColor] = useState(false);
     const [tramoEditandoId, setTramoEditandoId] = useState(null);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showExitModal, setShowExitModal] = useState(false);
+    const [exitAfterSave, setExitAfterSave] = useState(false);
 
     // Predefined colors
     const colors = [
@@ -73,10 +76,20 @@ const CroquisEditor = () => {
     
     // Loading
     const [saving, setSaving] = useState(false);
+    const savedSnapshotRef = useRef(JSON.stringify({
+        nombre: 'Nuevo Croquis',
+        destinatario: '',
+        lugar: '',
+        nodos: [],
+        tramos: [],
+        puntosTemporales: []
+    }));
     
     // Ubicacion
     const [miUbicacion, setMiUbicacion] = useState(null);
     const mapRef = useRef(null);
+    const currentSnapshot = JSON.stringify({ nombre, destinatario, lugar, nodos, tramos, puntosTemporales });
+    const hasUnsavedChanges = currentSnapshot !== savedSnapshotRef.current;
 
     useEffect(() => {
         if (id && id !== 'nuevo') {
@@ -99,15 +112,25 @@ const CroquisEditor = () => {
                 setNombre(c.nombre);
                 setDestinatario(c.destinatario || '');
                 setLugar(c.lugar || '');
+                const loadedNodos = c.datosGraficos?.nodos || [];
+                const loadedTramos = c.datosGraficos?.tramos || [];
                 if (c.datosGraficos) {
-                    setNodos(c.datosGraficos.nodos || []);
-                    setTramos(c.datosGraficos.tramos || []);
+                    setNodos(loadedNodos);
+                    setTramos(loadedTramos);
                     
                     if (c.datosGraficos.nodos?.length > 0 && mapRef.current) {
                         const ult = c.datosGraficos.nodos[c.datosGraficos.nodos.length - 1];
                         mapRef.current.flyTo([ult.lat, ult.lng], 18);
                     }
                 }
+                savedSnapshotRef.current = JSON.stringify({
+                    nombre: c.nombre,
+                    destinatario: c.destinatario || '',
+                    lugar: c.lugar || '',
+                    nodos: loadedNodos,
+                    tramos: loadedTramos,
+                    puntosTemporales: []
+                });
             }
         } catch (error) {
             console.error('Error fetching croquis:', error);
@@ -116,8 +139,20 @@ const CroquisEditor = () => {
         }
     };
 
+    const requestExit = () => {
+        setShowMobileMenu(false);
+        if (hasUnsavedChanges) {
+            setShowExitModal(true);
+            return;
+        }
+        navigate('/dashboard/croquis');
+    };
+
     const handleSave = async () => {
         if (!nombre.trim()) return alert('El nombre es obligatorio');
+        if (puntosTemporales.length > 0) {
+            return alert('Finaliza o descarta el tramo en curso antes de guardar.');
+        }
         setSaving(true);
         try {
             const payload = {
@@ -129,13 +164,27 @@ const CroquisEditor = () => {
 
             if (id === 'nuevo') {
                 const res = await fvApi.post('/croquis', payload);
-                navigate(`/dashboard/croquis/${res.data.croquis.id}`, { replace: true });
+                savedSnapshotRef.current = currentSnapshot;
+                setShowSaveModal(false);
+                if (exitAfterSave) {
+                    navigate('/dashboard/croquis', { replace: true });
+                } else {
+                    navigate(`/dashboard/croquis/${res.data.croquis.id}`, { replace: true });
+                }
             } else {
                 await fvApi.put(`/croquis/${id}`, payload);
-                alert('Guardado exitosamente');
+                savedSnapshotRef.current = currentSnapshot;
+                setShowSaveModal(false);
+                if (exitAfterSave) {
+                    navigate('/dashboard/croquis');
+                } else {
+                    alert('Guardado exitosamente');
+                }
             }
+            setExitAfterSave(false);
         } catch (error) {
-            alert('Error guardando el croquis');
+            console.error('Error guardando el croquis:', error);
+            alert(error.response?.data?.message || 'Error guardando el croquis');
         } finally {
             setSaving(false);
         }
@@ -211,11 +260,11 @@ const CroquisEditor = () => {
     );
 
     return (
-        <div className="flex flex-col h-screen w-full bg-slate-900 animate-in fade-in duration-300">
+        <div className="flex flex-col h-[100dvh] w-full bg-slate-900 animate-in fade-in duration-300">
             {/* Topbar */}
-            <div className="bg-slate-950 border-b border-slate-800 p-4 flex items-center justify-between z-10 shadow-xl">
+            <div className="hidden md:flex bg-slate-950 border-b border-slate-800 p-4 items-center justify-between z-10 shadow-xl">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/dashboard/croquis')} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-xl transition-colors">
+                    <button onClick={requestExit} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-xl transition-colors">
                         <ArrowLeft size={20} />
                     </button>
                     <div className="flex flex-col md:flex-row gap-2 md:gap-4 md:items-center">
@@ -266,6 +315,43 @@ const CroquisEditor = () => {
 
             {/* Main Area */}
             <div className="flex-1 relative">
+                <button
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="md:hidden absolute top-[calc(env(safe-area-inset-top)+1rem)] left-4 z-[1002] bg-slate-950/90 backdrop-blur-md border border-white/10 text-white p-3 rounded-2xl shadow-xl"
+                    aria-label={showMobileMenu ? 'Cerrar menú' : 'Abrir menú de opciones'}
+                    title="Menú de opciones"
+                >
+                    {showMobileMenu ? <X size={21} /> : <Menu size={21} />}
+                </button>
+                {showMobileMenu && (
+                    <div className="md:hidden absolute top-[calc(env(safe-area-inset-top)+4.5rem)] left-4 z-[1002] w-56 bg-slate-950/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-2 shadow-2xl">
+                        <button
+                            onClick={() => {
+                                setShowMobileMenu(false);
+                                setExitAfterSave(false);
+                                setShowSaveModal(true);
+                            }}
+                            className="flex items-center gap-3 w-full p-3 rounded-xl text-white hover:bg-violet-600/20 text-sm font-bold"
+                        >
+                            <Save size={18} className="text-violet-400" /> Guardar croquis
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowMobileMenu(false);
+                                setShowImportModal(true);
+                            }}
+                            className="flex items-center gap-3 w-full p-3 rounded-xl text-white hover:bg-indigo-600/20 text-sm font-bold"
+                        >
+                            <UploadCloud size={18} className="text-indigo-400" /> Importar al mapa
+                        </button>
+                        <button
+                            onClick={requestExit}
+                            className="flex items-center gap-3 w-full p-3 rounded-xl text-red-300 hover:bg-red-500/10 text-sm font-bold"
+                        >
+                            <LogOut size={18} /> Salir del croquis
+                        </button>
+                    </div>
+                )}
                 <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-slate-900/80 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-violet-400 border border-slate-700/50" title="Mi Ubicación">
                     <Navigation size={20} fill="currentColor" />
                 </button>
@@ -345,7 +431,7 @@ const CroquisEditor = () => {
                 </MapContainer>
 
                 {/* Toolbar Inferior Móvil */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl flex items-center gap-2">
+                <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-700 p-2 rounded-2xl shadow-2xl flex items-center gap-2">
                     <BotonHerramienta 
                         active={modo === 'select'} 
                         icon={<MousePointer2 size={24} />} 
@@ -412,6 +498,106 @@ const CroquisEditor = () => {
                         }} className="w-full bg-slate-100 text-slate-600 font-bold py-2 rounded-xl hover:bg-slate-200">
                             Cancelar
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {showSaveModal && (
+                <div className="fixed inset-0 z-[2100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">
+                                <Save size={20} />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black text-slate-900">Guardar croquis</h2>
+                                <p className="text-xs text-slate-500">Indica el nombre y el lugar del borrador.</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Nombre
+                                <input
+                                    autoFocus
+                                    value={nombre}
+                                    onChange={(e) => setNombre(e.target.value)}
+                                    placeholder="Nombre del croquis"
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 normal-case tracking-normal text-slate-900 outline-none focus:border-violet-400"
+                                />
+                            </label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Lugar / referencia
+                                <input
+                                    value={lugar}
+                                    onChange={(e) => setLugar(e.target.value)}
+                                    placeholder="Lugar del croquis"
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 normal-case tracking-normal text-slate-900 outline-none focus:border-violet-400"
+                                />
+                            </label>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Técnico (opcional)
+                                <input
+                                    value={destinatario}
+                                    onChange={(e) => setDestinatario(e.target.value)}
+                                    placeholder="Para (Técnico)"
+                                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 normal-case tracking-normal text-slate-900 outline-none focus:border-violet-400"
+                                />
+                            </label>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    setShowSaveModal(false);
+                                    setExitAfterSave(false);
+                                }}
+                                disabled={saving}
+                                className="flex-1 rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-violet-600/20 disabled:opacity-50"
+                            >
+                                {saving ? 'Guardando...' : <><Save size={17} /> Guardar</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showExitModal && (
+                <div className="fixed inset-0 z-[2100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+                        <h2 className="text-lg font-black text-slate-900">Cambios sin guardar</h2>
+                        <p className="text-sm text-slate-500 mt-2">
+                            ¿Quieres guardar el croquis antes de salir?
+                        </p>
+                        <div className="flex flex-col gap-2 mt-6">
+                            <button
+                                onClick={() => {
+                                    setShowExitModal(false);
+                                    setExitAfterSave(true);
+                                    setShowSaveModal(true);
+                                }}
+                                className="inline-flex items-center justify-center gap-2 rounded-full bg-violet-600 px-4 py-3 text-sm font-black text-white"
+                            >
+                                <Save size={17} /> Guardar y salir
+                            </button>
+                            <button
+                                onClick={() => navigate('/dashboard/croquis')}
+                                className="rounded-full bg-red-50 px-4 py-3 text-sm font-bold text-red-600"
+                            >
+                                Salir sin guardar
+                            </button>
+                            <button
+                                onClick={() => setShowExitModal(false)}
+                                className="rounded-full px-4 py-3 text-sm font-bold text-slate-500"
+                            >
+                                Seguir editando
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -202,7 +202,7 @@ const Dashboard = () => {
         <div className="h-[100dvh] w-screen bg-slate-950 overflow-hidden flex flex-col">
             
             {/* Navbar Superior (Móvil) */}
-            <div className="lg:hidden bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex justify-between items-center z-[1002] pt-[env(safe-area-inset-top)]">
+            <div className={`${proyectoSeleccionado ? 'hidden' : 'flex'} lg:hidden bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 justify-between items-center z-[1002] pt-[env(safe-area-inset-top)]`}>
                 <div className="flex items-center gap-2">
                     <GoMapLogo className="h-7 w-7" textClassName="text-lg" />
                 </div>
@@ -249,7 +249,7 @@ const Dashboard = () => {
                     <div className="flex-1 relative flex flex-col">
                         
                         {/* Barra Superior del Mapa con botón para Volver al Menú */}
-                        <div className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between z-[400] shadow-md">
+                        <div className="hidden lg:flex bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 items-center justify-between z-[400] shadow-md">
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={handleVolverAlMenu}
@@ -283,6 +283,17 @@ const Dashboard = () => {
 
                         {/* Mapa del Proyecto Seleccionado */}
                         <div className="flex-1 relative">
+                            <button
+                                onClick={() => {
+                                    if (!sidebarOpen) pushHistoryStep('sidebar');
+                                    setSidebarOpen(!sidebarOpen);
+                                }}
+                                className="lg:hidden absolute top-[calc(env(safe-area-inset-top)+1rem)] left-4 z-[1002] bg-slate-950/85 backdrop-blur-md border border-white/10 text-white p-3 rounded-2xl shadow-xl"
+                                aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú de opciones'}
+                                title="Menú de opciones"
+                            >
+                                {sidebarOpen ? <X size={21} /> : <Menu size={21} />}
+                            </button>
                             <MapaPrincipal 
                                 onAbrirFormulario={abrirFormulario} 
                                 modo={modo}
