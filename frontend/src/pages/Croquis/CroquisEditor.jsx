@@ -4,7 +4,7 @@ import fvApi from '../../api/fvApi';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Popup, ZoomControl, LayersControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet-rotate';
-import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation, UploadCloud, Palette, Menu, X, LogOut } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Type, Trash2, MapPin, MousePointer2, Navigation, UploadCloud, Palette, Menu, X, LogOut, Maximize, Minimize } from 'lucide-react';
 import ImportarCroquisModal from '../../components/modals/ImportarCroquisModal';
 
 // Iconos Personalizados para el Borrador - Mejorados con colores visibles
@@ -67,6 +67,7 @@ const CroquisEditor = () => {
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [showExitModal, setShowExitModal] = useState(false);
     const [exitAfterSave, setExitAfterSave] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Predefined colors
     const colors = [
@@ -90,6 +91,43 @@ const CroquisEditor = () => {
     const mapRef = useRef(null);
     const currentSnapshot = JSON.stringify({ nombre, destinatario, lugar, nodos, tramos, puntosTemporales });
     const hasUnsavedChanges = currentSnapshot !== savedSnapshotRef.current;
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    const toggleFullscreen = async () => {
+        try {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    await document.documentElement.webkitRequestFullscreen();
+                } else {
+                    throw new Error('Fullscreen API no disponible');
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                } else {
+                    throw new Error('Salir de fullscreen no está disponible');
+                }
+            }
+        } catch (error) {
+            console.error('Error al cambiar pantalla completa:', error);
+            alert('No se pudo cambiar el modo de pantalla completa en este dispositivo.');
+        }
+    };
 
     useEffect(() => {
         if (id && id !== 'nuevo') {
@@ -295,6 +333,14 @@ const CroquisEditor = () => {
                 </div>
                 
                 <div className="flex gap-2">
+                    <button
+                        onClick={toggleFullscreen}
+                        className="hidden md:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-4 py-2 rounded-xl transition-colors"
+                        title={isFullscreen ? 'Salir de pantalla completa' : 'Ver en pantalla completa'}
+                    >
+                        {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                        <span>{isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>
+                    </button>
                     <button 
                         onClick={() => setShowImportModal(true)}
                         className="flex items-center gap-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold px-4 py-2 rounded-xl transition-colors"
@@ -326,6 +372,13 @@ const CroquisEditor = () => {
                 {showMobileMenu && (
                     <div className="md:hidden absolute top-[calc(env(safe-area-inset-top)+4.5rem)] left-4 z-[1002] w-56 bg-slate-950/95 backdrop-blur-xl border border-slate-700 rounded-2xl p-2 shadow-2xl">
                         <button
+                            onClick={toggleFullscreen}
+                            className="flex items-center gap-3 w-full p-3 rounded-xl text-white hover:bg-slate-800 text-sm font-bold"
+                        >
+                            {isFullscreen ? <Minimize size={18} className="text-violet-400" /> : <Maximize size={18} className="text-violet-400" />}
+                            {isFullscreen ? 'Salir pantalla completa' : 'Pantalla completa'}
+                        </button>
+                        <button
                             onClick={() => {
                                 setShowMobileMenu(false);
                                 setExitAfterSave(false);
@@ -352,6 +405,14 @@ const CroquisEditor = () => {
                         </button>
                     </div>
                 )}
+                <button
+                    onClick={toggleFullscreen}
+                    className="absolute bottom-[calc(env(safe-area-inset-bottom)+7.25rem)] right-4 z-[1001] bg-slate-900/90 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-white border border-slate-700/70"
+                    aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Ver en pantalla completa'}
+                    title={isFullscreen ? 'Salir de pantalla completa' : 'Ver en pantalla completa'}
+                >
+                    {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                </button>
                 <button onClick={handleMiUbicacion} className="absolute top-24 right-4 z-[1001] bg-slate-900/80 backdrop-blur p-3 rounded-full shadow-xl hover:bg-slate-800 transition-all text-violet-400 border border-slate-700/50" title="Mi Ubicación">
                     <Navigation size={20} fill="currentColor" />
                 </button>
