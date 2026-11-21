@@ -5,14 +5,15 @@ const rawUrl = import.meta.env.VITE_API_URL || '/api';
 
 const fvApi = axios.create({
     baseURL: rawUrl.endsWith('/api') ? rawUrl : `${rawUrl}/api`,
-    timeout: 30000,           // Aumentado a 30 segundos
+    timeout: 30000,
     withCredentials: false,
     headers: {
         'Content-Type': 'application/json'
     }
 });
 
-// Token
+
+
 fvApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -22,7 +23,7 @@ fvApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Mejor manejo de errores
+
 fvApi.interceptors.response.use(
     (response) => response,
     (error) => {

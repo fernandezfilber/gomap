@@ -25,9 +25,6 @@ export const ProyectosProvider = ({ children }) => {
 
             if (proyectoEncontrado) {
                 setProyectoSeleccionado(proyectoEncontrado);
-            } else if (lista.length === 1) {
-                setProyectoSeleccionado(lista[0]);
-                window.localStorage.setItem('proyectoId', lista[0].id);
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Error al cargar proyectos');

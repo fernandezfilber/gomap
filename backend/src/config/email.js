@@ -39,3 +39,21 @@ exports.sendVerificationEmail = async (email, token, customSubject = null) => {
         `
     });
 };
+
+exports.sendBackupEmail = async (email, backupJsonString, filename) => {
+    await transporter.sendMail({
+        from: `"GoMap Digital Backup" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `[Respaldo Semanal] GoMap Base de Datos - ${new Date().toISOString().split('T')[0]}`,
+        text: `Hola,\n\nSe ha generado con éxito el respaldo semanal programado de la base de datos de GoMap.\nFecha: ${new Date().toLocaleString()}\n\nEl archivo JSON comprimido con todos los datos (proyectos, cajas, postes, mufas, tramos, clientes, croquis, etc.) se encuentra adjunto a este mensaje.\n\nSaludos,\nEquipo GoMap Digital`,
+        attachments: [
+            {
+                filename: filename || `gomap_backup_${new Date().toISOString().split('T')[0]}.json`,
+                content: backupJsonString,
+                contentType: 'application/json'
+            }
+        ]
+    });
+};
+
+exports.transporter = transporter;

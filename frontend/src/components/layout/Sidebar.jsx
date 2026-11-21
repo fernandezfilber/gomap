@@ -29,21 +29,16 @@ const Sidebar = ({ isOpen, onClose }) => {
     // ==================== MANEJADORES ====================
     const handleCambioProyecto = (e) => {
         const idSeleccionado = e.target.value;
-        if (!idSeleccionado) {
+        if (!idSeleccionado || idSeleccionado === 'ALL_PROJECTS') {
             setProyectoSeleccionado(null);
             localStorage.removeItem('proyectoId');
-            navigate('/mapa');
-            return;
-        }
-        if (idSeleccionado === 'ALL_PROJECTS') {
-            setProyectoSeleccionado(null);
-            localStorage.removeItem('proyectoId');
-            navigate('/mapa');
+            navigate('/dashboard');
             return;
         }
         const proyectoEncontrado = proyectos.find(p => p.id === idSeleccionado);
         setProyectoSeleccionado(proyectoEncontrado);
         localStorage.setItem('proyectoId', idSeleccionado);
+        navigate('/dashboard');
     };
 
     const handleSaveNuevoProyecto = async (datos) => {
@@ -203,8 +198,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 proyectoSeleccionado ? 'border-[#00E5FF]/30' : 'border-slate-100'
                             }`}
                         >
-                            <option value="">-- Seleccionar Sector --</option>
-                            <option value="ALL_PROJECTS">Ver Todo</option>
+                            <option value="">-- Menú de Herramientas (Inicio) --</option>
                             {proyectos.map(p => (
                                 <option key={p.id} value={p.id}>{p.nombre}</option>
                             ))}
@@ -327,8 +321,16 @@ const Sidebar = ({ isOpen, onClose }) => {
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase px-1 mb-4 block tracking-[0.2em]">Operaciones</label>
                         
-                        <button className="flex items-center gap-3 w-full p-4 rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 transition-transform active:scale-95">
-                            <MapIcon size={18} className="text-[#00E5FF]"/> Visor GIS
+                        <button 
+                            onClick={() => {
+                                setProyectoSeleccionado(null);
+                                localStorage.removeItem('proyectoId');
+                                navigate('/dashboard');
+                                if (window.innerWidth < 1024) onClose();
+                            }}
+                            className="flex items-center gap-3 w-full p-4 rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 transition-transform active:scale-95"
+                        >
+                            <LayoutDashboard size={18} className="text-[#00E5FF]"/> Menú de Herramientas
                         </button>
 
                         {['ADMIN', 'SUPERADMIN'].includes(JSON.parse(localStorage.getItem('user'))?.rol) && (

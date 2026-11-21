@@ -11,5 +11,6 @@ router.get('/empresas', adminController.listarEmpresas);
 router.patch('/empresas/:id/bloqueo', adminController.toggleBloqueoEmpresa);
 router.patch('/empresas/:id/suscripcion', adminController.actualizarSuscripcion);
 router.delete('/empresas/:id', adminController.eliminarEmpresaTotal);
+router.post('/backup/enviar', adminController.enviarBackupManual);
 
 module.exports = router;

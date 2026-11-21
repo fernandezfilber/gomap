@@ -52,3 +52,16 @@ exports.eliminarEmpresaTotal = async (req, res) => {
         });
     }
 };
+
+// ====================== ENVIAR BACKUP MANUAL ======================
+exports.enviarBackupManual = async (req, res) => {
+    try {
+        const { generarYEnviarBackup } = require('../services/backup.service');
+        const destinatario = req.body?.email || 'fernandezbendezu@hotmail.com';
+        const resultado = await generarYEnviarBackup(destinatario);
+        res.json({ success: true, message: `Respaldo enviado exitosamente a ${destinatario}`, resultado });
+    } catch (error) {
+        console.error("Error al enviar respaldo:", error);
+        res.status(500).json({ success: false, message: "Error al generar o enviar respaldo", error: error.message });
+    }
+};
