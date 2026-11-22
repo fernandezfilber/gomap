@@ -32,7 +32,7 @@ import FormOpcionesContinuar from '../forms/FormOpcionesContinuar';
 import SearchCajaCercana from '../modals/SearchCajaCercana';
 import MatrizEmpalmes from '../modals/MatrizEmpalmes';
 
-const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, setMedirDistancia }) => {
+const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, setMedirDistancia, cajaInicial = null }) => {
     const [puntosTemporales, setPuntosTemporales] = useState([]);
     const [colorTramoTemporal, setColorTramoTemporal] = useState('#ef4444');
     const [modal, setModal] = useState({ show: false, type: null, data: null });
@@ -67,6 +67,20 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Volar y resaltar caja cuando se selecciona desde el buscador
+    useEffect(() => {
+        if (cajaInicial && esCoordenadaValida(cajaInicial.latitud, cajaInicial.longitud)) {
+            setCajaResaltada(cajaInicial);
+            if (mapRef.current) {
+                mapRef.current.flyTo([parseFloat(cajaInicial.latitud), parseFloat(cajaInicial.longitud)], 20, { animate: true });
+                setTimeout(() => {
+                    const marker = markerRefs.current.get(cajaInicial.id);
+                    if (marker) marker.openPopup();
+                }, 1200);
+            }
+        }
+    }, [cajaInicial, cajas]);
 
     const esCoordenadaValida = (lat, lng) => {
         const l = parseFloat(lat);

@@ -39,6 +39,7 @@ const Dashboard = () => {
     const [autoSearchCajas, setAutoSearchCajas] = useState(false);
     const [modalNuevoProyectoOpen, setModalNuevoProyectoOpen] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [cajaParaEnfocar, setCajaParaEnfocar] = useState(null);
 
     // Refs para evitar loops en popstate
     const stateRef = useRef({
@@ -172,6 +173,29 @@ const Dashboard = () => {
         setModalNuevoProyectoOpen(true);
     };
 
+    const handleCajaSeleccionadaDesdeBuscador = (caja) => {
+        setMostrarBusquedaCajas(false);
+        if (!caja) return;
+
+        // 1. Encontrar o armar el proyecto de la caja
+        const proj = proyectos.find(p => p.id === caja.proyectoId) || { 
+            id: caja.proyectoId, 
+            nombre: caja.proyectoNombre || 'Sector' 
+        };
+
+        // 2. Activar el proyecto para cargar su mapa y tendido de fibra
+        pushHistoryStep(`proyecto-${proj.id}`);
+        setProyectoSeleccionado(proj);
+        localStorage.setItem('proyectoId', proj.id);
+        setCajaParaEnfocar(caja);
+
+        // 3. Disparar evento para asegurar que vuele a la caja cuando monte el mapa
+        setTimeout(() => {
+            const event = new window.CustomEvent('cajaSeleccionada', { detail: caja });
+            window.dispatchEvent(event);
+        }, 800);
+    };
+
     const handleSaveNuevoProyecto = async (datos) => {
         try {
             const nuevo = await crearProyecto(datos);
@@ -300,6 +324,7 @@ const Dashboard = () => {
                                 setModo={setModo}
                                 medirDistancia={medirDistancia}
                                 setMedirDistancia={setMedirDistancia}
+                                cajaInicial={cajaParaEnfocar}
                             />
 
                             {/* Toolbox Flotante sobre el mapa */}
@@ -332,6 +357,7 @@ const Dashboard = () => {
                     onClose={() => setMostrarBusquedaCajas(false)}
                     initialCoordinates={busquedaInicialCoords}
                     autoSearch={autoSearchCajas}
+                    onSelectCaja={handleCajaSeleccionadaDesdeBuscador}
                 />
             )}
 

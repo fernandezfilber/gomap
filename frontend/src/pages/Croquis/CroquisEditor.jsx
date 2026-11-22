@@ -156,7 +156,16 @@ const CroquisEditor = () => {
                     setNodos(loadedNodos);
                     setTramos(loadedTramos);
                     
-                    if (c.datosGraficos.nodos?.length > 0 && mapRef.current) {
+                    const targetCaja = localStorage.getItem('croquisCajaTarget');
+                    if (targetCaja && mapRef.current) {
+                        try {
+                            const parsed = JSON.parse(targetCaja);
+                            if (parsed.lat && parsed.lng) {
+                                mapRef.current.flyTo([parseFloat(parsed.lat), parseFloat(parsed.lng)], 20);
+                            }
+                        } catch(e) {}
+                        localStorage.removeItem('croquisCajaTarget');
+                    } else if (c.datosGraficos.nodos?.length > 0 && mapRef.current) {
                         const ult = c.datosGraficos.nodos[c.datosGraficos.nodos.length - 1];
                         mapRef.current.flyTo([ult.lat, ult.lng], 18);
                     }
