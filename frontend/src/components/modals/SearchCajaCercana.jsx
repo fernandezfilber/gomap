@@ -12,37 +12,63 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
   const [resultados, setResultados] = useState([]);
   const [resultadosCroquis, setResultadosCroquis] = useState([]);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
+  const [coordsActivas, setCoordsActivas] = useState(initialCoordinates || null);
   const [cargando, setCargando] = useState(false);
   const [autoSearchTriggered, setAutoSearchTriggered] = useState(false);
 
   const extraerCoordenadas = (input) => {
-    if (!input) return null;
+    if (!input || typeof input !== 'string') return null;
 
-    const buscadores = [
-      /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,
+    const trimmed = input.trim();
+
+    // Si es un link de Google Maps (acortado o completo):
+    if (trimmed.includes('http://') || trimmed.includes('https://') || trimmed.includes('maps.app') || trimmed.includes('goo.gl')) {
+      const atMatch = trimmed.match(/@(-?\d+\.\d+)[,\s%2C]+(-?\d+\.\d+)/i);
+      if (atMatch) {
+        const lat = parseFloat(atMatch[1]);
+        const lng = parseFloat(atMatch[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+      }
+      const qMatch = trimmed.match(/[?&](?:q|query|ll|center)=(-?\d+\.\d+)(?:[,\s+]|%2C)+(-?\d+\.\d+)/i);
+      if (qMatch) {
+        const lat = parseFloat(qMatch[1]);
+        const lng = parseFloat(qMatch[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+      }
+      const bangMatch = trimmed.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/i);
+      if (bangMatch) {
+        const lat = parseFloat(bangMatch[1]);
+        const lng = parseFloat(bangMatch[2]);
+        if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+      }
+      // NUNCA extraer números al azar de un link acortado! Dejar que el backend lo resuelva
+      return null;
+    }
+
+    // Si son coordenadas numéricas escritas directamente (ej: "-12.0123, -76.8765")
+    const regexList = [
+      /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/,
       /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
       /(-?\d+\.\d+)\s+(-?\d+\.\d+)/
     ];
 
-    for (const regex of buscadores) {
-      const match = input.match(regex);
-      if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-    }
-
-    const numbers = input.match(/-?\d+(?:\.\d+)?/g) || [];
-    for (let i = 0; i + 1 < numbers.length; i += 1) {
-      const lat = parseFloat(numbers[i]);
-      const lng = parseFloat(numbers[i + 1]);
-      if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
+    for (const regex of regexList) {
+      const match = trimmed.match(regex);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          return { lat, lng };
+        }
       }
     }
+
     return null;
   };
 
   const realizarBusqueda = async ({ lat, lng }, radioPersonalizado = null) => {
     const radioFinal = parseInt(radioPersonalizado || radio, 10);
+    setCoordsActivas({ lat, lng });
     setResultados([]);
     setResultadosCroquis([]);
     setBusquedaRealizada(false);
@@ -88,7 +114,7 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
     }
   };
 
-  const handleBuscar = async (e) => {
+  const handleBuscar = async (e, radioOverride = null) => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!coordenadasInput) {
@@ -96,20 +122,20 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
       return;
     }
 
-    const decoded = decodeURIComponent(coordenadasInput.trim());
-    let coords = extraerCoordenadas(decoded);
+    const inputTrim = coordenadasInput.trim();
+    let coords = extraerCoordenadas(inputTrim);
 
     // Si no se extrajeron coordenadas numéricas directamente y parece un link
-    if (!coords && (decoded.includes('http') || decoded.includes('maps') || decoded.includes('goo.gl'))) {
+    if (!coords && (inputTrim.includes('http') || inputTrim.includes('maps') || inputTrim.includes('goo.gl'))) {
       setCargando(true);
       const toastId = toast.loading('Extrayendo ubicación del link de Google Maps...');
       try {
-        const { data } = await fvApi.post('/cajas/resolver-coordenadas', { url: decoded });
+        const { data } = await fvApi.post('/cajas/resolver-coordenadas', { url: inputTrim });
         toast.dismiss(toastId);
         if (data.success && data.lat && data.lng) {
           coords = { lat: data.lat, lng: data.lng };
-          setCoordenadasInput(`${data.lat}, ${data.lng}`);
-          toast.success('Ubicación extraída correctamente');
+          setCoordsActivas(coords);
+          toast.success(`Ubicación extraída: ${data.lat}, ${data.lng}`);
         } else {
           toast.error(data.message || 'No se pudieron obtener coordenadas del link');
           setCargando(false);
@@ -129,7 +155,8 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
       return;
     }
 
-    await realizarBusqueda(coords);
+    setCoordsActivas(coords);
+    await realizarBusqueda(coords, radioOverride);
   };
 
   const handleMiUbicacion = () => {
@@ -143,6 +170,7 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
       (position) => {
         const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
         setCoordenadasInput(`${coords.lat}, ${coords.lng}`);
+        setCoordsActivas(coords);
         realizarBusqueda(coords);
       },
       () => {
@@ -155,12 +183,10 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
 
   const handleAmpliarRadio = (nuevoRadio) => {
     setRadio(String(nuevoRadio));
-    const decoded = decodeURIComponent((coordenadasInput || '').trim());
-    const coords = extraerCoordenadas(decoded);
-    if (coords) {
-      realizarBusqueda(coords, nuevoRadio);
+    if (coordsActivas) {
+      realizarBusqueda(coordsActivas, nuevoRadio);
     } else {
-      handleMiUbicacion();
+      handleBuscar(null, nuevoRadio);
     }
   };
 
@@ -235,6 +261,15 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
               placeholder="-12.0124, -76.8690 ó link..."
               className="w-full bg-slate-50 border border-slate-200/80 rounded-full px-5 py-3.5 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors shadow-xs"
             />
+            {coordsActivas && (
+              <div className="mt-2 bg-cyan-50/80 border border-cyan-200 rounded-2xl px-3.5 py-1.5 flex items-center justify-between text-cyan-800 text-[11px] font-bold">
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={12} className="text-cyan-600" />
+                  Punto activo: {Number(coordsActivas.lat).toFixed(6)}, {Number(coordsActivas.lng).toFixed(6)}
+                </span>
+                <span className="text-[9px] text-cyan-600 uppercase font-black tracking-wider">Listo</span>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 items-center">
