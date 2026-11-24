@@ -121,12 +121,25 @@ const croquisController = {
   getCajasCercanasEnCroquis: async (req, res) => {
     try {
         const empresaId = req.user.empresaId;
-        const lat = parseFloat(req.query.latitud);
-        const lng = parseFloat(req.query.longitud);
+        let lat = parseFloat(req.query.latitud);
+        let lng = parseFloat(req.query.longitud);
+
+        if (isNaN(lat) || isNaN(lng)) {
+            const posibleUrl = req.query.url || (typeof req.query.latitud === 'string' && req.query.latitud.includes('http') ? req.query.latitud : null);
+            if (posibleUrl) {
+                const geoService = require('../services/geo.service');
+                const resuelto = await geoService.resolverCoordenadasDesdeUrl(posibleUrl);
+                if (resuelto) {
+                    lat = resuelto.lat;
+                    lng = resuelto.lng;
+                }
+            }
+        }
+
         const radioMetros = parseInt(req.query.radio) || 500;
         
         if (isNaN(lat) || isNaN(lng)) {
-            return res.status(400).json({ success: false, message: 'Coordenadas inválidas' });
+            return res.status(400).json({ success: false, message: 'Coordenadas inválidas o no se pudo resolver el enlace de Google Maps' });
         }
 
         const allCroquis = await prisma.croquis.findMany({

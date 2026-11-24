@@ -202,6 +202,23 @@ const MapaPrincipal = ({ modo = 'select', setModo = () => { }, medirDistancia, s
                 }
             }
 
+            // Si es un link acortado de Google Maps
+            if (query.includes('http') || query.includes('maps') || query.includes('goo.gl')) {
+                import('../../api/fvApi').then(({ default: fvApi }) => {
+                    fvApi.post('/cajas/resolver-coordenadas', { url: query })
+                        .then(({ data }) => {
+                            if (data.success && data.lat && data.lng && mapRef.current) {
+                                mapRef.current.flyTo([data.lat, data.lng], 20, { animate: true });
+                                const marker = L.marker([data.lat, data.lng]).addTo(mapRef.current);
+                                marker.bindPopup("<b>Ubicación del Enlace Resuelta</b>").openPopup();
+                                setTimeout(() => mapRef.current.removeLayer(marker), 6000);
+                                toast.success('Ubicación de Google Maps encontrada');
+                            }
+                        })
+                        .catch(() => {});
+                });
+            }
+
             // 2. Normal text search
             const q = query.toLowerCase();
             const target = postes.find(p => p.codigo?.toLowerCase().includes(q)) || 

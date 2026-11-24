@@ -99,10 +99,15 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     // ==================== RESOLVER URL CORTA ====================
     const resolveGoogleMapsUrl = async (url) => {
-        if (!url.includes('maps.app.goo.gl')) return url;
+        if (!url || (!url.includes('http') && !url.includes('maps') && !url.includes('goo.gl'))) {
+            return url;
+        }
         try {
-            const response = await fetch(url, { method: 'HEAD', redirect: 'manual' });
-            return response.headers.get('location') || response.url;
+            const { data } = await fvApi.post('/cajas/resolver-coordenadas', { url });
+            if (data.success && data.lat && data.lng) {
+                return `${data.lat}, ${data.lng}`;
+            }
+            return url;
         } catch {
             return url;
         }

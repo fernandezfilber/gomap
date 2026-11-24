@@ -120,8 +120,12 @@ exports.verificarFactibilidad = async (data) => {
         latitud = parseFloat(latitud);
         longitud = parseFloat(longitud);
     } else if (googleMapsUrl) {
-        const coords = extraerCoordenadas(googleMapsUrl);
-        if (!coords) throw { status: 400, message: "URL de Google Maps inválida o sin coordenadas." };
+        let coords = extraerCoordenadas(googleMapsUrl);
+        if (!coords) {
+            const geoService = require('./geo.service');
+            coords = await geoService.resolverCoordenadasDesdeUrl(googleMapsUrl);
+        }
+        if (!coords) throw { status: 400, message: "URL de Google Maps inválida o no se pudo extraer la ubicación." };
         latitud = coords.lat;
         longitud = coords.lng;
     } else {

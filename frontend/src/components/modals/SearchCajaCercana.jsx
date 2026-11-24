@@ -97,7 +97,32 @@ const SearchCajaCercana = ({ onClose, initialCoordinates = null, autoSearch = fa
     }
 
     const decoded = decodeURIComponent(coordenadasInput.trim());
-    const coords = extraerCoordenadas(decoded);
+    let coords = extraerCoordenadas(decoded);
+
+    // Si no se extrajeron coordenadas numéricas directamente y parece un link
+    if (!coords && (decoded.includes('http') || decoded.includes('maps') || decoded.includes('goo.gl'))) {
+      setCargando(true);
+      const toastId = toast.loading('Extrayendo ubicación del link de Google Maps...');
+      try {
+        const { data } = await fvApi.post('/cajas/resolver-coordenadas', { url: decoded });
+        toast.dismiss(toastId);
+        if (data.success && data.lat && data.lng) {
+          coords = { lat: data.lat, lng: data.lng };
+          setCoordenadasInput(`${data.lat}, ${data.lng}`);
+          toast.success('Ubicación extraída correctamente');
+        } else {
+          toast.error(data.message || 'No se pudieron obtener coordenadas del link');
+          setCargando(false);
+          return;
+        }
+      } catch (err) {
+        toast.dismiss(toastId);
+        console.error('Error resolviendo link:', err);
+        toast.error(err.response?.data?.message || 'Error al conectar con el enlace de Google Maps');
+        setCargando(false);
+        return;
+      }
+    }
 
     if (!coords) {
       toast.error('Formato inválido. Usa lat, lng o un link de Google Maps');

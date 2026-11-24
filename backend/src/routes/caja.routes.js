@@ -24,6 +24,7 @@ const safeHandler = (handler, name) => {
 router.get('/', safeHandler(cajaController.getCajas, 'getCajas'));
 router.post('/', isAdmin, safeHandler(cajaController.createCaja, 'createCaja'));
 router.get('/cercanas', safeHandler(cajaController.getCajasCercanas, 'getCajasCercanas'));
+router.post('/resolver-coordenadas', safeHandler(cajaController.resolverCoordenadasUrl, 'resolverCoordenadasUrl'));
 router.get('/:id', safeHandler(cajaController.getCajaById, 'getCajaById'));
 router.put('/:id', isAdmin, safeHandler(cajaController.updateCaja, 'updateCaja'));
 router.delete('/:id', isAdmin, safeHandler(cajaController.deleteCaja, 'deleteCaja'));
